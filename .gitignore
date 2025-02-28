@@ -1,0 +1,4 @@
+# Ignore SQLite database files
+videos.db
+*.sqlite
+*.sqlite3
