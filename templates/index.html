@@ -11,14 +11,32 @@
             <button type="submit" class="btn btn-primary mt-2">Get Video Data</button>
         </form>
 
-        {% if data %}
-        <br>
-        <button type="submit" class="btn btn-success">Save to Database</button>
-        <button id="copy-button" class="btn btn-warning">Copy Details</button>
-        {% endif %}
 
         {% if data %}
+        <!-- Buttons at the Top of #videoDetails -->
+        <br>
+        <div class="d-flex gap-2 mb-3">
+            <form action="/save" method="post" class="m-0">
+                <input type="hidden" name="channel_username" value="{{ data.channel_username }}">
+                <input type="hidden" name="subscribers" value="{{ data.subscribers }}">
+                <input type="hidden" name="title" value="{{ data.title }}">
+                <input type="hidden" name="views" value="{{ data.views }}">
+                <input type="hidden" name="likes" value="{{ data.likes }}">
+                <input type="hidden" name="comments" value="{{ data.comments }}">
+                <input type="hidden" name="posted" value="{{ data.posted }}">
+                <input type="hidden" name="video_length" value="{{ data.video_length }}">
+                <input type="hidden" name="transcript" value="{{ data.transcript }}">
+                <input type="hidden" name="description" value="{{ data.description }}">
+        
+                <button type="submit" class="btn btn-success">Save to Database</button>
+                <button id="copy-button" class="btn btn-warning" type="button">Copy Details</button>
+            </form>
+        </div>
+        
+        <!-- Video Details Section -->
         <div id="videoDetails" class="mt-4 p-3 border rounded">
+        
+            <!-- Extracted Video Details (Below the Buttons) -->
             <h4>Extracted Video Details:</h4>
             <p><strong>Channel Username:</strong> {{ data.channel_username }}</p>
             <p><strong>Subscribers:</strong> {{ "{:,}".format(data.subscribers|int) }}</p>
@@ -30,25 +48,10 @@
             <p><strong>Video Length:</strong> {{ data.video_length }}</p>
             <p><strong>Transcript:</strong> {{ data.transcript }}</p>
             <p><strong>Description:</strong> {{ data.description }}</p>
-        </div>        
+        </div>
         {% endif %}
+        
 
-        {% if data %}
-        <form action="/save" method="post">
-            <input type="hidden" name="channel_username" value="{{ data.channel_username }}">
-            <input type="hidden" name="subscribers" value="{{ data.subscribers }}">
-            <input type="hidden" name="title" value="{{ data.title }}">
-            <input type="hidden" name="views" value="{{ data.views }}">
-            <input type="hidden" name="likes" value="{{ data.likes }}">
-            <input type="hidden" name="comments" value="{{ data.comments }}">
-            <input type="hidden" name="posted" value="{{ data.posted }}">
-            <input type="hidden" name="video_length" value="{{ data.video_length }}">
-            <input type="hidden" name="transcript" value="{{ data.transcript }}">
-            <input type="hidden" name="description" value="{{ data.description }}">
-        </form>
-        {% endif %}
-
-    </div>
     <!-- Display flashed messages -->
     {% with messages = get_flashed_messages(with_categories=True) %}
     {% if messages %}

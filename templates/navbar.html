@@ -12,9 +12,6 @@
                     <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'export_data_route' %}active{% endif %}" href="{{ url_for('export_data_route') }}">Export Excel</a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'save' %}active{% endif %}" href="{{ url_for('save') }}">Save Video</a>
                 </li>
             </ul>
