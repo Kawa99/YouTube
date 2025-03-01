@@ -1,10 +1,12 @@
-import os
-import requests
-import isodate
-from flask import Flask, request, render_template, redirect, flash, url_for
-from youtube_transcript_api import YouTubeTranscriptApi
+import csv
 from database import save_video, init_db
-
+from flask import Flask, request, render_template, redirect, flash, url_for, Response
+import isodate
+import os
+import pandas as pd
+import requests
+import sqlite3
+from youtube_transcript_api import YouTubeTranscriptApi
 
 app = Flask(__name__)
 
@@ -91,17 +93,6 @@ def index():
     return render_template("index.html", data=video_data)
 
 
-# @app.route("/save", methods=["POST"])
-# def save():
-#     try:
-#         video_data = request.form.to_dict()  # Convert form data to dictionary
-#         save_video(video_data)  # Pass data to the save_video function
-#         flash("Video data saved successfully!", "success")
-#     except Exception as e:
-#         flash(f"Error saving video: {str(e)}", "danger")
-
-#     return redirect(url_for("index"))  # Redirect to home page
-
 @app.route("/save", methods=["POST"])
 def save():
     try:
@@ -117,6 +108,59 @@ def save():
     return redirect(url_for("index"))
 
 
+@app.route("/export", methods=["GET"])
+def export_data_route():
+    """Retrieve all data and export as CSV or Excel"""
+    format = request.args.get("format", "csv")  # Default to CSV if no format is specified
+
+    conn = sqlite3.connect("videos.db")
+
+    # Load all tables into separate Pandas DataFrames
+    tables = {
+        "videos": pd.read_sql_query("SELECT * FROM videos", conn),
+        "channels": pd.read_sql_query("SELECT * FROM channels", conn),
+        "channel_videos": pd.read_sql_query("SELECT * FROM channel_videos", conn),
+        "channel_history": pd.read_sql_query("SELECT * FROM channel_history", conn)
+    }
+    
+    conn.close()
+
+    # Export to CSV (Combine All Tables)
+    if format == "csv":
+        from io import StringIO
+        output = StringIO()
+
+        # Write all tables to a single CSV file
+        for sheet_name, df in tables.items():
+            output.write(f"\n=== {sheet_name.upper()} ===\n")  # Add table name as a separator
+            df.to_csv(output, index=False)
+            output.write("\n")  # Space between tables
+
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment; filename=exported_data.csv"}
+        )
+
+    # Export to Excel (Each Table in a Separate Sheet)
+    elif format == "xlsx":
+        from io import BytesIO
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            for sheet_name, df in tables.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+        output.seek(0)
+
+        return Response(
+            output.getvalue(),
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=exported_data.xlsx"}
+        )
+
+    # If an invalid format is provided, return an error
+    else:
+        return "Invalid format! Please choose 'csv' or 'xlsx'.", 400
 
 
 if __name__ == "__main__":
