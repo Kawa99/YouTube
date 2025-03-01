@@ -12,15 +12,26 @@
                     <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'export_data' %}active{% endif %}" href="{{ url_for('export_data') }}">Export Excel</a>
+                    <a class="nav-link {% if request.endpoint == 'export_data_route' %}active{% endif %}" href="{{ url_for('export_data_route') }}">Export Excel</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'save' %}active{% endif %}" href="{{ url_for('save') }}">Save Video</a>
                 </li>
             </ul>
 
+             <!-- Export Dropdown -->
+             <div class="dropdown me-3">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    Export Data
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
+                    <li><a class="dropdown-item" href="{{ url_for('export_data_route', format='csv') }}">Export as CSV</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('export_data_route', format='xlsx') }}">Export as Excel</a></li>
+                </ul>
+            </div>
+
             <!-- Dark Mode Toggle Button -->
-            <button id="theme-toggle" class="btn btn-outline-light">🌙 Dark Mode</button>
+            <button id="theme-toggle" class="btn btn-secondary">🌙 Dark Mode</button>
         </div>
     </div>
 </nav>

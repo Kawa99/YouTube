@@ -3,6 +3,7 @@ from database import save_video, init_db
 from flask import Flask, request, render_template, redirect, flash, url_for, Response
 import isodate
 import os
+import pandas as pd
 import requests
 import sqlite3
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -108,53 +109,58 @@ def save():
 
 
 @app.route("/export", methods=["GET"])
-def export_data():
-    """Retrieve all data from the database and export as CSV"""
+def export_data_route():
+    """Retrieve all data and export as CSV or Excel"""
+    format = request.args.get("format", "csv")  # Default to CSV if no format is specified
+
     conn = sqlite3.connect("videos.db")
-    cursor = conn.cursor()
 
-    # SQL Query to Join All Tables
-    query = """
-        SELECT 
-            v.id AS video_id,
-            v.title,
-            v.description,
-            v.views,
-            v.likes,
-            v.comments,
-            v.posted,
-            v.video_length,
-            v.transcript,
-            v.saved_at,
-            c.channel_username,
-            c.subscribers,
-            ch.previous_subscribers,
-            ch.recorded_at AS sub_history_timestamp
-        FROM videos v
-        LEFT JOIN channels c ON v.channel_id = c.id
-        LEFT JOIN channel_videos cv ON v.id = cv.video_id
-        LEFT JOIN channel_history ch ON c.id = ch.channel_id
-    """
-
-    cursor.execute(query)
-    data = cursor.fetchall()
+    # Load all tables into separate Pandas DataFrames
+    tables = {
+        "videos": pd.read_sql_query("SELECT * FROM videos", conn),
+        "channels": pd.read_sql_query("SELECT * FROM channels", conn),
+        "channel_videos": pd.read_sql_query("SELECT * FROM channel_videos", conn),
+        "channel_history": pd.read_sql_query("SELECT * FROM channel_history", conn)
+    }
+    
     conn.close()
 
-    # Define CSV File Column Headers
-    column_headers = [
-        "video_id", "title", "description", "views", "likes", "comments", "posted",
-        "video_length", "transcript", "saved_at", "channel_username", "subscribers",
-        "previous_subscribers", "sub_history_timestamp"
-    ]
+    # Export to CSV (Combine All Tables)
+    if format == "csv":
+        from io import StringIO
+        output = StringIO()
 
-    # Create CSV File in Memory
-    def generate():
-        yield ",".join(column_headers) + "\n"  # CSV Header Row
-        for row in data:
-            yield ",".join(str(value) if value is not None else "" for value in row) + "\n"
+        # Write all tables to a single CSV file
+        for sheet_name, df in tables.items():
+            output.write(f"\n=== {sheet_name.upper()} ===\n")  # Add table name as a separator
+            df.to_csv(output, index=False)
+            output.write("\n")  # Space between tables
 
-    # Serve CSV File for Download
-    return Response(generate(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=exported_data.csv"})
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": "attachment; filename=exported_data.csv"}
+        )
+
+    # Export to Excel (Each Table in a Separate Sheet)
+    elif format == "xlsx":
+        from io import BytesIO
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            for sheet_name, df in tables.items():
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+        output.seek(0)
+
+        return Response(
+            output.getvalue(),
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment; filename=exported_data.xlsx"}
+        )
+
+    # If an invalid format is provided, return an error
+    else:
+        return "Invalid format! Please choose 'csv' or 'xlsx'.", 400
 
 
 if __name__ == "__main__":
