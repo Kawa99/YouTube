@@ -1,10 +1,11 @@
+import csv
+from database import save_video, init_db
+from flask import Flask, request, render_template, redirect, flash, url_for, Response
+import isodate
 import os
 import requests
-import isodate
-from flask import Flask, request, render_template, redirect, flash, url_for
+import sqlite3
 from youtube_transcript_api import YouTubeTranscriptApi
-from database import save_video, init_db
-
 
 app = Flask(__name__)
 
@@ -91,17 +92,6 @@ def index():
     return render_template("index.html", data=video_data)
 
 
-# @app.route("/save", methods=["POST"])
-# def save():
-#     try:
-#         video_data = request.form.to_dict()  # Convert form data to dictionary
-#         save_video(video_data)  # Pass data to the save_video function
-#         flash("Video data saved successfully!", "success")
-#     except Exception as e:
-#         flash(f"Error saving video: {str(e)}", "danger")
-
-#     return redirect(url_for("index"))  # Redirect to home page
-
 @app.route("/save", methods=["POST"])
 def save():
     try:
@@ -117,6 +107,54 @@ def save():
     return redirect(url_for("index"))
 
 
+@app.route("/export", methods=["GET"])
+def export_data():
+    """Retrieve all data from the database and export as CSV"""
+    conn = sqlite3.connect("videos.db")
+    cursor = conn.cursor()
+
+    # SQL Query to Join All Tables
+    query = """
+        SELECT 
+            v.id AS video_id,
+            v.title,
+            v.description,
+            v.views,
+            v.likes,
+            v.comments,
+            v.posted,
+            v.video_length,
+            v.transcript,
+            v.saved_at,
+            c.channel_username,
+            c.subscribers,
+            ch.previous_subscribers,
+            ch.recorded_at AS sub_history_timestamp
+        FROM videos v
+        LEFT JOIN channels c ON v.channel_id = c.id
+        LEFT JOIN channel_videos cv ON v.id = cv.video_id
+        LEFT JOIN channel_history ch ON c.id = ch.channel_id
+    """
+
+    cursor.execute(query)
+    data = cursor.fetchall()
+    conn.close()
+
+    # Define CSV File Column Headers
+    column_headers = [
+        "video_id", "title", "description", "views", "likes", "comments", "posted",
+        "video_length", "transcript", "saved_at", "channel_username", "subscribers",
+        "previous_subscribers", "sub_history_timestamp"
+    ]
+
+    # Create CSV File in Memory
+    def generate():
+        yield ",".join(column_headers) + "\n"  # CSV Header Row
+        for row in data:
+            yield ",".join(str(value) if value is not None else "" for value in row) + "\n"
+
+    # Serve CSV File for Download
+    return Response(generate(), mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=exported_data.csv"})
 
 
 if __name__ == "__main__":

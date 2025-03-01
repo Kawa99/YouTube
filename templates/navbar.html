@@ -1,0 +1,26 @@
+<nav id="navbar" class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('index') }}">YouTube Tracker</a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'export_data' %}active{% endif %}" href="{{ url_for('export_data') }}">Export Excel</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'save' %}active{% endif %}" href="{{ url_for('save') }}">Save Video</a>
+                </li>
+            </ul>
+
+            <!-- Dark Mode Toggle Button -->
+            <button id="theme-toggle" class="btn btn-outline-light">🌙 Dark Mode</button>
+        </div>
+    </div>
+</nav>
