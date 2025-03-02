@@ -52,7 +52,10 @@ def get_video_data(video_id):
         data = response["items"][0]
         channel_id = data["snippet"]["channelId"]
 
-        # Fetch channel details (including @username and subscribers)
+        # Construct the full video URL
+        video_url = f"https://www.youtube.com/watch?v={video_id}"  # ✅ Ensure video URL is included
+
+        # Fetch channel details
         channel_api_url = f"https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={channel_id}&key={YOUTUBE_API_KEY}"
         channel_response = requests.get(channel_api_url).json()
         
@@ -67,6 +70,7 @@ def get_video_data(video_id):
             subscribers = "0"  # Default if API call fails
 
         return {
+            "video_url": video_url,  # ✅ Ensure this is included
             "title": data["snippet"]["title"],
             "description": data["snippet"]["description"],
             "views": data["statistics"].get("viewCount", "N/A"),
@@ -74,11 +78,12 @@ def get_video_data(video_id):
             "comments": data["statistics"].get("commentCount", "N/A"),
             "posted": data["snippet"]["publishedAt"].split("T")[0],
             "channel_username": channel_username,
-            "subscribers": subscribers,  # Ensure this exists
+            "subscribers": subscribers,
             "video_length": parse_duration(data["contentDetails"]["duration"]),
             "transcript": get_transcript(video_id),
         }
     return None
+
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -115,12 +120,13 @@ def export_data_route():
 
     conn = sqlite3.connect("videos.db")
 
-    # Load all tables into separate Pandas DataFrames
+    # Load all tables that exist in the database
     tables = {
         "videos": pd.read_sql_query("SELECT * FROM videos", conn),
         "channels": pd.read_sql_query("SELECT * FROM channels", conn),
-        "channel_videos": pd.read_sql_query("SELECT * FROM channel_videos", conn),
-        "channel_history": pd.read_sql_query("SELECT * FROM channel_history", conn)
+        "channel_history": pd.read_sql_query("SELECT * FROM channel_history", conn),
+        "video_performance": pd.read_sql_query("SELECT * FROM video_performance", conn),
+        "comments": pd.read_sql_query("SELECT * FROM comments", conn)
     }
     
     conn.close()
@@ -161,6 +167,7 @@ def export_data_route():
     # If an invalid format is provided, return an error
     else:
         return "Invalid format! Please choose 'csv' or 'xlsx'.", 400
+
 
 
 if __name__ == "__main__":

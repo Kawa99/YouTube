@@ -17,6 +17,7 @@
         <br>
         <div class="d-flex gap-2 mb-3">
             <form action="/save" method="post" class="m-0">
+                <input type="hidden" name="video_url" value="{{ data.video_url }}">
                 <input type="hidden" name="channel_username" value="{{ data.channel_username }}">
                 <input type="hidden" name="subscribers" value="{{ data.subscribers }}">
                 <input type="hidden" name="title" value="{{ data.title }}">
