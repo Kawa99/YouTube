@@ -31,9 +31,9 @@ def extract_video_id(video_url):
     return None
 
 def parse_duration(duration):
-    """Converts YouTube ISO 8601 duration format to HH:MM:SS"""
-    parsed_duration = isodate.parse_duration(duration)
-    return str(parsed_duration)  # Formats to HH:MM:SS
+    """Converts YouTube ISO 8601 duration format to total seconds (INTEGER)."""
+    parsed_duration = isodate.parse_duration(duration)  # Converts to timedelta
+    return int(parsed_duration.total_seconds())  # Convert to integer (seconds)
 
 def get_transcript(video_id):
     """Fetches transcript if available, otherwise returns a default message"""
