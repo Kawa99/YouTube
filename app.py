@@ -243,6 +243,66 @@ def save():
 
     return redirect(url_for("index"))
 
+@app.route("/data")
+def data_viewer():
+    """Display all data in tables"""
+    return render_template("data_viewer.html")
+
+@app.route("/api/data")
+def get_data_api():
+    """API endpoint to fetch all data as JSON"""
+    conn = sqlite3.connect("videos.db")
+    
+    # Get data with joins for better readability
+    videos_query = """
+    SELECT 
+        v.id,
+        v.title,
+        c.channel_username,
+        v.views,
+        v.likes,
+        v.comments,
+        v.posted,
+        v.video_length,
+        v.saved_at,
+        c.subscribers
+    FROM videos v
+    JOIN channels c ON v.channel_id = c.id
+    ORDER BY v.saved_at DESC
+    """
+    
+    channels_query = "SELECT * FROM channels ORDER BY subscribers DESC"
+    history_query = """
+    SELECT 
+        ch.id,
+        c.channel_username,
+        ch.previous_subscribers,
+        ch.recorded_at
+    FROM channel_history ch
+    JOIN channels c ON ch.channel_id = c.id
+    ORDER BY ch.recorded_at DESC
+    """
+    
+    videos_df = pd.read_sql_query(videos_query, conn)
+    channels_df = pd.read_sql_query(channels_query, conn)
+    history_df = pd.read_sql_query(history_query, conn)
+    
+    conn.close()
+    
+    # Convert to JSON
+    data = {
+        "videos": videos_df.to_dict('records'),
+        "channels": channels_df.to_dict('records'),
+        "history": history_df.to_dict('records'),
+        "counts": {
+            "total_videos": len(videos_df),
+            "total_channels": len(channels_df),
+            "total_history_records": len(history_df)
+        }
+    }
+    
+    return jsonify(data)
+
 @app.route("/export", methods=["GET"])
 def export_data_route():
     """Retrieve all data and export as CSV or Excel"""

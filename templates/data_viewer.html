@@ -1,0 +1,370 @@
+{% extends 'base.html' %}
+
+{% block title %}Data Viewer - YouTube Tracker{% endblock %}
+
+{% block content %}
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Database Viewer</h2>
+            <div class="d-flex gap-2 align-items-center">
+                <span id="last-updated" class="text-muted small"></span>
+                <button id="refresh-btn" class="btn btn-outline-primary btn-sm">
+                    <span id="refresh-icon">🔄</span> Refresh
+                </button>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+                    <label class="form-check-label" for="auto-refresh">Auto-refresh (5s)</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Videos</h5>
+                        <h3 id="total-videos">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Channels</h5>
+                        <h3 id="total-channels">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">History Records</h5>
+                        <h3 id="total-history">-</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs" id="dataTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="videos-tab" data-bs-toggle="tab" data-bs-target="#videos" type="button" role="tab">
+                    Videos <span id="videos-count" class="badge bg-secondary">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="channels-tab" data-bs-toggle="tab" data-bs-target="#channels" type="button" role="tab">
+                    Channels <span id="channels-count" class="badge bg-secondary">0</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
+                    Subscriber History <span id="history-count" class="badge bg-secondary">0</span>
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="dataTabsContent">
+            <!-- Videos Tab -->
+            <div class="tab-pane fade show active" id="videos" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Videos Data</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="videos-table">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Title</th>
+                                        <th>Channel</th>
+                                        <th>Views</th>
+                                        <th>Likes</th>
+                                        <th>Comments</th>
+                                        <th>Length</th>
+                                        <th>Posted</th>
+                                        <th>Saved At</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="videos-tbody">
+                                    <tr>
+                                        <td colspan="9" class="text-center">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Channels Tab -->
+            <div class="tab-pane fade" id="channels" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Channels Data</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="channels-table">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Channel Username</th>
+                                        <th>Subscribers</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="channels-tbody">
+                                    <tr>
+                                        <td colspan="3" class="text-center">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div class="tab-pane fade" id="history" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Subscriber History</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover" id="history-table">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Channel</th>
+                                        <th>Previous Subscribers</th>
+                                        <th>Recorded At</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-tbody">
+                                    <tr>
+                                        <td colspan="4" class="text-center">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let autoRefreshInterval;
+        let lastDataHash = '';
+
+        // Utility function to format numbers
+        function formatNumber(num) {
+            if (num === null || num === undefined || num === 'N/A') return 'N/A';
+            return parseInt(num).toLocaleString();
+        }
+
+        // Utility function to truncate text
+        function truncateText(text, maxLength = 50) {
+            if (!text || text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        // Utility function to format date
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            return new Date(dateString).toLocaleString();
+        }
+
+        // Function to create a simple hash of data for change detection
+        function simpleHash(obj) {
+            return JSON.stringify(obj).split('').reduce((a, b) => {
+                a = ((a << 5) - a) + b.charCodeAt(0);
+                return a & a;
+            }, 0);
+        }
+
+        // Function to fetch and display data
+        async function fetchData() {
+            try {
+                const refreshIcon = document.getElementById('refresh-icon');
+                refreshIcon.style.animation = 'spin 1s linear infinite';
+                
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                
+                // Check if data has changed
+                const currentDataHash = simpleHash(data);
+                const hasChanged = currentDataHash !== lastDataHash;
+                
+                if (hasChanged || lastDataHash === '') {
+                    updateTables(data);
+                    lastDataHash = currentDataHash;
+                    
+                    // Show visual feedback for updates
+                    if (lastDataHash !== '' && hasChanged) {
+                        showUpdateNotification();
+                    }
+                }
+                
+                // Update last updated time
+                document.getElementById('last-updated').textContent = 
+                    'Last updated: ' + new Date().toLocaleTimeString();
+                    
+                refreshIcon.style.animation = '';
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('last-updated').textContent = 
+                    'Error loading data: ' + new Date().toLocaleTimeString();
+            }
+        }
+
+        // Function to show update notification
+        function showUpdateNotification() {
+            // Create and show a temporary notification
+            const notification = document.createElement('div');
+            notification.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            notification.innerHTML = `
+                <strong>Data Updated!</strong> New data has been detected and tables have been refreshed.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(notification);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 3000);
+        }
+
+        // Function to update all tables
+        function updateTables(data) {
+            // Update summary cards
+            document.getElementById('total-videos').textContent = data.counts.total_videos;
+            document.getElementById('total-channels').textContent = data.counts.total_channels;
+            document.getElementById('total-history').textContent = data.counts.total_history_records;
+            
+            // Update tab badges
+            document.getElementById('videos-count').textContent = data.counts.total_videos;
+            document.getElementById('channels-count').textContent = data.counts.total_channels;
+            document.getElementById('history-count').textContent = data.counts.total_history_records;
+            
+            // Update tables
+            updateVideosTable(data.videos);
+            updateChannelsTable(data.channels);
+            updateHistoryTable(data.history);
+        }
+
+        // Function to update videos table
+        function updateVideosTable(videos) {
+            const tbody = document.getElementById('videos-tbody');
+            
+            if (videos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No videos found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = videos.map(video => `
+                <tr>
+                    <td>${video.id}</td>
+                    <td title="${video.title}">${truncateText(video.title, 40)}</td>
+                    <td>${video.channel_username}</td>
+                    <td>${formatNumber(video.views)}</td>
+                    <td>${formatNumber(video.likes)}</td>
+                    <td>${formatNumber(video.comments)}</td>
+                    <td>${video.video_length}</td>
+                    <td>${video.posted}</td>
+                    <td>${formatDate(video.saved_at)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Function to update channels table
+        function updateChannelsTable(channels) {
+            const tbody = document.getElementById('channels-tbody');
+            
+            if (channels.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No channels found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = channels.map(channel => `
+                <tr>
+                    <td>${channel.id}</td>
+                    <td>${channel.channel_username}</td>
+                    <td>${formatNumber(channel.subscribers)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Function to update history table
+        function updateHistoryTable(history) {
+            const tbody = document.getElementById('history-tbody');
+            
+            if (history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No history records found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = history.map(record => `
+                <tr>
+                    <td>${record.id}</td>
+                    <td>${record.channel_username}</td>
+                    <td>${formatNumber(record.previous_subscribers)}</td>
+                    <td>${formatDate(record.recorded_at)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Setup auto-refresh
+        function setupAutoRefresh() {
+            const autoRefreshCheckbox = document.getElementById('auto-refresh');
+            
+            function toggleAutoRefresh() {
+                if (autoRefreshCheckbox.checked) {
+                    autoRefreshInterval = setInterval(fetchData, 5000); // 5 seconds
+                } else {
+                    clearInterval(autoRefreshInterval);
+                }
+            }
+            
+            autoRefreshCheckbox.addEventListener('change', toggleAutoRefresh);
+            toggleAutoRefresh(); // Start with checkbox state
+        }
+
+        // Setup manual refresh button
+        function setupManualRefresh() {
+            document.getElementById('refresh-btn').addEventListener('click', fetchData);
+        }
+
+        // CSS for spin animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchData(); // Initial load
+            setupAutoRefresh();
+            setupManualRefresh();
+        });
+
+        // Cleanup intervals when page unloads
+        window.addEventListener('beforeunload', function() {
+            clearInterval(autoRefreshInterval);
+        });
+    </script>
+
+{% endblock %}
