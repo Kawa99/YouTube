@@ -11,12 +11,21 @@
             <button type="submit" class="btn btn-primary mt-2">Get Video Data</button>
         </form>
 
-
         {% if data %}
+        <!-- Duplicate Warning -->
+        {% if data.already_exists %}
+        <div class="alert alert-warning mt-3">
+            <h5 class="alert-heading">⚠️ Duplicate Video Detected!</h5>
+            <p class="mb-1">This video already exists in your database.</p>
+            <p class="mb-0">You can still save it again if needed, but it will create a duplicate entry.</p>
+        </div>
+        {% endif %}
+
         <!-- Buttons at the Top of #videoDetails -->
         <br>
         <div class="d-flex gap-2 mb-3">
             <form action="/save" method="post" class="m-0">
+                <input type="hidden" name="video_id" value="{{ data.video_id }}">
                 <input type="hidden" name="channel_username" value="{{ data.channel_username }}">
                 <input type="hidden" name="subscribers" value="{{ data.subscribers }}">
                 <input type="hidden" name="title" value="{{ data.title }}">
@@ -28,7 +37,13 @@
                 <input type="hidden" name="transcript" value="{{ data.transcript }}">
                 <input type="hidden" name="description" value="{{ data.description }}">
         
-                <button type="submit" class="btn btn-success">Save to Database</button>
+                {% if data.already_exists %}
+                    <button type="submit" class="btn btn-warning" onclick="return confirm('This video already exists in the database. Are you sure you want to save it again?')">
+                        Save Anyway (Duplicate)
+                    </button>
+                {% else %}
+                    <button type="submit" class="btn btn-success">Save to Database</button>
+                {% endif %}
                 <button id="copy-button" class="btn btn-warning" type="button">Copy Details</button>
             </form>
         </div>
@@ -38,6 +53,7 @@
         
             <!-- Extracted Video Details (Below the Buttons) -->
             <h4>Extracted Video Details:</h4>
+            <p><strong>Video ID:</strong> {{ data.video_id }}</p>
             <p><strong>Channel Username:</strong> {{ data.channel_username }}</p>
             <p><strong>Subscribers:</strong> {{ "{:,}".format(data.subscribers|int) }}</p>
             <p><strong>Title:</strong> {{ data.title }}</p>
@@ -48,6 +64,11 @@
             <p><strong>Video Length:</strong> {{ data.video_length }}</p>
             <p><strong>Transcript:</strong> {{ data.transcript }}</p>
             <p><strong>Description:</strong> {{ data.description }}</p>
+            {% if data.already_exists %}
+            <p><strong>Status:</strong> <span class="badge bg-warning">Already in Database</span></p>
+            {% else %}
+            <p><strong>Status:</strong> <span class="badge bg-success">New Video</span></p>
+            {% endif %}
         </div>
         {% endif %}
         

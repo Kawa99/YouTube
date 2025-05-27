@@ -1,5 +1,6 @@
 import csv
 from database import save_video, init_db
+from database import save_video, init_db, check_video_exists
 from flask import Flask, request, render_template, redirect, flash, url_for, Response, jsonify
 import isodate
 import os
@@ -198,6 +199,7 @@ def get_video_data(video_id):
             subscribers = "0"  # Default if API call fails
 
         return {
+            "video_id": video_id,  # Add this line
             "title": data["snippet"]["title"],
             "description": data["snippet"]["description"],
             "views": data["statistics"].get("viewCount", "N/A"),
@@ -214,11 +216,18 @@ def get_video_data(video_id):
 @app.route("/", methods=["GET", "POST"])
 def index():
     video_data = None
+    video_exists = False
     if request.method == "POST":
         video_url = request.form["video_url"]
         video_id = extract_video_id(video_url)
         if video_id:
+            # Check if video already exists
+            video_exists = check_video_exists(video_id)
             video_data = get_video_data(video_id)
+            
+            # Add existence flag to the data
+            if video_data:
+                video_data["already_exists"] = video_exists
 
     return render_template("index.html", data=video_data)
 
@@ -250,13 +259,25 @@ def process_channel(channel_id, max_videos):
         
         processed_count = 0
         failed_count = 0
+        duplicate_count = 0
         
         for video_id in video_ids:
             try:
+                # Check if video already exists before processing
+                if check_video_exists(video_id):
+                    duplicate_count += 1
+                    print(f"Video {video_id} already exists, skipping...")
+                    continue
+                
                 video_data = get_video_data(video_id)
                 if video_data:
-                    save_video(video_data)
-                    processed_count += 1
+                    result = save_video(video_data)
+                    if result["status"] == "success":
+                        processed_count += 1
+                    elif result["status"] == "duplicate":
+                        duplicate_count += 1
+                    else:
+                        failed_count += 1
                 else:
                     failed_count += 1
                 
@@ -268,7 +289,7 @@ def process_channel(channel_id, max_videos):
                 failed_count += 1
                 continue
         
-        flash(f"Channel processing complete! Processed: {processed_count} videos, Failed: {failed_count} videos", "success")
+        flash(f"Channel processing complete! Processed: {processed_count} new videos, Skipped: {duplicate_count} duplicates, Failed: {failed_count} videos", "success")
         
     except Exception as e:
         flash(f"Error processing channel: {str(e)}", "danger")
@@ -280,9 +301,23 @@ def save():
     try:
         video_data = request.form.to_dict()
         print("Received video data:", video_data)  # Debugging print
-        save_video(video_data)  # Call database function
-        flash("Video data saved successfully!", "success")
-        print("Flash success message set.")  # Debugging print
+        
+        # Check if video_id exists in the form data
+        if "video_id" not in video_data:
+            flash("Error: Video ID missing from form data", "danger")
+            return redirect(url_for("index"))
+        
+        result = save_video(video_data)  # Call database function
+        
+        if result["status"] == "duplicate":
+            flash(result["message"], "warning")
+        elif result["status"] == "success":
+            flash(result["message"], "success")
+        else:
+            flash("Unexpected result from save operation", "warning")
+            
+        print("Save operation completed:", result)  # Debugging print
+        
     except Exception as e:
         flash(f"Error saving video: {str(e)}", "danger")
         print("Flash error message set:", str(e))  # Debugging print

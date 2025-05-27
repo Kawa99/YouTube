@@ -14,10 +14,11 @@ def init_db():
         )
     """)
 
-    # Table for storing videos
+    # Table for storing videos - ADD UNIQUE CONSTRAINT
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS videos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            video_id TEXT UNIQUE,  -- Add video_id field with unique constraint
             title TEXT,
             description TEXT,
             views INTEGER,
@@ -57,56 +58,27 @@ def init_db():
     conn.commit()
     conn.close()
 
-# def save_video(data):
-#     """Insert video data and manage channel updates using @username"""
-#     conn = sqlite3.connect("videos.db")
-#     cursor = conn.cursor()
-
-#     # Check if the channel exists by @username
-#     cursor.execute("SELECT id, subscribers FROM channels WHERE channel_username = ?", (data["channel_username"],))
-#     channel_result = cursor.fetchone()
-
-#     if channel_result:
-#         channel_id, previous_subscribers = channel_result
-
-#         # If the subscriber count has changed, add to history table
-#         if previous_subscribers != data["subscribers"]:
-#             cursor.execute("INSERT INTO channel_history (channel_id, previous_subscribers) VALUES (?, ?)", 
-#                            (channel_id, previous_subscribers))
-            
-#             # Update the current subscriber count
-#             cursor.execute("UPDATE channels SET subscribers = ? WHERE id = ?", 
-#                            (data["subscribers"], channel_id))
-#     else:
-#         # Insert new channel if it does not exist
-#         cursor.execute("INSERT INTO channels (channel_username, subscribers) VALUES (?, ?)", 
-#                        (data["channel_username"], data["subscribers"]))
-#         channel_id = cursor.lastrowid  # Get the new channel ID
-
-#     # Insert the video
-#     cursor.execute("""
-#         INSERT INTO videos (title, description, views, likes, comments, posted, video_length, transcript, channel_id)
-#         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-#     """, (
-#         data["title"], data["description"], data["views"], data["likes"], 
-#         data["comments"], data["posted"], data["video_length"], data["transcript"], channel_id
-#     ))
-
-#     # Link video and channel
-#     video_id = cursor.lastrowid  # Get new video ID
-#     cursor.execute("INSERT INTO channel_videos (video_id, channel_id) VALUES (?, ?)", 
-#                    (video_id, channel_id))
-
-#     conn.commit()
-#     conn.close()
-
 def save_video(data):
-    """Insert video data and manage channel updates using @username"""
+    """Insert video data and manage channel updates using @username - with duplicate prevention"""
     try:
         conn = sqlite3.connect("videos.db")
         cursor = conn.cursor()
 
         print("Saving video data:", data)  # Debugging print
+
+        # Extract video_id from the data (you'll need to pass this from app.py)
+        video_id = data.get("video_id")
+        if not video_id:
+            raise ValueError("video_id is required to prevent duplicates")
+
+        # Check if video already exists
+        cursor.execute("SELECT id FROM videos WHERE video_id = ?", (video_id,))
+        existing_video = cursor.fetchone()
+        
+        if existing_video:
+            print(f"Video {video_id} already exists in database. Skipping save.")
+            conn.close()
+            return {"status": "duplicate", "message": f"Video {video_id} already exists in database"}
 
         # Check if channel exists
         cursor.execute("SELECT id, subscribers FROM channels WHERE channel_username = ?", (data["channel_username"],))
@@ -128,24 +100,69 @@ def save_video(data):
                            (data["channel_username"], data["subscribers"]))
             channel_id = cursor.lastrowid  # Get new channel ID
 
-        # Insert the video
+        # Insert the video with video_id
         cursor.execute("""
-            INSERT INTO videos (title, description, views, likes, comments, posted, video_length, transcript, channel_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO videos (video_id, title, description, views, likes, comments, posted, video_length, transcript, channel_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            data["title"], data["description"], data["views"], data["likes"], 
+            video_id, data["title"], data["description"], data["views"], data["likes"], 
             data["comments"], data["posted"], data["video_length"], data["transcript"], channel_id
         ))
-        video_id = cursor.lastrowid
+        video_db_id = cursor.lastrowid
 
         # Link video and channel
         cursor.execute("INSERT INTO channel_videos (video_id, channel_id) VALUES (?, ?)", 
-                       (video_id, channel_id))
+                       (video_db_id, channel_id))
 
         conn.commit()
         conn.close()
         print("Video saved successfully!")  # Debugging print
+        return {"status": "success", "message": "Video saved successfully"}
+        
+    except sqlite3.IntegrityError as e:
+        print("Integrity error (likely duplicate):", str(e))
+        conn.close()
+        return {"status": "duplicate", "message": "Video already exists in database"}
     except Exception as e:
         print("Error saving video:", str(e))  # Debugging print
+        if 'conn' in locals():
+            conn.close()
         raise e  # Ensure the error is visible
 
+def check_video_exists(video_id):
+    """Check if a video already exists in the database"""
+    try:
+        conn = sqlite3.connect("videos.db")
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT id FROM videos WHERE video_id = ?", (video_id,))
+        result = cursor.fetchone()
+        
+        conn.close()
+        return result is not None
+    except Exception as e:
+        print(f"Error checking video existence: {str(e)}")
+        return False
+
+def get_duplicate_videos():
+    """Get statistics about duplicate videos (for debugging/cleanup)"""
+    try:
+        conn = sqlite3.connect("videos.db")
+        cursor = conn.cursor()
+        
+        # Find duplicate video_ids (if any exist due to old data)
+        cursor.execute("""
+            SELECT video_id, COUNT(*) as count 
+            FROM videos 
+            WHERE video_id IS NOT NULL
+            GROUP BY video_id 
+            HAVING COUNT(*) > 1
+        """)
+        
+        duplicates = cursor.fetchall()
+        conn.close()
+        
+        return duplicates
+    except Exception as e:
+        print(f"Error checking for duplicates: {str(e)}")
+        return []
