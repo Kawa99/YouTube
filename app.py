@@ -122,58 +122,118 @@ def parse_duration(duration):
     return str(parsed_duration)  # Formats to HH:MM:SS
 
 def get_transcript(video_id):
-    """Enhanced transcript fetching with multiple fallback methods"""
-    try:
-        # Method 1: Try to get transcript in any available language
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        
-        # First, try to find English transcript
+    """Enhanced transcript fetching with 5 retries for API failures"""
+    max_retries = 5
+    
+    for attempt in range(max_retries):
         try:
-            transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
-            return " ".join([line["text"] for line in transcript.fetch()])
-        except:
-            pass
-        
-        # Method 2: Try to get any manually created transcript
-        try:
+            if attempt > 0:
+                print(f"  🔄 Retry attempt {attempt} for video {video_id}")
+                time.sleep(1)  # 1 second delay between retries
+                
+            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+            
+            # Debug info only on first attempt to avoid spam
+            if attempt == 0:
+                print(f"Available transcripts for video {video_id}:")
+                for transcript_info in transcript_list:
+                    print(f"  - {transcript_info.language_code}: {'Auto' if transcript_info.is_generated else 'Manual'}, "
+                          f"Translatable: {transcript_info.is_translatable}")
+            
+            # Method 1: Try auto-generated English transcript first
+            english_codes = ['en', 'en-US', 'en-GB', 'en-CA', 'en-AU']
             for transcript_info in transcript_list:
-                if not transcript_info.is_generated:  # Prefer manual transcripts
-                    transcript = transcript_info.fetch()
-                    return " ".join([line["text"] for line in transcript])
-        except:
-            pass
-        
-        # Method 3: Try auto-generated transcripts in any language
-        try:
+                if transcript_info.is_generated and transcript_info.language_code in english_codes:
+                    try:
+                        if attempt == 0:
+                            print(f"Attempting auto-generated English transcript: {transcript_info.language_code}")
+                        
+                        transcript = transcript_info.fetch()
+                        if transcript and len(transcript) > 0:
+                            if attempt > 0:
+                                print(f"  ✅ SUCCESS on retry attempt {attempt}!")
+                            return " ".join([line["text"] for line in transcript])
+                            
+                    except Exception as e:
+                        # Check if it's the XML parsing error we want to retry
+                        if "no element found" in str(e).lower():
+                            if attempt == max_retries - 1:  # Last attempt
+                                print(f"  ❌ XML parsing error persisted after {max_retries} attempts")
+                            else:
+                                print(f"  ⚠️ XML parsing error on attempt {attempt + 1}, will retry...")
+                            break  # Break inner loop to retry the entire process
+                        else:
+                            # Different error, try other methods without retrying
+                            print(f"  ❌ Different error: {e}")
+                            break
+            
+            # If we get here and it's not the last attempt, continue to retry
+            if attempt < max_retries - 1:
+                continue
+                
+            # Only try other methods on the final attempt to avoid unnecessary processing
+            print("  🔄 Trying alternative transcript methods...")
+            
+            # Method 2: Try manual English transcript
+            for transcript_info in transcript_list:
+                if not transcript_info.is_generated and transcript_info.language_code in english_codes:
+                    try:
+                        print(f"  📝 Trying manual English transcript: {transcript_info.language_code}")
+                        transcript = transcript_info.fetch()
+                        if transcript and len(transcript) > 0:
+                            return " ".join([line["text"] for line in transcript])
+                    except Exception as e:
+                        print(f"  ❌ Manual English transcript failed: {e}")
+                        continue
+            
+            # Method 3: Try any auto-generated transcript (any language)
             for transcript_info in transcript_list:
                 if transcript_info.is_generated:
-                    transcript = transcript_info.fetch()
-                    return " ".join([line["text"] for line in transcript])
-        except:
-            pass
-        
-        # Method 4: Try to translate any available transcript to English
-        try:
+                    try:
+                        print(f"  🌐 Trying auto-generated transcript in {transcript_info.language_code}")
+                        transcript = transcript_info.fetch()
+                        if transcript and len(transcript) > 0:
+                            return " ".join([line["text"] for line in transcript])
+                    except Exception as e:
+                        print(f"  ❌ Auto transcript in {transcript_info.language_code} failed: {e}")
+                        continue
+            
+            # Method 4: Try translation to English
             for transcript_info in transcript_list:
                 if transcript_info.is_translatable:
-                    translated = transcript_info.translate('en').fetch()
-                    return " ".join([line["text"] for line in translated])
-        except:
-            pass
+                    try:
+                        print(f"  🔄 Trying to translate {transcript_info.language_code} to English")
+                        translated = transcript_info.translate('en').fetch()
+                        if translated and len(translated) > 0:
+                            return " ".join([line["text"] for line in translated])
+                    except Exception as e:
+                        print(f"  ❌ Translation from {transcript_info.language_code} failed: {e}")
+                        continue
             
-        return "Transcript unavailable - no transcripts found in any language"
-        
-    except Exception as e:
-        # More detailed error message for debugging
-        error_msg = str(e).lower()
-        if "disabled" in error_msg:
-            return "Transcript disabled by uploader"
-        elif "private" in error_msg or "unavailable" in error_msg:
-            return "Video private or transcript unavailable"
-        elif "not found" in error_msg:
-            return "No transcript found for this video"
-        else:
-            return f"Transcript error: {str(e)}"
+            # If we reach here, all methods failed
+            break
+            
+        except Exception as e:
+            # Handle major API errors
+            error_msg = str(e).lower()
+            print(f"  ❌ API error for video {video_id} (attempt {attempt + 1}): {e}")
+            
+            # Don't retry for these specific errors
+            if any(keyword in error_msg for keyword in ['disabled', 'private', 'not found', 'subtitles are disabled']):
+                if "disabled" in error_msg:
+                    return "Transcript disabled by uploader"
+                elif "private" in error_msg:
+                    return "Video private or transcript unavailable"
+                elif "not found" in error_msg:
+                    return "No transcript found for this video"
+                elif "subtitles are disabled" in error_msg:
+                    return "Subtitles disabled for this video"
+            
+            # For other errors, only retry if it might be temporary
+            if attempt == max_retries - 1:
+                return f"Transcript error after {max_retries} attempts: {str(e)}"
+    
+    return f"Transcript unavailable - all methods failed after {max_retries} attempts"
 
 def get_video_data(video_id):
     """Fetch video details including channel @username and subscribers"""
