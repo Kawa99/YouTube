@@ -78,15 +78,33 @@
                             <table class="table table-striped table-hover" id="videos-table">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th>ID</th>
-                                        <th>Title</th>
-                                        <th>Channel</th>
-                                        <th>Views</th>
-                                        <th>Likes</th>
-                                        <th>Comments</th>
-                                        <th>Length</th>
-                                        <th>Posted</th>
-                                        <th>Saved At</th>
+                                        <th class="sortable" data-column="id" data-type="number">
+                                            ID <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="title" data-type="text">
+                                            Title <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="channel_username" data-type="text">
+                                            Channel <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="views" data-type="number">
+                                            Views <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="likes" data-type="number">
+                                            Likes <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="comments" data-type="number">
+                                            Comments <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="video_length" data-type="time">
+                                            Length <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="posted" data-type="date">
+                                            Posted <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="saved_at" data-type="date">
+                                            Saved At <span class="sort-icon">↕️</span>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody id="videos-tbody">
@@ -111,9 +129,15 @@
                             <table class="table table-striped table-hover" id="channels-table">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th>ID</th>
-                                        <th>Channel Username</th>
-                                        <th>Subscribers</th>
+                                        <th class="sortable" data-column="id" data-type="number">
+                                            ID <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="channel_username" data-type="text">
+                                            Channel Username <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="subscribers" data-type="number">
+                                            Subscribers <span class="sort-icon">↕️</span>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody id="channels-tbody">
@@ -138,10 +162,18 @@
                             <table class="table table-striped table-hover" id="history-table">
                                 <thead class="table-dark">
                                     <tr>
-                                        <th>ID</th>
-                                        <th>Channel</th>
-                                        <th>Previous Subscribers</th>
-                                        <th>Recorded At</th>
+                                        <th class="sortable" data-column="id" data-type="number">
+                                            ID <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="channel_username" data-type="text">
+                                            Channel <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="previous_subscribers" data-type="number">
+                                            Previous Subscribers <span class="sort-icon">↕️</span>
+                                        </th>
+                                        <th class="sortable" data-column="recorded_at" data-type="date">
+                                            Recorded At <span class="sort-icon">↕️</span>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody id="history-tbody">
@@ -161,6 +193,8 @@
         // Global variables
         let autoRefreshInterval;
         let lastDataHash = '';
+        let currentData = {}; // Store current data for sorting
+        let sortStates = {}; // Track sort states for each table
 
         // Utility function to format numbers
         function formatNumber(num) {
@@ -188,6 +222,114 @@
             }, 0);
         }
 
+        // Function to convert time string to seconds for sorting
+        function timeToSeconds(timeStr) {
+            if (!timeStr || timeStr === 'N/A') return 0;
+            const parts = timeStr.split(':');
+            if (parts.length === 3) {
+                return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+            } else if (parts.length === 2) {
+                return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+            }
+            return 0;
+        }
+
+        // Function to sort data
+        function sortData(data, column, type, ascending = true) {
+            return [...data].sort((a, b) => {
+                let valueA = a[column];
+                let valueB = b[column];
+
+                // Handle null/undefined values
+                if (valueA === null || valueA === undefined) valueA = '';
+                if (valueB === null || valueB === undefined) valueB = '';
+
+                // Convert based on type
+                switch (type) {
+                    case 'number':
+                        valueA = parseInt(valueA) || 0;
+                        valueB = parseInt(valueB) || 0;
+                        break;
+                    case 'date':
+                        valueA = new Date(valueA).getTime() || 0;
+                        valueB = new Date(valueB).getTime() || 0;
+                        break;
+                    case 'time':
+                        valueA = timeToSeconds(valueA);
+                        valueB = timeToSeconds(valueB);
+                        break;
+                    case 'text':
+                    default:
+                        valueA = String(valueA).toLowerCase();
+                        valueB = String(valueB).toLowerCase();
+                        break;
+                }
+
+                // Compare values
+                if (valueA < valueB) return ascending ? -1 : 1;
+                if (valueA > valueB) return ascending ? 1 : -1;
+                return 0;
+            });
+        }
+
+        // Function to update sort icons
+        function updateSortIcons(tableId, activeColumn, ascending) {
+            const table = document.getElementById(tableId);
+            const headers = table.querySelectorAll('th.sortable');
+            
+            headers.forEach(header => {
+                const icon = header.querySelector('.sort-icon');
+                const column = header.dataset.column;
+                
+                if (column === activeColumn) {
+                    icon.textContent = ascending ? '↑' : '↓';
+                    header.classList.add('sorted');
+                } else {
+                    icon.textContent = '↕️';
+                    header.classList.remove('sorted');
+                }
+            });
+        }
+
+        // Function to setup sorting for a table
+        function setupSorting(tableId, updateFunction) {
+            const table = document.getElementById(tableId);
+            const headers = table.querySelectorAll('th.sortable');
+            
+            headers.forEach(header => {
+                header.style.cursor = 'pointer';
+                header.addEventListener('click', () => {
+                    const column = header.dataset.column;
+                    const type = header.dataset.type;
+                    
+                    // Initialize sort state if it doesn't exist
+                    if (!sortStates[tableId]) {
+                        sortStates[tableId] = {};
+                    }
+                    
+                    // Toggle sort direction for this column
+                    const currentState = sortStates[tableId][column];
+                    const ascending = currentState === 'asc' ? false : true;
+                    sortStates[tableId][column] = ascending ? 'asc' : 'desc';
+                    
+                    // Reset other columns' sort states
+                    Object.keys(sortStates[tableId]).forEach(col => {
+                        if (col !== column) {
+                            delete sortStates[tableId][col];
+                        }
+                    });
+                    
+                    // Sort and update the table
+                    const dataKey = tableId.replace('-table', '');
+                    if (currentData[dataKey]) {
+                        const sortedData = sortData(currentData[dataKey], column, type, ascending);
+                        updateFunction(sortedData);
+                        updateSortIcons(tableId, column, ascending);
+                    }
+                });
+            });
+        }
+
         // Function to fetch and display data
         async function fetchData() {
             try {
@@ -202,6 +344,7 @@
                 const hasChanged = currentDataHash !== lastDataHash;
                 
                 if (hasChanged || lastDataHash === '') {
+                    currentData = data; // Store for sorting
                     updateTables(data);
                     lastDataHash = currentDataHash;
                     
@@ -344,12 +487,26 @@
             document.getElementById('refresh-btn').addEventListener('click', fetchData);
         }
 
-        // CSS for spin animation
+        // CSS for spin animation and sorting
         const style = document.createElement('style');
         style.textContent = `
             @keyframes spin {
                 from { transform: rotate(0deg); }
                 to { transform: rotate(360deg); }
+            }
+            .sortable {
+                user-select: none;
+                position: relative;
+            }
+            .sortable:hover {
+                background-color: rgba(255, 255, 255, 0.1) !important;
+            }
+            .sortable.sorted {
+                background-color: rgba(255, 255, 255, 0.2) !important;
+            }
+            .sort-icon {
+                font-size: 0.8em;
+                margin-left: 5px;
             }
         `;
         document.head.appendChild(style);
@@ -359,6 +516,11 @@
             fetchData(); // Initial load
             setupAutoRefresh();
             setupManualRefresh();
+            
+            // Setup sorting for all tables
+            setupSorting('videos-table', updateVideosTable);
+            setupSorting('channels-table', updateChannelsTable);
+            setupSorting('history-table', updateHistoryTable);
         });
 
         // Cleanup intervals when page unloads

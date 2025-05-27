@@ -121,12 +121,58 @@ def parse_duration(duration):
     return str(parsed_duration)  # Formats to HH:MM:SS
 
 def get_transcript(video_id):
-    """Fetches transcript if available, otherwise returns a default message"""
+    """Enhanced transcript fetching with multiple fallback methods"""
     try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        return " ".join([line["text"] for line in transcript])
-    except Exception:
-        return "Transcript unavailable or disabled by the uploader."
+        # Method 1: Try to get transcript in any available language
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        
+        # First, try to find English transcript
+        try:
+            transcript = transcript_list.find_transcript(['en', 'en-US', 'en-GB'])
+            return " ".join([line["text"] for line in transcript.fetch()])
+        except:
+            pass
+        
+        # Method 2: Try to get any manually created transcript
+        try:
+            for transcript_info in transcript_list:
+                if not transcript_info.is_generated:  # Prefer manual transcripts
+                    transcript = transcript_info.fetch()
+                    return " ".join([line["text"] for line in transcript])
+        except:
+            pass
+        
+        # Method 3: Try auto-generated transcripts in any language
+        try:
+            for transcript_info in transcript_list:
+                if transcript_info.is_generated:
+                    transcript = transcript_info.fetch()
+                    return " ".join([line["text"] for line in transcript])
+        except:
+            pass
+        
+        # Method 4: Try to translate any available transcript to English
+        try:
+            for transcript_info in transcript_list:
+                if transcript_info.is_translatable:
+                    translated = transcript_info.translate('en').fetch()
+                    return " ".join([line["text"] for line in translated])
+        except:
+            pass
+            
+        return "Transcript unavailable - no transcripts found in any language"
+        
+    except Exception as e:
+        # More detailed error message for debugging
+        error_msg = str(e).lower()
+        if "disabled" in error_msg:
+            return "Transcript disabled by uploader"
+        elif "private" in error_msg or "unavailable" in error_msg:
+            return "Video private or transcript unavailable"
+        elif "not found" in error_msg:
+            return "No transcript found for this video"
+        else:
+            return f"Transcript error: {str(e)}"
 
 def get_video_data(video_id):
     """Fetch video details including channel @username and subscribers"""
