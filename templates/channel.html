@@ -6,11 +6,11 @@
     <div class="container mt-5">
         <h2 class="mb-4">YouTube Channel Scraper</h2>
         <p class="text-muted">Extract data from all videos in a YouTube channel</p>
-        
+
         <form method="post" class="mb-4">
             <div class="mb-3">
                 <label for="channel_url" class="form-label">Channel URL</label>
-                <input type="url" name="channel_url" id="channel_url" class="form-control" 
+                <input type="url" name="channel_url" id="channel_url" class="form-control"
                        placeholder="https://www.youtube.com/@channelname or https://www.youtube.com/channel/UC..." required>
                 <div class="form-text">
                     Supported formats:
@@ -22,30 +22,52 @@
                     </ul>
                 </div>
             </div>
-            
+
             <div class="mb-3">
                 <label for="max_videos" class="form-label">Maximum Videos to Process</label>
-                <input type="number" name="max_videos" id="max_videos" class="form-control" 
+                <input type="number" name="max_videos" id="max_videos" class="form-control"
                        value="50" min="1" max="1000" required>
                 <div class="form-text">
                     Note: Processing large numbers of videos may take a significant amount of time due to API rate limits.
                     Each video requires multiple API calls and transcript fetching.
                 </div>
             </div>
-            
+
             <button type="submit" class="btn btn-primary">
                 <i class="bi bi-play-circle"></i> Start Channel Scraping
             </button>
         </form>
+
+        {% if job_id %}
+            <div class="card border-info mb-4" id="job-progress" data-job-id="{{ job_id }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title mb-0">Active Job</h5>
+                        <span id="job-status" class="badge text-bg-secondary">queued</span>
+                    </div>
+                    <p id="job-message" class="mb-2">Waiting for worker...</p>
+                    <div class="progress mb-3" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                        <div id="job-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%;">0%</div>
+                    </div>
+                    <div class="row g-2 small">
+                        <div class="col-sm-3"><strong>Total:</strong> <span id="job-total">0</span></div>
+                        <div class="col-sm-3"><strong>Inserted:</strong> <span id="job-processed">0</span></div>
+                        <div class="col-sm-3"><strong>Failed:</strong> <span id="job-failed">0</span></div>
+                        <div class="col-sm-3"><strong>Skipped:</strong> <span id="job-skipped">0</span></div>
+                    </div>
+                    <p class="small mt-2 mb-0"><strong>Current video:</strong> <code id="job-current">-</code></p>
+                </div>
+            </div>
+        {% endif %}
 
         <div class="alert alert-info">
             <h5 class="alert-heading">How it works:</h5>
             <ul class="mb-0">
                 <li>Enter any YouTube channel URL in the supported formats</li>
                 <li>Choose how many videos to process (starting from most recent)</li>
-                <li>The system will automatically extract all video data including titles, views, likes, comments, transcripts, and more</li>
+                <li>The system runs scraping in a background worker queue so web requests stay responsive</li>
+                <li>Progress is tracked live from the polling endpoint</li>
                 <li>All data is saved to your database for export later</li>
-                <li>Processing time depends on the number of videos and API rate limits</li>
             </ul>
         </div>
 
@@ -54,13 +76,12 @@
             <ul class="mb-0">
                 <li>This process can take a long time for channels with many videos</li>
                 <li>Some videos may fail to process due to privacy settings or unavailable transcripts</li>
-                <li>The process respects YouTube's API rate limits</li>
+                <li>The process includes retry/backoff for transient API limits and network failures</li>
                 <li>You can export all collected data using the Export feature in the navbar</li>
             </ul>
         </div>
     </div>
 
-    <!-- Display flashed messages -->
     {% with messages = get_flashed_messages(with_categories=True) %}
     {% if messages %}
         {% for category, message in messages %}
@@ -69,4 +90,81 @@
     {% endif %}
     {% endwith %}
 
+    {% if job_id %}
+    <script>
+        (function () {
+            const container = document.getElementById("job-progress");
+            if (!container) {
+                return;
+            }
+
+            const jobId = container.dataset.jobId;
+            const statusEl = document.getElementById("job-status");
+            const messageEl = document.getElementById("job-message");
+            const progressBarEl = document.getElementById("job-progress-bar");
+            const totalEl = document.getElementById("job-total");
+            const processedEl = document.getElementById("job-processed");
+            const failedEl = document.getElementById("job-failed");
+            const skippedEl = document.getElementById("job-skipped");
+            const currentEl = document.getElementById("job-current");
+
+            let timer = null;
+
+            function updateStatusBadge(status) {
+                statusEl.className = "badge";
+                if (status === "completed") {
+                    statusEl.classList.add("text-bg-success");
+                } else if (status === "failed") {
+                    statusEl.classList.add("text-bg-danger");
+                } else if (status === "running") {
+                    statusEl.classList.add("text-bg-primary");
+                } else {
+                    statusEl.classList.add("text-bg-secondary");
+                }
+                statusEl.textContent = status;
+            }
+
+            async function pollJob() {
+                try {
+                    const response = await fetch(`/status/${jobId}`, { cache: "no-store" });
+                    if (!response.ok) {
+                        messageEl.textContent = "Unable to load job status.";
+                        updateStatusBadge("failed");
+                        if (timer) {
+                            clearInterval(timer);
+                        }
+                        return;
+                    }
+
+                    const job = await response.json();
+                    const progress = Number(job.progress_pct || 0);
+
+                    updateStatusBadge(job.status || "queued");
+                    messageEl.textContent = job.message || "Working...";
+                    totalEl.textContent = job.total_videos || 0;
+                    processedEl.textContent = job.processed || 0;
+                    failedEl.textContent = job.failed || 0;
+                    skippedEl.textContent = job.skipped || 0;
+                    currentEl.textContent = job.current_video_id || "-";
+
+                    progressBarEl.style.width = `${progress}%`;
+                    progressBarEl.textContent = `${progress}%`;
+                    progressBarEl.setAttribute("aria-valuenow", progress);
+
+                    if (job.status === "completed" || job.status === "failed") {
+                        progressBarEl.classList.remove("progress-bar-animated");
+                        if (timer) {
+                            clearInterval(timer);
+                        }
+                    }
+                } catch (error) {
+                    messageEl.textContent = "Error polling job status.";
+                }
+            }
+
+            pollJob();
+            timer = setInterval(pollJob, 2000);
+        })();
+    </script>
+    {% endif %}
 {% endblock %}
