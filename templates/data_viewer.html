@@ -65,6 +65,23 @@
             </li>
         </ul>
 
+        <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+            <div class="d-flex align-items-center gap-2">
+                <label for="page-limit" class="form-label mb-0 small text-muted">Rows per page:</label>
+                <select id="page-limit" class="form-select form-select-sm" style="width: auto;">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button id="prev-page" class="btn btn-outline-secondary btn-sm" type="button">Previous</button>
+                <span id="page-meta" class="small text-muted">Page 1 of 1</span>
+                <button id="next-page" class="btn btn-outline-secondary btn-sm" type="button">Next</button>
+            </div>
+        </div>
+
         <!-- Tab Content -->
         <div class="tab-content" id="dataTabsContent">
             <!-- Videos Tab -->
@@ -190,305 +207,294 @@
     </div>
 
     <script>
-        // Global variables
         let autoRefreshInterval;
-        let lastDataHash = '';
-        let currentData = {}; // Store current data for sorting
-        let sortStates = {}; // Track sort states for each table
+        let lastDataHash = "";
+        let currentData = null;
+        let currentLimit = 25;
+        const pageState = { videos: 1, channels: 1, history: 1 };
+        const sortState = {
+            videos: { column: "saved_at", direction: "desc" },
+            channels: { column: "subscribers", direction: "desc" },
+            history: { column: "recorded_at", direction: "desc" },
+        };
 
-        // Utility function to format numbers
         function formatNumber(num) {
-            if (num === null || num === undefined || num === 'N/A') return 'N/A';
-            return parseInt(num).toLocaleString();
+            if (num === null || num === undefined || num === "N/A") return "N/A";
+            return parseInt(num, 10).toLocaleString();
         }
 
-        // Utility function to truncate text
         function truncateText(text, maxLength = 50) {
-            if (!text || text.length <= maxLength) return text;
-            return text.substring(0, maxLength) + '...';
+            if (!text || text.length <= maxLength) return text || "N/A";
+            return text.substring(0, maxLength) + "...";
         }
 
-        // Utility function to format date
         function formatDate(dateString) {
-            if (!dateString) return 'N/A';
-            return new Date(dateString).toLocaleString();
+            if (!dateString) return "N/A";
+            const parsed = new Date(dateString);
+            if (Number.isNaN(parsed.getTime())) return dateString;
+            return parsed.toLocaleString();
         }
 
-        // Function to create a simple hash of data for change detection
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
         function simpleHash(obj) {
-            return JSON.stringify(obj).split('').reduce((a, b) => {
-                a = ((a << 5) - a) + b.charCodeAt(0);
-                return a & a;
+            return JSON.stringify(obj).split("").reduce((acc, char) => {
+                acc = ((acc << 5) - acc) + char.charCodeAt(0);
+                return acc & acc;
             }, 0);
         }
 
-        // Function to convert time string to seconds for sorting
-        function timeToSeconds(timeStr) {
-            if (!timeStr || timeStr === 'N/A') return 0;
-            const parts = timeStr.split(':');
-            if (parts.length === 3) {
-                return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
-            } else if (parts.length === 2) {
-                return parseInt(parts[0]) * 60 + parseInt(parts[1]);
-            }
-            return 0;
+        function getActiveTableKey() {
+            const activeTab = document.querySelector("#dataTabs .nav-link.active");
+            if (!activeTab) return "videos";
+            return activeTab.id.replace("-tab", "");
         }
 
-        // Function to sort data
-        function sortData(data, column, type, ascending = true) {
-            return [...data].sort((a, b) => {
-                let valueA = a[column];
-                let valueB = b[column];
+        function getLabelForTable(tableKey) {
+            if (tableKey === "videos") return "Videos";
+            if (tableKey === "channels") return "Channels";
+            return "Subscriber History";
+        }
 
-                // Handle null/undefined values
-                if (valueA === null || valueA === undefined) valueA = '';
-                if (valueB === null || valueB === undefined) valueB = '';
-
-                // Convert based on type
-                switch (type) {
-                    case 'number':
-                        valueA = parseInt(valueA) || 0;
-                        valueB = parseInt(valueB) || 0;
-                        break;
-                    case 'date':
-                        valueA = new Date(valueA).getTime() || 0;
-                        valueB = new Date(valueB).getTime() || 0;
-                        break;
-                    case 'time':
-                        valueA = timeToSeconds(valueA);
-                        valueB = timeToSeconds(valueB);
-                        break;
-                    case 'text':
-                    default:
-                        valueA = String(valueA).toLowerCase();
-                        valueB = String(valueB).toLowerCase();
-                        break;
-                }
-
-                // Compare values
-                if (valueA < valueB) return ascending ? -1 : 1;
-                if (valueA > valueB) return ascending ? 1 : -1;
-                return 0;
+        function buildApiUrl() {
+            const tableKey = getActiveTableKey();
+            const params = new URLSearchParams({
+                page: String(pageState[tableKey]),
+                limit: String(currentLimit),
+                sort_column: sortState[tableKey].column,
+                sort_direction: sortState[tableKey].direction,
             });
+            return `/api/data?${params.toString()}`;
         }
 
-        // Function to update sort icons
-        function updateSortIcons(tableId, activeColumn, ascending) {
-            const table = document.getElementById(tableId);
-            const headers = table.querySelectorAll('th.sortable');
-            
-            headers.forEach(header => {
-                const icon = header.querySelector('.sort-icon');
-                const column = header.dataset.column;
-                
-                if (column === activeColumn) {
-                    icon.textContent = ascending ? '↑' : '↓';
-                    header.classList.add('sorted');
-                } else {
-                    icon.textContent = '↕️';
-                    header.classList.remove('sorted');
-                }
-            });
-        }
+        function updateSortIcons() {
+            ["videos", "channels", "history"].forEach((tableKey) => {
+                const table = document.getElementById(`${tableKey}-table`);
+                if (!table) return;
 
-        // Function to setup sorting for a table
-        function setupSorting(tableId, updateFunction) {
-            const table = document.getElementById(tableId);
-            const headers = table.querySelectorAll('th.sortable');
-            
-            headers.forEach(header => {
-                header.style.cursor = 'pointer';
-                header.addEventListener('click', () => {
-                    const column = header.dataset.column;
-                    const type = header.dataset.type;
-                    
-                    // Initialize sort state if it doesn't exist
-                    if (!sortStates[tableId]) {
-                        sortStates[tableId] = {};
+                const state = sortState[tableKey];
+                const headers = table.querySelectorAll("th.sortable");
+                headers.forEach((header) => {
+                    const icon = header.querySelector(".sort-icon");
+                    const isActive = header.dataset.column === state.column;
+                    if (icon) {
+                        icon.textContent = isActive ? (state.direction === "asc" ? "↑" : "↓") : "↕️";
                     }
-                    
-                    // Toggle sort direction for this column
-                    const currentState = sortStates[tableId][column];
-                    const ascending = currentState === 'asc' ? false : true;
-                    sortStates[tableId][column] = ascending ? 'asc' : 'desc';
-                    
-                    // Reset other columns' sort states
-                    Object.keys(sortStates[tableId]).forEach(col => {
-                        if (col !== column) {
-                            delete sortStates[tableId][col];
-                        }
-                    });
-                    
-                    // Sort and update the table
-                    const dataKey = tableId.replace('-table', '');
-                    if (currentData[dataKey]) {
-                        const sortedData = sortData(currentData[dataKey], column, type, ascending);
-                        updateFunction(sortedData);
-                        updateSortIcons(tableId, column, ascending);
-                    }
+                    header.classList.toggle("sorted", isActive);
                 });
             });
         }
 
-        // Function to fetch and display data
+        function updatePaginationControls() {
+            if (!currentData) return;
+            const tableKey = getActiveTableKey();
+            const pagination = currentData[tableKey]?.pagination;
+            if (!pagination) return;
+
+            const totalPages = Math.max(pagination.total_pages || 0, 1);
+            document.getElementById("page-meta").textContent =
+                `${getLabelForTable(tableKey)}: Page ${pagination.current_page} of ${totalPages} (${pagination.total_items} total)`;
+            document.getElementById("prev-page").disabled = !pagination.has_prev;
+            document.getElementById("next-page").disabled = !pagination.has_next;
+            document.getElementById("page-limit").value = String(currentLimit);
+        }
+
         async function fetchData() {
+            const refreshIcon = document.getElementById("refresh-icon");
             try {
-                const refreshIcon = document.getElementById('refresh-icon');
-                refreshIcon.style.animation = 'spin 1s linear infinite';
-                
-                const response = await fetch('/api/data');
-                const data = await response.json();
-                
-                // Check if data has changed
-                const currentDataHash = simpleHash(data);
-                const hasChanged = currentDataHash !== lastDataHash;
-                
-                if (hasChanged || lastDataHash === '') {
-                    currentData = data; // Store for sorting
-                    updateTables(data);
-                    lastDataHash = currentDataHash;
-                    
-                    // Show visual feedback for updates
-                    if (lastDataHash !== '' && hasChanged) {
-                        showUpdateNotification();
-                    }
+                refreshIcon.style.animation = "spin 1s linear infinite";
+
+                const response = await fetch(buildApiUrl());
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
                 }
-                
-                // Update last updated time
-                document.getElementById('last-updated').textContent = 
-                    'Last updated: ' + new Date().toLocaleTimeString();
-                    
-                refreshIcon.style.animation = '';
-                
+
+                const data = await response.json();
+                const newHash = simpleHash(data);
+                const hasChanged = newHash !== lastDataHash;
+
+                currentData = data;
+                updateTables(data);
+                updateSortIcons();
+                updatePaginationControls();
+
+                if (lastDataHash !== "" && hasChanged) {
+                    showUpdateNotification();
+                }
+                lastDataHash = newHash;
+
+                document.getElementById("last-updated").textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
             } catch (error) {
-                console.error('Error fetching data:', error);
-                document.getElementById('last-updated').textContent = 
-                    'Error loading data: ' + new Date().toLocaleTimeString();
+                console.error("Error fetching data:", error);
+                document.getElementById("last-updated").textContent = `Error loading data: ${new Date().toLocaleTimeString()}`;
+            } finally {
+                refreshIcon.style.animation = "";
             }
         }
 
-        // Function to show update notification
         function showUpdateNotification() {
-            // Create and show a temporary notification
-            const notification = document.createElement('div');
-            notification.className = 'alert alert-success alert-dismissible fade show position-fixed';
-            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            const notification = document.createElement("div");
+            notification.className = "alert alert-success alert-dismissible fade show position-fixed";
+            notification.style.cssText = "top: 20px; right: 20px; z-index: 9999; min-width: 300px;";
             notification.innerHTML = `
-                <strong>Data Updated!</strong> New data has been detected and tables have been refreshed.
+                <strong>Data Updated!</strong> Data viewer refreshed with latest records.
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
             document.body.appendChild(notification);
-            
-            // Auto-remove after 3 seconds
             setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
+                if (notification.parentNode) notification.remove();
             }, 3000);
         }
 
-        // Function to update all tables
         function updateTables(data) {
-            // Update summary cards
-            document.getElementById('total-videos').textContent = data.counts.total_videos;
-            document.getElementById('total-channels').textContent = data.counts.total_channels;
-            document.getElementById('total-history').textContent = data.counts.total_history_records;
-            
-            // Update tab badges
-            document.getElementById('videos-count').textContent = data.counts.total_videos;
-            document.getElementById('channels-count').textContent = data.counts.total_channels;
-            document.getElementById('history-count').textContent = data.counts.total_history_records;
-            
-            // Update tables
-            updateVideosTable(data.videos);
-            updateChannelsTable(data.channels);
-            updateHistoryTable(data.history);
+            document.getElementById("total-videos").textContent = data.counts.total_videos;
+            document.getElementById("total-channels").textContent = data.counts.total_channels;
+            document.getElementById("total-history").textContent = data.counts.total_history_records;
+
+            document.getElementById("videos-count").textContent = data.counts.total_videos;
+            document.getElementById("channels-count").textContent = data.counts.total_channels;
+            document.getElementById("history-count").textContent = data.counts.total_history_records;
+
+            updateVideosTable(data.videos.items);
+            updateChannelsTable(data.channels.items);
+            updateHistoryTable(data.history.items);
         }
 
-        // Function to update videos table
         function updateVideosTable(videos) {
-            const tbody = document.getElementById('videos-tbody');
-            
-            if (videos.length === 0) {
+            const tbody = document.getElementById("videos-tbody");
+            if (!videos || videos.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No videos found</td></tr>';
                 return;
             }
-            
-            tbody.innerHTML = videos.map(video => `
+
+            tbody.innerHTML = videos.map((video) => `
                 <tr>
                     <td>${video.id}</td>
-                    <td title="${video.title}">${truncateText(video.title, 40)}</td>
-                    <td>${video.channel_username}</td>
+                    <td title="${escapeHtml(video.title)}">${escapeHtml(truncateText(video.title, 40))}</td>
+                    <td>${escapeHtml(video.channel_username)}</td>
                     <td>${formatNumber(video.views)}</td>
                     <td>${formatNumber(video.likes)}</td>
                     <td>${formatNumber(video.comments)}</td>
-                    <td>${video.video_length}</td>
-                    <td>${video.posted}</td>
+                    <td>${escapeHtml(video.video_length || "N/A")}</td>
+                    <td>${escapeHtml(video.posted || "N/A")}</td>
                     <td>${formatDate(video.saved_at)}</td>
                 </tr>
-            `).join('');
+            `).join("");
         }
 
-        // Function to update channels table
         function updateChannelsTable(channels) {
-            const tbody = document.getElementById('channels-tbody');
-            
-            if (channels.length === 0) {
+            const tbody = document.getElementById("channels-tbody");
+            if (!channels || channels.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No channels found</td></tr>';
                 return;
             }
-            
-            tbody.innerHTML = channels.map(channel => `
+
+            tbody.innerHTML = channels.map((channel) => `
                 <tr>
                     <td>${channel.id}</td>
-                    <td>${channel.channel_username}</td>
+                    <td>${escapeHtml(channel.channel_username)}</td>
                     <td>${formatNumber(channel.subscribers)}</td>
                 </tr>
-            `).join('');
+            `).join("");
         }
 
-        // Function to update history table
         function updateHistoryTable(history) {
-            const tbody = document.getElementById('history-tbody');
-            
-            if (history.length === 0) {
+            const tbody = document.getElementById("history-tbody");
+            if (!history || history.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No history records found</td></tr>';
                 return;
             }
-            
-            tbody.innerHTML = history.map(record => `
+
+            tbody.innerHTML = history.map((record) => `
                 <tr>
                     <td>${record.id}</td>
-                    <td>${record.channel_username}</td>
+                    <td>${escapeHtml(record.channel_username)}</td>
                     <td>${formatNumber(record.previous_subscribers)}</td>
                     <td>${formatDate(record.recorded_at)}</td>
                 </tr>
-            `).join('');
+            `).join("");
         }
 
-        // Setup auto-refresh
+        function setupSorting() {
+            ["videos", "channels", "history"].forEach((tableKey) => {
+                const table = document.getElementById(`${tableKey}-table`);
+                if (!table) return;
+
+                table.querySelectorAll("th.sortable").forEach((header) => {
+                    header.style.cursor = "pointer";
+                    header.addEventListener("click", async () => {
+                        const clickedColumn = header.dataset.column;
+                        const current = sortState[tableKey];
+                        const nextDirection = current.column === clickedColumn && current.direction === "asc" ? "desc" : "asc";
+                        sortState[tableKey] = { column: clickedColumn, direction: nextDirection };
+                        pageState[tableKey] = 1;
+                        await fetchData();
+                    });
+                });
+            });
+        }
+
+        function setupPagination() {
+            document.getElementById("prev-page").addEventListener("click", async () => {
+                const tableKey = getActiveTableKey();
+                if (pageState[tableKey] > 1) {
+                    pageState[tableKey] -= 1;
+                    await fetchData();
+                }
+            });
+
+            document.getElementById("next-page").addEventListener("click", async () => {
+                const tableKey = getActiveTableKey();
+                const pagination = currentData?.[tableKey]?.pagination;
+                if (pagination?.has_next) {
+                    pageState[tableKey] += 1;
+                    await fetchData();
+                }
+            });
+
+            document.getElementById("page-limit").addEventListener("change", async (event) => {
+                const parsed = parseInt(event.target.value, 10);
+                currentLimit = Number.isNaN(parsed) ? 25 : parsed;
+                pageState.videos = 1;
+                pageState.channels = 1;
+                pageState.history = 1;
+                await fetchData();
+            });
+        }
+
+        function setupTabRefresh() {
+            document.querySelectorAll('#dataTabs button[data-bs-toggle="tab"]').forEach((tab) => {
+                tab.addEventListener("shown.bs.tab", fetchData);
+            });
+        }
+
         function setupAutoRefresh() {
-            const autoRefreshCheckbox = document.getElementById('auto-refresh');
-            
+            const autoRefreshCheckbox = document.getElementById("auto-refresh");
+
             function toggleAutoRefresh() {
                 if (autoRefreshCheckbox.checked) {
-                    autoRefreshInterval = setInterval(fetchData, 5000); // 5 seconds
+                    autoRefreshInterval = setInterval(fetchData, 5000);
                 } else {
                     clearInterval(autoRefreshInterval);
                 }
             }
-            
-            autoRefreshCheckbox.addEventListener('change', toggleAutoRefresh);
-            toggleAutoRefresh(); // Start with checkbox state
+
+            autoRefreshCheckbox.addEventListener("change", toggleAutoRefresh);
+            toggleAutoRefresh();
         }
 
-        // Setup manual refresh button
         function setupManualRefresh() {
-            document.getElementById('refresh-btn').addEventListener('click', fetchData);
+            document.getElementById("refresh-btn").addEventListener("click", fetchData);
         }
 
-        // CSS for spin animation and sorting
-        const style = document.createElement('style');
+        const style = document.createElement("style");
         style.textContent = `
             @keyframes spin {
                 from { transform: rotate(0deg); }
@@ -511,20 +517,16 @@
         `;
         document.head.appendChild(style);
 
-        // Initialize everything when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            fetchData(); // Initial load
+        document.addEventListener("DOMContentLoaded", () => {
+            setupSorting();
+            setupPagination();
+            setupTabRefresh();
             setupAutoRefresh();
             setupManualRefresh();
-            
-            // Setup sorting for all tables
-            setupSorting('videos-table', updateVideosTable);
-            setupSorting('channels-table', updateChannelsTable);
-            setupSorting('history-table', updateHistoryTable);
+            fetchData();
         });
 
-        // Cleanup intervals when page unloads
-        window.addEventListener('beforeunload', function() {
+        window.addEventListener("beforeunload", () => {
             clearInterval(autoRefreshInterval);
         });
     </script>

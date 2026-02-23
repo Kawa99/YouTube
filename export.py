@@ -1,5 +1,6 @@
 import csv
 import io
+import os
 import sqlite3
 import tempfile
 
@@ -7,10 +8,11 @@ from openpyxl import Workbook
 
 EXPORT_TABLES = ("videos", "channels", "channel_videos", "channel_history")
 DB_FETCH_CHUNK_SIZE = 1000
+DB_PATH = os.path.join(os.path.dirname(__file__), "videos.db")
 
 
 def open_videos_db_connection():
-    return sqlite3.connect("videos.db")
+    return sqlite3.connect(DB_PATH)
 
 
 def iter_table_csv(conn, table_name):
@@ -37,7 +39,7 @@ def iter_table_csv(conn, table_name):
 
 
 def stream_all_tables_csv():
-    conn = sqlite3.connect("videos.db")
+    conn = sqlite3.connect(DB_PATH)
 
     try:
         for table_name in EXPORT_TABLES:
@@ -49,7 +51,7 @@ def stream_all_tables_csv():
 
 
 def build_xlsx_export_file():
-    conn = sqlite3.connect("videos.db")
+    conn = sqlite3.connect(DB_PATH)
     workbook = Workbook(write_only=True)
 
     try:

@@ -1,7 +1,7 @@
 import os
 
-from database import init_db, save_video
-from export import build_xlsx_export_file, open_videos_db_connection, stream_all_tables_csv
+from crud import save_video
+from export import build_xlsx_export_file, stream_all_tables_csv
 from flask import (
     Response,
     after_this_request,
@@ -14,6 +14,7 @@ from flask import (
     stream_with_context,
     url_for,
 )
+from models import Channel, ChannelHistory, Video, db
 from tasks import RedisError, enqueue_channel_job, get_channel_job
 from youtube_api import (
     YOUTUBE_API_KEY,
@@ -24,16 +25,54 @@ from youtube_api import (
     is_valid_youtube_video_url,
 )
 
+MAX_API_PAGE_SIZE = 200
 
-def fetch_rows_as_dicts(conn, query):
-    cursor = conn.execute(query)
-    columns = [description[0] for description in cursor.description]
-    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+def _parse_positive_int(value, default, maximum=None):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+
+    if parsed < 1:
+        parsed = default
+
+    if maximum is not None:
+        parsed = min(parsed, maximum)
+
+    return parsed
+
+
+def _normalize_sort_direction(value):
+    return "asc" if str(value).lower() == "asc" else "desc"
+
+
+def _build_order_clause(column_map, sort_column, sort_direction, default_column, default_direction="desc"):
+    if sort_column in column_map:
+        target_column = column_map[sort_column]
+        direction = sort_direction
+    else:
+        target_column = default_column
+        direction = default_direction
+
+    return target_column.asc() if direction == "asc" else target_column.desc()
+
+
+def _pagination_metadata(page_obj):
+    return {
+        "total_items": page_obj.total,
+        "total_pages": page_obj.pages,
+        "current_page": page_obj.page,
+        "per_page": page_obj.per_page,
+        "has_next": page_obj.has_next,
+        "has_prev": page_obj.has_prev,
+        "next_page": page_obj.next_num if page_obj.has_next else None,
+        "prev_page": page_obj.prev_num if page_obj.has_prev else None,
+    }
 
 
 def register_routes(app, limiter):
-    """Register application routes and initialize the database."""
-    init_db()
+    """Register application routes."""
 
     @app.route("/", methods=["GET", "POST"])
     @limiter.limit("60 per minute")
@@ -152,57 +191,132 @@ def register_routes(app, limiter):
 
     @app.route("/api/data")
     def get_data_api():
-        conn = open_videos_db_connection()
+        page = _parse_positive_int(request.args.get("page", 1), default=1)
+        limit = _parse_positive_int(request.args.get("limit", 25), default=25, maximum=MAX_API_PAGE_SIZE)
+        sort_column = request.args.get("sort_column", "saved_at")
+        sort_direction = _normalize_sort_direction(request.args.get("sort_direction", "desc"))
 
-        videos_query = """
-        SELECT
-            v.id,
-            v.youtube_video_id,
-            v.title,
-            c.channel_username,
-            v.views,
-            v.likes,
-            v.comments,
-            v.posted,
-            v.video_length,
-            v.saved_at,
-            c.subscribers
-        FROM videos v
-        JOIN channels c ON v.channel_id = c.id
-        ORDER BY v.saved_at DESC
-        """
-
-        channels_query = "SELECT id, channel_username, subscribers FROM channels ORDER BY subscribers DESC"
-
-        history_query = """
-        SELECT
-            ch.id,
-            c.channel_username,
-            ch.previous_subscribers,
-            ch.recorded_at
-        FROM channel_history ch
-        JOIN channels c ON ch.channel_id = c.id
-        ORDER BY ch.recorded_at DESC
-        """
-
-        videos = fetch_rows_as_dicts(conn, videos_query)
-        channels = fetch_rows_as_dicts(conn, channels_query)
-        history = fetch_rows_as_dicts(conn, history_query)
-
-        conn.close()
-
-        data = {
-            "videos": videos,
-            "channels": channels,
-            "history": history,
-            "counts": {
-                "total_videos": len(videos),
-                "total_channels": len(channels),
-                "total_history_records": len(history),
-            },
+        videos_sort_columns = {
+            "id": Video.id,
+            "youtube_video_id": Video.youtube_video_id,
+            "title": Video.title,
+            "channel_username": Channel.channel_username,
+            "views": Video.views,
+            "likes": Video.likes,
+            "comments": Video.comments,
+            "posted": Video.posted,
+            "video_length": Video.video_length,
+            "saved_at": Video.saved_at,
+            "subscribers": Channel.subscribers,
         }
+        videos_order = _build_order_clause(
+            videos_sort_columns,
+            sort_column,
+            sort_direction,
+            default_column=Video.saved_at,
+            default_direction="desc",
+        )
+        videos_page = (
+            db.session.query(Video, Channel.channel_username, Channel.subscribers)
+            .join(Channel, Video.channel_id == Channel.id)
+            .order_by(videos_order)
+            .paginate(page=page, per_page=limit, error_out=False)
+        )
+        videos = [
+            {
+                "id": video.id,
+                "youtube_video_id": video.youtube_video_id,
+                "title": video.title,
+                "channel_username": channel_username,
+                "views": video.views,
+                "likes": video.likes,
+                "comments": video.comments,
+                "posted": video.posted,
+                "video_length": video.video_length,
+                "saved_at": video.saved_at,
+                "subscribers": subscribers,
+            }
+            for video, channel_username, subscribers in videos_page.items
+        ]
 
-        return jsonify(data)
+        channels_sort_columns = {
+            "id": Channel.id,
+            "channel_username": Channel.channel_username,
+            "subscribers": Channel.subscribers,
+        }
+        channels_order = _build_order_clause(
+            channels_sort_columns,
+            sort_column,
+            sort_direction,
+            default_column=Channel.subscribers,
+            default_direction="desc",
+        )
+        channels_page = Channel.query.order_by(channels_order).paginate(page=page, per_page=limit, error_out=False)
+        channels = [
+            {
+                "id": channel.id,
+                "channel_username": channel.channel_username,
+                "subscribers": channel.subscribers,
+            }
+            for channel in channels_page.items
+        ]
+
+        history_sort_columns = {
+            "id": ChannelHistory.id,
+            "channel_username": Channel.channel_username,
+            "previous_subscribers": ChannelHistory.previous_subscribers,
+            "recorded_at": ChannelHistory.recorded_at,
+        }
+        history_order = _build_order_clause(
+            history_sort_columns,
+            sort_column,
+            sort_direction,
+            default_column=ChannelHistory.recorded_at,
+            default_direction="desc",
+        )
+        history_page = (
+            db.session.query(ChannelHistory, Channel.channel_username)
+            .join(Channel, ChannelHistory.channel_id == Channel.id)
+            .order_by(history_order)
+            .paginate(page=page, per_page=limit, error_out=False)
+        )
+        history = [
+            {
+                "id": record.id,
+                "channel_username": channel_username,
+                "previous_subscribers": record.previous_subscribers,
+                "recorded_at": record.recorded_at,
+            }
+            for record, channel_username in history_page.items
+        ]
+
+        return jsonify(
+            {
+            "query": {
+                "page": page,
+                "limit": limit,
+                "sort_column": sort_column,
+                "sort_direction": sort_direction,
+            },
+            "videos": {
+                "items": videos,
+                "pagination": _pagination_metadata(videos_page),
+            },
+            "channels": {
+                "items": channels,
+                "pagination": _pagination_metadata(channels_page),
+            },
+            "history": {
+                "items": history,
+                "pagination": _pagination_metadata(history_page),
+            },
+            "counts": {
+                "total_videos": videos_page.total,
+                "total_channels": channels_page.total,
+                "total_history_records": history_page.total,
+            },
+            }
+        )
 
     @app.route("/export", methods=["GET"])
     def export_data_route():

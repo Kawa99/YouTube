@@ -1,7 +1,9 @@
 import os
 from datetime import datetime, timezone
 
-from database import save_video
+from flask import has_app_context
+
+from crud import save_video
 from youtube_api import get_channel_videos, get_video_data
 
 try:
@@ -37,6 +39,7 @@ if RQ_AVAILABLE and REDIS_URL:
 else:
     redis_connection = None
     channel_queue = None
+_worker_app = None
 
 
 def utc_now_iso():
@@ -166,7 +169,7 @@ def _update_current_job_meta(**updates):
     job.save_meta()
 
 
-def process_channel_background(channel_id, max_videos):
+def _process_channel_background_impl(channel_id, max_videos):
     _update_current_job_meta(
         channel_id=channel_id,
         max_videos=max_videos,
@@ -247,3 +250,19 @@ def process_channel_background(channel_id, max_videos):
             message="Channel processing failed.",
         )
         raise
+
+
+def process_channel_background(channel_id, max_videos):
+    global _worker_app
+
+    if has_app_context():
+        return _process_channel_background_impl(channel_id, max_videos)
+
+    # RQ workers run outside request context; build an app context for db.session.
+    if _worker_app is None:
+        from app import create_app
+
+        _worker_app = create_app()
+
+    with _worker_app.app_context():
+        return _process_channel_background_impl(channel_id, max_videos)
