@@ -15,6 +15,8 @@ from flask import (
     url_for,
 )
 from models import Channel, ChannelHistory, Video, db
+from pydantic import ValidationError
+from schemas import VideoCreateSchema
 from tasks import RedisError, enqueue_channel_job, get_channel_job
 from youtube_api import (
     YOUTUBE_API_KEY,
@@ -174,8 +176,12 @@ def register_routes(app, limiter):
     @app.route("/save", methods=["POST"])
     def save():
         try:
-            video_data = request.form.to_dict()
-            result = save_video(video_data)
+            validated_data = VideoCreateSchema.model_validate(request.form.to_dict())
+        except ValidationError as error:
+            return jsonify({"error": "Invalid request payload.", "details": error.errors()}), 400
+
+        try:
+            result = save_video(validated_data.model_dump())
             if result.get("created"):
                 flash("Video data saved successfully!", "success")
             else:

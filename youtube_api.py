@@ -2,7 +2,8 @@ import os
 import random
 import re
 import time
-from urllib.parse import parse_qs, urlparse
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Type
+from urllib.parse import ParseResult, parse_qs, urlparse
 
 import isodate
 import requests
@@ -33,7 +34,7 @@ YOUTUBE_CHANNEL_HOSTS = {
 VIDEO_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{11}$")
 
 
-def _transcript_error(name):
+def _transcript_error(name: str) -> Type[Exception]:
     return getattr(transcript_errors, name, type(name, (Exception,), {}))
 
 
@@ -71,13 +72,21 @@ session.mount("http://", HTTPAdapter(max_retries=retries))
 session.mount("https://", HTTPAdapter(max_retries=retries))
 
 
-def _sleep_with_backoff(attempt, base_delay=API_BACKOFF_BASE_SECONDS, max_delay=8.0):
+def _sleep_with_backoff(
+    attempt: int,
+    base_delay: float = API_BACKOFF_BASE_SECONDS,
+    max_delay: float = 8.0,
+) -> None:
     delay = min(max_delay, base_delay * (2 ** attempt))
     jitter = random.uniform(0, delay * 0.2 if delay > 0 else 0)
     time.sleep(delay + jitter)
 
 
-def request_json_with_retry(url, params=None, timeout=REQUEST_TIMEOUT):
+def request_json_with_retry(
+    url: str,
+    params: Optional[Mapping[str, Any]] = None,
+    timeout: Tuple[float, float] = REQUEST_TIMEOUT,
+) -> Dict[str, Any]:
     """GET JSON with a retry-enabled session."""
     params = params or {}
 
@@ -90,13 +99,13 @@ def request_json_with_retry(url, params=None, timeout=REQUEST_TIMEOUT):
         return {}
 
 
-def youtube_api_get(endpoint, params):
+def youtube_api_get(endpoint: str, params: Mapping[str, Any]) -> Dict[str, Any]:
     payload = dict(params)
     payload["key"] = YOUTUBE_API_KEY
     return request_json_with_retry(f"{YOUTUBE_API_BASE_URL}/{endpoint}", params=payload)
 
 
-def _parse_input_url(raw_url):
+def _parse_input_url(raw_url: Optional[str]) -> Optional[ParseResult]:
     if not raw_url:
         return None
 
@@ -107,17 +116,17 @@ def _parse_input_url(raw_url):
     return parsed
 
 
-def is_valid_youtube_video_url(video_url):
+def is_valid_youtube_video_url(video_url: Optional[str]) -> bool:
     parsed = _parse_input_url(video_url)
     return bool(parsed and parsed.netloc.lower() in YOUTUBE_VIDEO_HOSTS)
 
 
-def is_valid_youtube_channel_url(channel_url):
+def is_valid_youtube_channel_url(channel_url: Optional[str]) -> bool:
     parsed = _parse_input_url(channel_url)
     return bool(parsed and parsed.netloc.lower() in YOUTUBE_CHANNEL_HOSTS)
 
 
-def extract_video_id(video_url):
+def extract_video_id(video_url: Optional[str]) -> Optional[str]:
     """Extract video ID from supported YouTube URL formats."""
     parsed = _parse_input_url(video_url)
     if not parsed:
@@ -142,7 +151,7 @@ def extract_video_id(video_url):
     return video_id
 
 
-def extract_channel_info(channel_url):
+def extract_channel_info(channel_url: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
     """Extract (identifier_type, identifier) from common YouTube channel URL formats."""
     parsed = _parse_input_url(channel_url)
     if not parsed:
@@ -173,7 +182,7 @@ def extract_channel_info(channel_url):
     return None, None
 
 
-def get_channel_id_from_url(channel_url):
+def get_channel_id_from_url(channel_url: Optional[str]) -> Optional[str]:
     """Resolve a canonical YouTube channel ID (UC...) from various URL formats."""
     identifier_type, identifier = extract_channel_info(channel_url)
     if not identifier:
@@ -221,7 +230,7 @@ def get_channel_id_from_url(channel_url):
     return None
 
 
-def get_channel_videos_from_search(channel_id, max_results=50):
+def get_channel_videos_from_search(channel_id: str, max_results: int = 50) -> List[str]:
     """Fallback: fetch channel videos using search endpoint ordered by date."""
     videos = []
     next_page_token = None
@@ -257,7 +266,7 @@ def get_channel_videos_from_search(channel_id, max_results=50):
     return videos
 
 
-def get_channel_videos(channel_id, max_results=50):
+def get_channel_videos(channel_id: str, max_results: int = 50) -> List[str]:
     """Get up to max_results recent video IDs from a channel uploads playlist."""
     videos = []
     next_page_token = None
@@ -302,7 +311,7 @@ def get_channel_videos(channel_id, max_results=50):
     return videos
 
 
-def parse_duration(duration):
+def parse_duration(duration: str) -> str:
     """Converts YouTube ISO 8601 duration format to HH:MM:SS."""
     try:
         parsed_duration = isodate.parse_duration(duration)
@@ -311,7 +320,7 @@ def parse_duration(duration):
         return "Unknown"
 
 
-def _should_retry_transcript_exception(exc):
+def _should_retry_transcript_exception(exc: Exception) -> bool:
     if isinstance(exc, NON_RETRIABLE_TRANSCRIPT_EXCEPTIONS):
         return False
 
@@ -323,7 +332,7 @@ def _should_retry_transcript_exception(exc):
     return any(marker in message for marker in retryable_markers)
 
 
-def get_transcript(video_id):
+def get_transcript(video_id: str) -> str:
     """Fetch transcript with retry for transient errors."""
     api = YouTubeTranscriptApi()
 
@@ -341,7 +350,7 @@ def get_transcript(video_id):
     return TRANSCRIPT_UNAVAILABLE_MESSAGE
 
 
-def get_video_data(video_id):
+def get_video_data(video_id: str) -> Optional[Dict[str, Any]]:
     """Fetch video details including channel @username and subscribers."""
     response = youtube_api_get(
         "videos",

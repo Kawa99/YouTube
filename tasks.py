@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
 from flask import has_app_context
 
@@ -24,7 +25,7 @@ except ModuleNotFoundError:
     class RedisError(Exception):
         pass
 
-    def get_current_job():
+    def get_current_job() -> None:
         return None
 
 
@@ -42,18 +43,18 @@ else:
 _worker_app = None
 
 
-def utc_now_iso():
+def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _get_queue():
+def _get_queue() -> Any:
     if not RQ_AVAILABLE or not redis_connection or not channel_queue:
         raise RedisError("Redis/RQ is not installed or configured.")
     redis_connection.ping()
     return channel_queue
 
 
-def _job_payload_defaults(channel_id, max_videos):
+def _job_payload_defaults(channel_id: str, max_videos: int) -> Dict[str, Any]:
     return {
         "channel_id": channel_id,
         "max_videos": max_videos,
@@ -72,7 +73,7 @@ def _job_payload_defaults(channel_id, max_videos):
     }
 
 
-def enqueue_channel_job(channel_id, max_videos):
+def enqueue_channel_job(channel_id: str, max_videos: int) -> str:
     queue = _get_queue()
     job = queue.enqueue(
         process_channel_background,
@@ -87,7 +88,7 @@ def enqueue_channel_job(channel_id, max_videos):
     return job.id
 
 
-def _normalize_job_status(raw_status):
+def _normalize_job_status(raw_status: Optional[str]) -> Optional[str]:
     return {
         "queued": "queued",
         "deferred": "queued",
@@ -100,7 +101,7 @@ def _normalize_job_status(raw_status):
     }.get(raw_status, raw_status)
 
 
-def get_channel_job(job_id):
+def get_channel_job(job_id: Optional[str]) -> Optional[Dict[str, Any]]:
     if not job_id:
         return None
 
@@ -160,7 +161,7 @@ def get_channel_job(job_id):
     }
 
 
-def _update_current_job_meta(**updates):
+def _update_current_job_meta(**updates: Any) -> None:
     job = get_current_job()
     if not job:
         return
@@ -169,7 +170,7 @@ def _update_current_job_meta(**updates):
     job.save_meta()
 
 
-def _process_channel_background_impl(channel_id, max_videos):
+def _process_channel_background_impl(channel_id: str, max_videos: int) -> Dict[str, int]:
     _update_current_job_meta(
         channel_id=channel_id,
         max_videos=max_videos,
@@ -252,7 +253,7 @@ def _process_channel_background_impl(channel_id, max_videos):
         raise
 
 
-def process_channel_background(channel_id, max_videos):
+def process_channel_background(channel_id: str, max_videos: int) -> Dict[str, int]:
     global _worker_app
 
     if has_app_context():
