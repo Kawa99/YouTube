@@ -4,7 +4,7 @@ videos.db
 *.sqlite3
 
 # Ignore the virtual environment folder
-venv/
+.venv/
 
 # Ignore compiled Python files
 __pycache__/
