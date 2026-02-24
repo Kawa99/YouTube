@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}Video Details - YouTube Tracker{% endblock %}
+
+{% block content %}
+<section>
+    <header class="space-y-4">
+        <a
+            href="{{ url_for('data_viewer') }}"
+            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300 dark:hover:bg-slate-700"
+        >
+            <span aria-hidden="true">←</span>
+            Back to Data Viewer
+        </a>
+
+        <div class="space-y-3">
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                {{ video.title or "Untitled Video" }}
+            </h1>
+            {% set channel_username = video.channel.channel_username if video.channel else None %}
+            {% if channel_username %}
+            {% if channel_username.startswith("http://") or channel_username.startswith("https://") %}
+            {% set youtube_channel_url = channel_username %}
+            {% elif channel_username.startswith("@") %}
+            {% set youtube_channel_url = "https://www.youtube.com/" ~ channel_username %}
+            {% elif channel_username.startswith("UC") %}
+            {% set youtube_channel_url = "https://www.youtube.com/channel/" ~ channel_username %}
+            {% else %}
+            {% set youtube_channel_url = "https://www.youtube.com/" ~ channel_username %}
+            {% endif %}
+            <div class="flex flex-wrap items-center gap-2">
+                <a
+                    href="{{ url_for('channel_detail', channel_id=video.channel.id) }}"
+                    class="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 hover:underline dark:border-rose-900/60 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/40"
+                >
+                    {{ channel_username }}
+                </a>
+                <a
+                    href="{{ youtube_channel_url }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                    Open on YouTube
+                </a>
+            </div>
+            {% else %}
+            <span class="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 dark:border-rose-900/60 dark:bg-rose-900/30 dark:text-rose-300">
+                Unknown Channel
+            </span>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        <article class="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6 backdrop-blur-sm">
+            <h2 class="text-sm font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Video Player</h2>
+            {% if video.youtube_video_id %}
+            <div class="mt-4">
+                <iframe class="w-full aspect-video rounded-xl" src="https://www.youtube.com/embed/{{ video.youtube_video_id }}" allowfullscreen></iframe>
+            </div>
+            {% else %}
+            <div class="mt-4 flex aspect-video items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-500 dark:border-slate-600 dark:bg-slate-900/40 dark:text-slate-400">
+                YouTube video ID is unavailable.
+            </div>
+            {% endif %}
+        </article>
+
+        <div class="lg:col-span-1 flex flex-col gap-6">
+            <article class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6 backdrop-blur-sm">
+                <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Views</p>
+                <p class="mt-3 font-mono text-4xl text-slate-900 dark:text-slate-100">{{ "{:,}".format(video.views|int) if video.views is not none else "N/A" }}</p>
+            </article>
+            <article class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6 backdrop-blur-sm">
+                <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Likes</p>
+                <p class="mt-3 font-mono text-4xl text-slate-900 dark:text-slate-100">{{ "{:,}".format(video.likes|int) if video.likes is not none else "N/A" }}</p>
+            </article>
+            <article class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6 backdrop-blur-sm">
+                <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Comments</p>
+                <p class="mt-3 font-mono text-4xl text-slate-900 dark:text-slate-100">{{ "{:,}".format(video.comments|int) if video.comments is not none else "N/A" }}</p>
+            </article>
+        </div>
+
+        <article class="lg:col-span-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6 backdrop-blur-sm">
+            <h2 class="text-sm font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Metadata & Description</h2>
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/40">
+                    <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Posted Date</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ video.posted or "N/A" }}</p>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/40">
+                    <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Video Length</p>
+                    <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ video.video_length or "N/A" }}</p>
+                </div>
+            </div>
+            <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+                <div class="flex items-center justify-between gap-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Description</p>
+                    <button
+                        type="button"
+                        data-copy-target="#video-description-text"
+                        data-copy-success="Description copied to clipboard."
+                        class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                        Copy
+                    </button>
+                </div>
+                <p id="video-description-text" class="mt-2 whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-400">{{ video.description or "No description available." }}</p>
+            </div>
+        </article>
+
+        <article class="lg:col-span-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm p-6 backdrop-blur-sm">
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-sm font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Transcript</h2>
+                <button
+                    type="button"
+                    data-copy-target="#video-transcript-text"
+                    data-copy-success="Transcript copied to clipboard."
+                    class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                    Copy
+                </button>
+            </div>
+            <div id="video-transcript-text" class="mt-4 h-96 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 [scrollbar-width:thin] [scrollbar-color:rgb(148_163_184)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-transparent dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200 dark:[scrollbar-color:rgb(100_116_139)_transparent] dark:[&::-webkit-scrollbar-thumb]:bg-slate-600">
+                {{ video.transcript or "No transcript available." }}
+            </div>
+        </article>
+    </div>
+</section>
+{% endblock %}

@@ -231,6 +231,31 @@ def register_routes(app, limiter):
     def data_viewer():
         return render_template("data_viewer.html")
 
+    @app.route("/video/<int:video_id>")
+    def video_detail(video_id):
+        video = Video.query.get_or_404(video_id)
+        return render_template("video_detail.html", video=video)
+
+    @app.route("/channel/<int:channel_id>")
+    def channel_detail(channel_id):
+        channel = Channel.query.get_or_404(channel_id)
+        videos = (
+            Video.query.filter_by(channel_id=channel.id)
+            .order_by(Video.saved_at.desc())
+            .all()
+        )
+        history = (
+            ChannelHistory.query.filter_by(channel_id=channel.id)
+            .order_by(ChannelHistory.recorded_at.desc())
+            .all()
+        )
+        return render_template(
+            "channel_detail.html",
+            channel=channel,
+            videos=videos,
+            history=history,
+        )
+
     @app.route("/api/data")
     def get_data_api():
         page = _parse_positive_int(request.args.get("page", 1), default=1)

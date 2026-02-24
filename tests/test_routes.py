@@ -4,7 +4,7 @@ import pytest
 from openpyxl import load_workbook
 
 from app import create_app
-from models import Channel, db
+from models import Channel, ChannelHistory, Video, db
 
 
 @pytest.fixture
@@ -93,3 +93,61 @@ def test_export_xlsx_success(client):
         }
     finally:
         workbook.close()
+
+
+def test_video_detail_route_success(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@video_detail_channel", subscribers=1200)
+        db.session.add(channel)
+        db.session.flush()
+
+        video = Video(
+            youtube_video_id="video_detail_123",
+            title="Video detail test",
+            views=100,
+            likes=10,
+            comments=1,
+            posted="2025-01-01",
+            video_length="5:00",
+            channel_id=channel.id,
+        )
+        db.session.add(video)
+        db.session.commit()
+        video_id = video.id
+
+    response = client.get(f"/video/{video_id}")
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Video detail test" in body
+
+
+def test_channel_detail_route_success(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@channel_detail_channel", subscribers=5000)
+        db.session.add(channel)
+        db.session.flush()
+
+        video = Video(
+            youtube_video_id="channel_detail_video_1",
+            title="Linked channel video",
+            views=250,
+            likes=25,
+            comments=3,
+            channel_id=channel.id,
+        )
+        history = ChannelHistory(
+            channel_id=channel.id,
+            previous_subscribers=4900,
+        )
+        db.session.add_all([video, history])
+        db.session.commit()
+        channel_id = channel.id
+
+    response = client.get(f"/channel/{channel_id}")
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "@channel_detail_channel" in body
+    assert "Linked channel video" in body
+    assert "4,900" in body

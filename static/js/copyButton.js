@@ -97,46 +97,62 @@
         button.setAttribute("aria-expanded", String(willOpen));
     }
 
-    function copyToClipboard() {
-        const videoDetails = document.getElementById("videoDetails");
-        if (!videoDetails) {
-            if (window.Toastify) {
-                Toastify({
-                    text: "No video details available to copy.",
-                    duration: 2500,
-                    gravity: "bottom",
-                    position: "right",
-                    close: true,
-                    style: { background: "#d97706", color: "#f8fafc" },
-                }).showToast();
-            }
+    function showToast(text, backgroundColor, duration = 2500) {
+        if (!window.Toastify) {
             return;
         }
+        Toastify({
+            text,
+            duration,
+            gravity: "bottom",
+            position: "right",
+            close: true,
+            style: { background: backgroundColor, color: "#f8fafc" },
+        }).showToast();
+    }
 
-        const text = videoDetails.innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            if (window.Toastify) {
-                Toastify({
-                    text: "Copied to clipboard.",
-                    duration: 2000,
-                    gravity: "bottom",
-                    position: "right",
-                    close: true,
-                    style: { background: "#15803d", color: "#f8fafc" },
-                }).showToast();
-            }
-        }).catch((err) => {
-            console.error("Could not copy text:", err);
-            if (window.Toastify) {
-                Toastify({
-                    text: "Failed to copy details.",
-                    duration: 2500,
-                    gravity: "bottom",
-                    position: "right",
-                    close: true,
-                    style: { background: "#b91c1c", color: "#f8fafc" },
-                }).showToast();
-            }
+    function copyText(text, successMessage = "Copied to clipboard.") {
+        navigator.clipboard
+            .writeText(text)
+            .then(() => {
+                showToast(successMessage, "#15803d", 2000);
+            })
+            .catch((err) => {
+                console.error("Could not copy text:", err);
+                showToast("Failed to copy text.", "#b91c1c");
+            });
+    }
+
+    function copyVideoDetails() {
+        const videoDetails = document.getElementById("videoDetails");
+        if (!videoDetails) {
+            showToast("No video details available to copy.", "#d97706");
+            return;
+        }
+        copyText(videoDetails.innerText);
+    }
+
+    function setupTargetedCopyButtons() {
+        const buttons = document.querySelectorAll("[data-copy-target]");
+        buttons.forEach((button) => {
+            button.addEventListener("click", () => {
+                const selector = button.dataset.copyTarget;
+                if (!selector) return;
+
+                const target = document.querySelector(selector);
+                if (!target) {
+                    showToast("Copy target not found.", "#d97706");
+                    return;
+                }
+
+                const text = target.innerText?.trim() || "";
+                if (!text) {
+                    showToast("Nothing to copy.", "#d97706");
+                    return;
+                }
+
+                copyText(text, button.dataset.copySuccess || "Copied to clipboard.");
+            });
         });
     }
 
@@ -173,7 +189,8 @@
         });
 
         const copyButton = document.getElementById("copy-button");
-        copyButton?.addEventListener("click", copyToClipboard);
+        copyButton?.addEventListener("click", copyVideoDetails);
+        setupTargetedCopyButtons();
 
         if (typeof mediaQuery.addEventListener === "function") {
             mediaQuery.addEventListener("change", handleSystemThemeChange);

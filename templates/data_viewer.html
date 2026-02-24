@@ -447,10 +447,10 @@
         }
 
         tbody.innerHTML = videos.map((video) => `
-            <tr class="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+            <tr class="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onclick="window.location.href='/video/${video.id}'">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${video.id}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
-                    <span class="block max-w-xs truncate" title="${escapeHtml(video.title)}">${escapeHtml(truncateText(video.title, 80))}</span>
+                    <span class="block max-w-xs truncate font-medium text-rose-600 dark:text-rose-400 hover:underline" title="${escapeHtml(video.title)}">${escapeHtml(truncateText(video.title, 80))}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
                     <span class="block max-w-xs truncate" title="${escapeHtml(video.channel_username)}">${escapeHtml(video.channel_username || "N/A")}</span>
@@ -473,10 +473,10 @@
         }
 
         tbody.innerHTML = channels.map((channel) => `
-            <tr class="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+            <tr class="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" onclick="window.location.href='/channel/${channel.id}'">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${channel.id}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
-                    <span class="block max-w-xs truncate" title="${escapeHtml(channel.channel_username)}">${escapeHtml(channel.channel_username || "N/A")}</span>
+                    <span class="block max-w-xs truncate font-medium text-rose-600 dark:text-rose-400 hover:underline" title="${escapeHtml(channel.channel_username)}">${escapeHtml(channel.channel_username || "N/A")}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${formatNumber(channel.subscribers)}</td>
             </tr>
