@@ -3,63 +3,88 @@
 {% block title %}YouTube Tracker{% endblock %}
 
 {% block content %}
-    <div class="container mt-5">
-        <h2 class="mb-4">YouTube Video Data Extractor</h2>
-        
-        <form method="post">
-            <input type="text" name="video_url" class="form-control" placeholder="Enter YouTube Video URL" required>
-            <button type="submit" class="btn btn-primary mt-2">Get Video Data</button>
+<section class="space-y-8">
+    <div class="space-y-3">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Single Video Extractor</p>
+        <h1 class="text-3xl font-semibold tracking-tight text-white">YouTube Video Data Extractor</h1>
+    </div>
+
+    <form method="post" class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <input
+            type="text"
+            name="video_url"
+            value="{{ request.form.get('video_url', '') }}"
+            class="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-slate-100 placeholder-slate-400 shadow-sm outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500"
+            placeholder="Enter YouTube Video URL"
+            required
+        >
+        <button type="submit" class="rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-700">
+            Get Video Data
+        </button>
+    </form>
+
+    {% if data %}
+    <div class="flex flex-wrap items-center gap-3">
+        <form action="/save" method="post" class="flex flex-wrap items-center gap-3">
+            <input type="hidden" name="youtube_video_id" value="{{ data.youtube_video_id }}">
+            <input type="hidden" name="channel_username" value="{{ data.channel_username }}">
+            <input type="hidden" name="subscribers" value="{{ data.subscribers }}">
+            <input type="hidden" name="title" value="{{ data.title }}">
+            <input type="hidden" name="views" value="{{ data.views }}">
+            <input type="hidden" name="likes" value="{{ data.likes }}">
+            <input type="hidden" name="comments" value="{{ data.comments }}">
+            <input type="hidden" name="posted" value="{{ data.posted }}">
+            <input type="hidden" name="video_length" value="{{ data.video_length }}">
+            <input type="hidden" name="transcript" value="{{ data.transcript }}">
+            <input type="hidden" name="description" value="{{ data.description }}">
+
+            <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700">Save to Database</button>
+            <button id="copy-button" type="button" class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400">Copy Details</button>
         </form>
+    </div>
 
+    <div id="videoDetails" class="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm md:col-span-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Title</p>
+            <h2 class="mt-2 text-2xl font-semibold leading-tight text-white">{{ data.title }}</h2>
+            <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-slate-300">
+                <span><strong class="font-medium text-slate-200">Channel:</strong> {{ data.channel_username }}</span>
+                <span><strong class="font-medium text-slate-200">Subscribers:</strong> {{ "{:,}".format(data.subscribers|int) }}</span>
+                <span><strong class="font-medium text-slate-200">Video ID:</strong> <span class="font-mono">{{ data.youtube_video_id }}</span></span>
+            </div>
+        </article>
 
-        {% if data %}
-        <!-- Buttons at the Top of #videoDetails -->
-        <br>
-        <div class="d-flex gap-2 mb-3">
-            <form action="/save" method="post" class="m-0">
-                <input type="hidden" name="youtube_video_id" value="{{ data.youtube_video_id }}">
-                <input type="hidden" name="channel_username" value="{{ data.channel_username }}">
-                <input type="hidden" name="subscribers" value="{{ data.subscribers }}">
-                <input type="hidden" name="title" value="{{ data.title }}">
-                <input type="hidden" name="views" value="{{ data.views }}">
-                <input type="hidden" name="likes" value="{{ data.likes }}">
-                <input type="hidden" name="comments" value="{{ data.comments }}">
-                <input type="hidden" name="posted" value="{{ data.posted }}">
-                <input type="hidden" name="video_length" value="{{ data.video_length }}">
-                <input type="hidden" name="transcript" value="{{ data.transcript }}">
-                <input type="hidden" name="description" value="{{ data.description }}">
-        
-                <button type="submit" class="btn btn-success">Save to Database</button>
-                <button id="copy-button" class="btn btn-warning" type="button">Copy Details</button>
-            </form>
-        </div>
-        
-        <!-- Video Details Section -->
-        <div id="videoDetails" class="mt-4 p-3 border rounded">
-        
-            <!-- Extracted Video Details (Below the Buttons) -->
-            <h4>Extracted Video Details:</h4>
-            <p><strong>Channel Username:</strong> {{ data.channel_username }}</p>
-            <p><strong>Subscribers:</strong> {{ "{:,}".format(data.subscribers|int) }}</p>
-            <p><strong>Title:</strong> {{ data.title }}</p>
-            <p><strong>Views:</strong> {{ "{:,}".format(data.views|int) }}</p>
-            <p><strong>Likes:</strong> {{ "{:,}".format(data.likes|int) }}</p>
-            <p><strong>Comments:</strong> {{ "{:,}".format(data.comments|int) }}</p>
-            <p><strong>Posted:</strong> {{ data.posted }}</p>
-            <p><strong>Video Length:</strong> {{ data.video_length }}</p>
-            <p><strong>Transcript:</strong> {{ data.transcript }}</p>
-            <p><strong>Description:</strong> {{ data.description }}</p>
-        </div>
-        {% endif %}
-        
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Views</p>
+            <p class="mt-3 font-mono text-3xl font-bold text-white">{{ "{:,}".format(data.views|int) }}</p>
+        </article>
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Likes</p>
+            <p class="mt-3 font-mono text-3xl font-bold text-white">{{ "{:,}".format(data.likes|int) }}</p>
+        </article>
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Comments</p>
+            <p class="mt-3 font-mono text-3xl font-bold text-white">{{ "{:,}".format(data.comments|int) }}</p>
+        </article>
 
-    <!-- Display flashed messages -->
-    {% with messages = get_flashed_messages(with_categories=True) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ category }} mt-3">{{ message }}</div>
-        {% endfor %}
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm md:col-span-1">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Video Length</p>
+            <p class="mt-2 text-lg font-medium text-white">{{ data.video_length }}</p>
+            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Posted Date</p>
+            <p class="mt-2 text-lg font-medium text-white">{{ data.posted }}</p>
+        </article>
+
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm md:col-span-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Description</p>
+            <p class="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{{ data.description }}</p>
+        </article>
+
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm md:col-span-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Transcript</p>
+            <p class="mt-3 max-h-96 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{{ data.transcript }}</p>
+        </article>
+    </div>
     {% endif %}
-    {% endwith %}
+</section>
 
 {% endblock %}

@@ -1,37 +1,90 @@
-<nav id="navbar" class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="{{ url_for('index') }}">YouTube Tracker</a>
+<nav id="navbar" class="sticky top-0 z-50 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md">
+    <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <div class="flex items-center gap-8">
+            <a href="{{ url_for('index') }}" class="text-base font-semibold tracking-tight text-white">YouTube Tracker</a>
 
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+            <div class="hidden items-center gap-1 md:flex">
+                <a href="{{ url_for('index') }}" class="rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if request.endpoint == 'index' %}bg-slate-800 text-white{% else %}text-slate-400 hover:text-white{% endif %}">
+                    Single Video
+                </a>
+                <a href="{{ url_for('channel_scraper') }}" class="rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if request.endpoint == 'channel_scraper' %}bg-slate-800 text-white{% else %}text-slate-400 hover:text-white{% endif %}">
+                    Channel Scraper
+                </a>
+                <a href="{{ url_for('data_viewer') }}" class="rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if request.endpoint == 'data_viewer' %}bg-slate-800 text-white{% else %}text-slate-400 hover:text-white{% endif %}">
+                    Data Viewer
+                </a>
+            </div>
+        </div>
 
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">Single Video</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'channel_scraper' %}active{% endif %}" href="{{ url_for('channel_scraper') }}">Channel Scraper</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'data_viewer' %}active{% endif %}" href="{{ url_for('data_viewer') }}">Data Viewer</a>
-                </li>
-            </ul>
-
-             <!-- Export Dropdown -->
-             <div class="dropdown me-3">
-                <button class="btn btn-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        <div class="flex items-center gap-3">
+            <div class="relative">
+                <button
+                    id="export-dropdown-button"
+                    type="button"
+                    class="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-700"
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                >
                     Export Data
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.12l3.71-3.9a.75.75 0 111.08 1.04l-4.25 4.47a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd"></path>
+                    </svg>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
-                    <li><a class="dropdown-item" href="{{ url_for('export_data_route', format='csv') }}">Export as CSV</a></li>
-                    <li><a class="dropdown-item" href="{{ url_for('export_data_route', format='xlsx') }}">Export as Excel</a></li>
-                </ul>
+                <div
+                    id="export-dropdown-menu"
+                    class="absolute right-0 z-50 mt-2 hidden w-44 rounded-lg border border-slate-700 bg-slate-800/95 p-1 shadow-lg shadow-slate-950/40"
+                    role="menu"
+                    aria-labelledby="export-dropdown-button"
+                >
+                    <a class="block rounded-md px-3 py-2 text-sm text-slate-200 transition-colors hover:bg-slate-700 hover:text-white" href="{{ url_for('export_data_route', format='csv') }}" role="menuitem">Export as CSV</a>
+                    <a class="block rounded-md px-3 py-2 text-sm text-slate-200 transition-colors hover:bg-slate-700 hover:text-white" href="{{ url_for('export_data_route', format='xlsx') }}" role="menuitem">Export as Excel</a>
+                </div>
             </div>
 
-            <!-- Dark Mode Toggle Button -->
-            <button id="theme-toggle" class="btn btn-secondary">🌙 Dark Mode</button>
+            <button id="theme-toggle" class="rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-600">
+                Theme: Auto
+            </button>
         </div>
     </div>
+
+    <div class="mx-auto flex w-full max-w-6xl items-center gap-2 overflow-x-auto px-4 pb-3 md:hidden">
+        <a href="{{ url_for('index') }}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if request.endpoint == 'index' %}bg-slate-800 text-white{% else %}text-slate-400 hover:text-white{% endif %}">
+            Single Video
+        </a>
+        <a href="{{ url_for('channel_scraper') }}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if request.endpoint == 'channel_scraper' %}bg-slate-800 text-white{% else %}text-slate-400 hover:text-white{% endif %}">
+            Channel Scraper
+        </a>
+        <a href="{{ url_for('data_viewer') }}" class="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-colors {% if request.endpoint == 'data_viewer' %}bg-slate-800 text-white{% else %}text-slate-400 hover:text-white{% endif %}">
+            Data Viewer
+        </a>
+    </div>
 </nav>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const button = document.getElementById("export-dropdown-button");
+        const menu = document.getElementById("export-dropdown-menu");
+
+        if (!button || !menu) return;
+
+        button.addEventListener("click", function () {
+            const isOpen = !menu.classList.contains("hidden");
+            menu.classList.toggle("hidden");
+            button.setAttribute("aria-expanded", String(!isOpen));
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!menu.contains(event.target) && !button.contains(event.target)) {
+                menu.classList.add("hidden");
+                button.setAttribute("aria-expanded", "false");
+            }
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                menu.classList.add("hidden");
+                button.setAttribute("aria-expanded", "false");
+            }
+        });
+    });
+</script>

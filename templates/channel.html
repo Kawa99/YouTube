@@ -3,18 +3,29 @@
 {% block title %}Channel Scraper - YouTube Tracker{% endblock %}
 
 {% block content %}
-    <div class="container mt-5">
-        <h2 class="mb-4">YouTube Channel Scraper</h2>
-        <p class="text-muted">Extract data from all videos in a YouTube channel</p>
+<section class="space-y-8">
+    <div class="space-y-3">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Bulk Extraction</p>
+        <h1 class="text-3xl font-semibold tracking-tight text-white">YouTube Channel Scraper</h1>
+        <p class="text-slate-300">Extract data from all videos in a YouTube channel.</p>
+    </div>
 
-        <form method="post" class="mb-4">
-            <div class="mb-3">
-                <label for="channel_url" class="form-label">Channel URL</label>
-                <input type="url" name="channel_url" id="channel_url" class="form-control"
-                       placeholder="https://www.youtube.com/@channelname or https://www.youtube.com/channel/UC..." required>
-                <div class="form-text">
-                    Supported formats:
-                    <ul class="mt-2">
+    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
+        <form method="post" class="space-y-6">
+            <div class="space-y-2">
+                <label for="channel_url" class="block text-sm font-medium text-slate-200">Channel URL</label>
+                <input
+                    type="url"
+                    name="channel_url"
+                    id="channel_url"
+                    value="{{ request.form.get('channel_url', '') }}"
+                    class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 placeholder-slate-400 shadow-sm outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500"
+                    placeholder="https://www.youtube.com/@channelname or https://www.youtube.com/channel/UC..."
+                    required
+                >
+                <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-4 text-sm text-slate-300">
+                    <p class="font-medium text-slate-200">Supported formats:</p>
+                    <ul class="mt-2 list-disc space-y-1 pl-5">
                         <li>https://www.youtube.com/@channelname</li>
                         <li>https://www.youtube.com/channel/UC...</li>
                         <li>https://www.youtube.com/c/channelname</li>
@@ -23,148 +34,165 @@
                 </div>
             </div>
 
-            <div class="mb-3">
-                <label for="max_videos" class="form-label">Maximum Videos to Process</label>
-                <input type="number" name="max_videos" id="max_videos" class="form-control"
-                       value="50" min="1" max="1000" required>
-                <div class="form-text">
+            <div class="space-y-2">
+                <label for="max_videos" class="block text-sm font-medium text-slate-200">Maximum Videos to Process</label>
+                <input
+                    type="number"
+                    name="max_videos"
+                    id="max_videos"
+                    value="{{ request.form.get('max_videos', '50') }}"
+                    min="1"
+                    max="1000"
+                    class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 shadow-sm outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500"
+                    required
+                >
+                <p class="text-sm leading-relaxed text-slate-300">
                     Note: Processing large numbers of videos may take a significant amount of time due to API rate limits.
                     Each video requires multiple API calls and transcript fetching.
-                </div>
+                </p>
             </div>
 
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-play-circle"></i> Start Channel Scraping
+            <button type="submit" class="rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-700">
+                Start Channel Scraping
             </button>
         </form>
+    </div>
 
-        {% if job_id %}
-            <div class="card border-info mb-4" id="job-progress" data-job-id="{{ job_id }}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h5 class="card-title mb-0">Active Job</h5>
-                        <span id="job-status" class="badge text-bg-secondary">queued</span>
-                    </div>
-                    <p id="job-message" class="mb-2">Waiting for worker...</p>
-                    <div class="progress mb-3" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-                        <div id="job-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%;">0%</div>
-                    </div>
-                    <div class="row g-2 small">
-                        <div class="col-sm-3"><strong>Total:</strong> <span id="job-total">0</span></div>
-                        <div class="col-sm-3"><strong>Inserted:</strong> <span id="job-processed">0</span></div>
-                        <div class="col-sm-3"><strong>Failed:</strong> <span id="job-failed">0</span></div>
-                        <div class="col-sm-3"><strong>Skipped:</strong> <span id="job-skipped">0</span></div>
-                    </div>
-                    <p class="small mt-2 mb-0"><strong>Current video:</strong> <code id="job-current">-</code></p>
-                </div>
-            </div>
-        {% endif %}
+    {% if job_id %}
+    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm" id="job-progress" data-job-id="{{ job_id }}">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 class="text-lg font-semibold text-white">Active Job</h2>
+            <span id="job-status" class="inline-flex items-center rounded-full border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-100">queued</span>
+        </div>
 
-        <div class="alert alert-info">
-            <h5 class="alert-heading">How it works:</h5>
-            <ul class="mb-0">
+        <p id="job-message" class="mt-3 text-sm text-slate-300">Waiting for worker...</p>
+
+        <div class="mt-4 h-3 overflow-hidden rounded-full bg-slate-700" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div id="job-progress-bar" class="h-full w-0 rounded-full bg-rose-500 transition-all duration-300" style="width: 0%;" aria-valuenow="0">&nbsp;</div>
+        </div>
+        <p class="mt-2 text-xs font-mono text-slate-400" id="job-progress-text">0%</p>
+
+        <div class="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-3"><span class="text-slate-400">Total:</span> <span id="job-total" class="font-mono text-slate-100">0</span></div>
+            <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-3"><span class="text-slate-400">Inserted:</span> <span id="job-processed" class="font-mono text-slate-100">0</span></div>
+            <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-3"><span class="text-slate-400">Failed:</span> <span id="job-failed" class="font-mono text-slate-100">0</span></div>
+            <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-3"><span class="text-slate-400">Skipped:</span> <span id="job-skipped" class="font-mono text-slate-100">0</span></div>
+        </div>
+
+        <p class="mt-4 text-sm text-slate-300">
+            <span class="font-medium text-slate-200">Current video:</span>
+            <code id="job-current" class="rounded bg-slate-900 px-2 py-1 font-mono text-xs text-slate-200">-</code>
+        </p>
+    </div>
+    {% endif %}
+
+    <div class="grid gap-4 lg:grid-cols-2">
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
+            <h3 class="text-base font-semibold text-white">How it works</h3>
+            <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-300">
                 <li>Enter any YouTube channel URL in the supported formats</li>
                 <li>Choose how many videos to process (starting from most recent)</li>
                 <li>The system runs scraping in a background worker queue so web requests stay responsive</li>
                 <li>Progress is tracked live from the polling endpoint</li>
                 <li>All data is saved to your database for export later</li>
             </ul>
-        </div>
+        </article>
 
-        <div class="alert alert-warning">
-            <h5 class="alert-heading">Important Notes:</h5>
-            <ul class="mb-0">
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
+            <h3 class="text-base font-semibold text-white">Important Notes</h3>
+            <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-300">
                 <li>This process can take a long time for channels with many videos</li>
                 <li>Some videos may fail to process due to privacy settings or unavailable transcripts</li>
                 <li>The process includes retry/backoff for transient API limits and network failures</li>
                 <li>You can export all collected data using the Export feature in the navbar</li>
             </ul>
-        </div>
+        </article>
     </div>
+</section>
 
-    {% with messages = get_flashed_messages(with_categories=True) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ category }} mt-3">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-    {% endwith %}
+{% if job_id %}
+<script>
+    (function () {
+        const container = document.getElementById("job-progress");
+        if (!container) {
+            return;
+        }
 
-    {% if job_id %}
-    <script>
-        (function () {
-            const container = document.getElementById("job-progress");
-            if (!container) {
-                return;
+        const jobId = container.dataset.jobId;
+        const statusEl = document.getElementById("job-status");
+        const messageEl = document.getElementById("job-message");
+        const progressBarEl = document.getElementById("job-progress-bar");
+        const progressTextEl = document.getElementById("job-progress-text");
+        const totalEl = document.getElementById("job-total");
+        const processedEl = document.getElementById("job-processed");
+        const failedEl = document.getElementById("job-failed");
+        const skippedEl = document.getElementById("job-skipped");
+        const currentEl = document.getElementById("job-current");
+
+        let timer = null;
+
+        function updateStatusBadge(status) {
+            statusEl.className = "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide border";
+
+            if (status === "completed") {
+                statusEl.classList.add("border-emerald-600", "bg-emerald-900/40", "text-emerald-300");
+            } else if (status === "failed") {
+                statusEl.classList.add("border-red-600", "bg-red-900/40", "text-red-300");
+            } else if (status === "running") {
+                statusEl.classList.add("border-sky-600", "bg-sky-900/40", "text-sky-300");
+            } else {
+                statusEl.classList.add("border-slate-600", "bg-slate-700", "text-slate-100");
             }
 
-            const jobId = container.dataset.jobId;
-            const statusEl = document.getElementById("job-status");
-            const messageEl = document.getElementById("job-message");
-            const progressBarEl = document.getElementById("job-progress-bar");
-            const totalEl = document.getElementById("job-total");
-            const processedEl = document.getElementById("job-processed");
-            const failedEl = document.getElementById("job-failed");
-            const skippedEl = document.getElementById("job-skipped");
-            const currentEl = document.getElementById("job-current");
+            statusEl.textContent = status;
+        }
 
-            let timer = null;
-
-            function updateStatusBadge(status) {
-                statusEl.className = "badge";
-                if (status === "completed") {
-                    statusEl.classList.add("text-bg-success");
-                } else if (status === "failed") {
-                    statusEl.classList.add("text-bg-danger");
-                } else if (status === "running") {
-                    statusEl.classList.add("text-bg-primary");
-                } else {
-                    statusEl.classList.add("text-bg-secondary");
-                }
-                statusEl.textContent = status;
-            }
-
-            async function pollJob() {
-                try {
-                    const response = await fetch(`/status/${jobId}`, { cache: "no-store" });
-                    if (!response.ok) {
-                        messageEl.textContent = "Unable to load job status.";
-                        updateStatusBadge("failed");
-                        if (timer) {
-                            clearInterval(timer);
-                        }
-                        return;
+        async function pollJob() {
+            try {
+                const response = await fetch(`/status/${jobId}`, { cache: "no-store" });
+                if (!response.ok) {
+                    messageEl.textContent = "Unable to load job status.";
+                    updateStatusBadge("failed");
+                    progressBarEl.classList.remove("animate-pulse");
+                    if (timer) {
+                        clearInterval(timer);
                     }
-
-                    const job = await response.json();
-                    const progress = Number(job.progress_pct || 0);
-
-                    updateStatusBadge(job.status || "queued");
-                    messageEl.textContent = job.message || "Working...";
-                    totalEl.textContent = job.total_videos || 0;
-                    processedEl.textContent = job.processed || 0;
-                    failedEl.textContent = job.failed || 0;
-                    skippedEl.textContent = job.skipped || 0;
-                    currentEl.textContent = job.current_video_id || "-";
-
-                    progressBarEl.style.width = `${progress}%`;
-                    progressBarEl.textContent = `${progress}%`;
-                    progressBarEl.setAttribute("aria-valuenow", progress);
-
-                    if (job.status === "completed" || job.status === "failed") {
-                        progressBarEl.classList.remove("progress-bar-animated");
-                        if (timer) {
-                            clearInterval(timer);
-                        }
-                    }
-                } catch (error) {
-                    messageEl.textContent = "Error polling job status.";
+                    return;
                 }
-            }
 
-            pollJob();
-            timer = setInterval(pollJob, 2000);
-        })();
-    </script>
-    {% endif %}
+                const job = await response.json();
+                const progress = Number(job.progress_pct || 0);
+
+                updateStatusBadge(job.status || "queued");
+                messageEl.textContent = job.message || "Working...";
+                totalEl.textContent = job.total_videos || 0;
+                processedEl.textContent = job.processed || 0;
+                failedEl.textContent = job.failed || 0;
+                skippedEl.textContent = job.skipped || 0;
+                currentEl.textContent = job.current_video_id || "-";
+
+                progressBarEl.style.width = `${progress}%`;
+                progressBarEl.setAttribute("aria-valuenow", progress);
+                progressTextEl.textContent = `${progress}%`;
+
+                if (job.status === "running") {
+                    progressBarEl.classList.add("animate-pulse");
+                }
+
+                if (job.status === "completed" || job.status === "failed") {
+                    progressBarEl.classList.remove("animate-pulse");
+                    if (timer) {
+                        clearInterval(timer);
+                    }
+                }
+            } catch (error) {
+                messageEl.textContent = "Error polling job status.";
+            }
+        }
+
+        pollJob();
+        timer = setInterval(pollJob, 2000);
+    })();
+</script>
+{% endif %}
 {% endblock %}

@@ -3,532 +3,542 @@
 {% block title %}Data Viewer - YouTube Tracker{% endblock %}
 
 {% block content %}
-    <div class="container-fluid mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Database Viewer</h2>
-            <div class="d-flex gap-2 align-items-center">
-                <span id="last-updated" class="text-muted small"></span>
-                <button id="refresh-btn" class="btn btn-outline-primary btn-sm">
-                    <span id="refresh-icon">🔄</span> Refresh
-                </button>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
-                    <label class="form-check-label" for="auto-refresh">Auto-refresh (5s)</label>
-                </div>
-            </div>
+<section class="space-y-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Analytics Workspace</p>
+            <h1 class="text-3xl font-semibold tracking-tight text-white">Database Viewer</h1>
         </div>
 
-        <!-- Summary Cards -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card bg-primary text-white">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Videos</h5>
-                        <h3 id="total-videos">-</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card bg-success text-white">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Channels</h5>
-                        <h3 id="total-channels">-</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card bg-info text-white">
-                    <div class="card-body">
-                        <h5 class="card-title">History Records</h5>
-                        <h3 id="total-history">-</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Navigation Tabs -->
-        <ul class="nav nav-tabs" id="dataTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="videos-tab" data-bs-toggle="tab" data-bs-target="#videos" type="button" role="tab">
-                    Videos <span id="videos-count" class="badge bg-secondary">0</span>
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="channels-tab" data-bs-toggle="tab" data-bs-target="#channels" type="button" role="tab">
-                    Channels <span id="channels-count" class="badge bg-secondary">0</span>
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
-                    Subscriber History <span id="history-count" class="badge bg-secondary">0</span>
-                </button>
-            </li>
-        </ul>
-
-        <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
-            <div class="d-flex align-items-center gap-2">
-                <label for="page-limit" class="form-label mb-0 small text-muted">Rows per page:</label>
-                <select id="page-limit" class="form-select form-select-sm" style="width: auto;">
-                    <option value="10">10</option>
-                    <option value="25" selected>25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <button id="prev-page" class="btn btn-outline-secondary btn-sm" type="button">Previous</button>
-                <span id="page-meta" class="small text-muted">Page 1 of 1</span>
-                <button id="next-page" class="btn btn-outline-secondary btn-sm" type="button">Next</button>
-            </div>
-        </div>
-
-        <!-- Tab Content -->
-        <div class="tab-content" id="dataTabsContent">
-            <!-- Videos Tab -->
-            <div class="tab-pane fade show active" id="videos" role="tabpanel">
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <h5 class="mb-0">Videos Data</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover" id="videos-table">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th class="sortable" data-column="id" data-type="number">
-                                            ID <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="title" data-type="text">
-                                            Title <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="channel_username" data-type="text">
-                                            Channel <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="views" data-type="number">
-                                            Views <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="likes" data-type="number">
-                                            Likes <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="comments" data-type="number">
-                                            Comments <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="video_length" data-type="time">
-                                            Length <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="posted" data-type="date">
-                                            Posted <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="saved_at" data-type="date">
-                                            Saved At <span class="sort-icon">↕️</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody id="videos-tbody">
-                                    <tr>
-                                        <td colspan="9" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Channels Tab -->
-            <div class="tab-pane fade" id="channels" role="tabpanel">
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <h5 class="mb-0">Channels Data</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover" id="channels-table">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th class="sortable" data-column="id" data-type="number">
-                                            ID <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="channel_username" data-type="text">
-                                            Channel Username <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="subscribers" data-type="number">
-                                            Subscribers <span class="sort-icon">↕️</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody id="channels-tbody">
-                                    <tr>
-                                        <td colspan="3" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- History Tab -->
-            <div class="tab-pane fade" id="history" role="tabpanel">
-                <div class="card mt-3">
-                    <div class="card-header">
-                        <h5 class="mb-0">Subscriber History</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover" id="history-table">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th class="sortable" data-column="id" data-type="number">
-                                            ID <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="channel_username" data-type="text">
-                                            Channel <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="previous_subscribers" data-type="number">
-                                            Previous Subscribers <span class="sort-icon">↕️</span>
-                                        </th>
-                                        <th class="sortable" data-column="recorded_at" data-type="date">
-                                            Recorded At <span class="sort-icon">↕️</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody id="history-tbody">
-                                    <tr>
-                                        <td colspan="4" class="text-center">Loading...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <span id="last-updated" class="text-xs text-slate-400"></span>
+            <button id="refresh-btn" class="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:border-slate-500 hover:bg-slate-700">
+                <span id="refresh-icon" class="inline-block">↻</span>
+                Refresh
+            </button>
+            <label for="auto-refresh" class="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2">
+                <input class="h-4 w-4 rounded border-slate-600 bg-slate-900 text-rose-500 focus:ring-rose-500 focus:ring-offset-slate-900" type="checkbox" id="auto-refresh" checked>
+                <span class="text-sm text-slate-300">Auto-refresh (5s)</span>
+            </label>
         </div>
     </div>
 
-    <script>
-        let autoRefreshInterval;
-        let lastDataHash = "";
-        let currentData = null;
-        let currentLimit = 25;
-        const pageState = { videos: 1, channels: 1, history: 1 };
-        const sortState = {
-            videos: { column: "saved_at", direction: "desc" },
-            channels: { column: "subscribers", direction: "desc" },
-            history: { column: "recorded_at", direction: "desc" },
-        };
+    <div class="grid gap-4 md:grid-cols-3">
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Total Videos</p>
+            <p id="total-videos" class="mt-3 font-mono text-4xl font-bold text-rose-500">-</p>
+        </article>
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Total Channels</p>
+            <p id="total-channels" class="mt-3 font-mono text-4xl font-bold text-rose-500">-</p>
+        </article>
+        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">History Records</p>
+            <p id="total-history" class="mt-3 font-mono text-4xl font-bold text-rose-500">-</p>
+        </article>
+    </div>
 
-        function formatNumber(num) {
-            if (num === null || num === undefined || num === "N/A") return "N/A";
-            return parseInt(num, 10).toLocaleString();
-        }
+    <div id="dataTabs" class="border-b border-slate-700">
+        <div class="flex flex-wrap items-end gap-6">
+            <button class="tab-button active -mb-px border-b-2 border-rose-500 pb-3 text-sm font-semibold text-rose-500 transition-colors" id="videos-tab" data-target="videos" type="button" role="tab" aria-controls="videos" aria-selected="true">
+                Videos <span id="videos-count" class="ml-2 rounded-full bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-200">0</span>
+            </button>
+            <button class="tab-button -mb-px border-b-2 border-transparent pb-3 text-sm font-medium text-slate-400 transition-colors hover:text-slate-200" id="channels-tab" data-target="channels" type="button" role="tab" aria-controls="channels" aria-selected="false">
+                Channels <span id="channels-count" class="ml-2 rounded-full bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-200">0</span>
+            </button>
+            <button class="tab-button -mb-px border-b-2 border-transparent pb-3 text-sm font-medium text-slate-400 transition-colors hover:text-slate-200" id="history-tab" data-target="history" type="button" role="tab" aria-controls="history" aria-selected="false">
+                Subscriber History <span id="history-count" class="ml-2 rounded-full bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-200">0</span>
+            </button>
+        </div>
+    </div>
 
-        function truncateText(text, maxLength = 50) {
-            if (!text || text.length <= maxLength) return text || "N/A";
-            return text.substring(0, maxLength) + "...";
-        }
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-2">
+            <label for="page-limit" class="text-sm text-slate-400">Rows per page:</label>
+            <select id="page-limit" class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="prev-page" class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40" type="button">Previous</button>
+            <span id="page-meta" class="text-sm text-slate-400">Page 1 of 1</span>
+            <button id="next-page" class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40" type="button">Next</button>
+        </div>
+    </div>
 
-        function formatDate(dateString) {
-            if (!dateString) return "N/A";
-            const parsed = new Date(dateString);
-            if (Number.isNaN(parsed.getTime())) return dateString;
-            return parsed.toLocaleString();
-        }
+    <div id="dataTabsContent" class="space-y-4">
+        <section class="tab-pane" id="videos" role="tabpanel" aria-labelledby="videos-tab">
+            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm text-slate-200" id="videos-table">
+                        <thead class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur">
+                            <tr>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="id" data-type="number">
+                                    ID <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="title" data-type="text">
+                                    Title <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="channel_username" data-type="text">
+                                    Channel <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="views" data-type="number">
+                                    Views <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="likes" data-type="number">
+                                    Likes <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="comments" data-type="number">
+                                    Comments <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="video_length" data-type="time">
+                                    Length <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="posted" data-type="date">
+                                    Posted <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="saved_at" data-type="date">
+                                    Saved At <span class="sort-icon">↕️</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="videos-tbody">
+                            <tr class="transition-colors hover:bg-slate-700/50">
+                                <td colspan="9" class="px-6 py-6 text-center text-slate-400">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
 
-        function escapeHtml(value) {
-            return String(value ?? "")
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#39;");
-        }
+        <section class="tab-pane hidden" id="channels" role="tabpanel" aria-labelledby="channels-tab">
+            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm text-slate-200" id="channels-table">
+                        <thead class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur">
+                            <tr>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="id" data-type="number">
+                                    ID <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="channel_username" data-type="text">
+                                    Channel Username <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="subscribers" data-type="number">
+                                    Subscribers <span class="sort-icon">↕️</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="channels-tbody">
+                            <tr class="transition-colors hover:bg-slate-700/50">
+                                <td colspan="3" class="px-6 py-6 text-center text-slate-400">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
 
-        function simpleHash(obj) {
-            return JSON.stringify(obj).split("").reduce((acc, char) => {
-                acc = ((acc << 5) - acc) + char.charCodeAt(0);
-                return acc & acc;
-            }, 0);
-        }
+        <section class="tab-pane hidden" id="history" role="tabpanel" aria-labelledby="history-tab">
+            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-sm text-slate-200" id="history-table">
+                        <thead class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur">
+                            <tr>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="id" data-type="number">
+                                    ID <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="channel_username" data-type="text">
+                                    Channel <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="previous_subscribers" data-type="number">
+                                    Previous Subscribers <span class="sort-icon">↕️</span>
+                                </th>
+                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="recorded_at" data-type="date">
+                                    Recorded At <span class="sort-icon">↕️</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-tbody">
+                            <tr class="transition-colors hover:bg-slate-700/50">
+                                <td colspan="4" class="px-6 py-6 text-center text-slate-400">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+</section>
 
-        function getActiveTableKey() {
-            const activeTab = document.querySelector("#dataTabs .nav-link.active");
-            if (!activeTab) return "videos";
-            return activeTab.id.replace("-tab", "");
-        }
+<script>
+    let autoRefreshInterval;
+    let lastDataHash = "";
+    let currentData = null;
+    let currentLimit = 25;
+    const pageState = { videos: 1, channels: 1, history: 1 };
+    const sortState = {
+        videos: { column: "saved_at", direction: "desc" },
+        channels: { column: "subscribers", direction: "desc" },
+        history: { column: "recorded_at", direction: "desc" },
+    };
 
-        function getLabelForTable(tableKey) {
-            if (tableKey === "videos") return "Videos";
-            if (tableKey === "channels") return "Channels";
-            return "Subscriber History";
-        }
+    function formatNumber(num) {
+        if (num === null || num === undefined || num === "N/A") return "N/A";
+        return parseInt(num, 10).toLocaleString();
+    }
 
-        function buildApiUrl() {
-            const tableKey = getActiveTableKey();
-            const params = new URLSearchParams({
-                page: String(pageState[tableKey]),
-                limit: String(currentLimit),
-                sort_column: sortState[tableKey].column,
-                sort_direction: sortState[tableKey].direction,
+    function truncateText(text, maxLength = 50) {
+        if (!text || text.length <= maxLength) return text || "N/A";
+        return text.substring(0, maxLength) + "...";
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return "N/A";
+        const parsed = new Date(dateString);
+        if (Number.isNaN(parsed.getTime())) return dateString;
+        return parsed.toLocaleString();
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+    }
+
+    function simpleHash(obj) {
+        return JSON.stringify(obj).split("").reduce((acc, char) => {
+            acc = ((acc << 5) - acc) + char.charCodeAt(0);
+            return acc & acc;
+        }, 0);
+    }
+
+    function getActiveTableKey() {
+        const activeTab = document.querySelector("#dataTabs .tab-button.active");
+        if (!activeTab) return "videos";
+        return activeTab.id.replace("-tab", "");
+    }
+
+    function getLabelForTable(tableKey) {
+        if (tableKey === "videos") return "Videos";
+        if (tableKey === "channels") return "Channels";
+        return "Subscriber History";
+    }
+
+    function buildApiUrl() {
+        const tableKey = getActiveTableKey();
+        const params = new URLSearchParams({
+            page: String(pageState[tableKey]),
+            limit: String(currentLimit),
+            sort_column: sortState[tableKey].column,
+            sort_direction: sortState[tableKey].direction,
+        });
+        return `/api/data?${params.toString()}`;
+    }
+
+    function updateSortIcons() {
+        ["videos", "channels", "history"].forEach((tableKey) => {
+            const table = document.getElementById(`${tableKey}-table`);
+            if (!table) return;
+
+            const state = sortState[tableKey];
+            const headers = table.querySelectorAll("th.sortable");
+            headers.forEach((header) => {
+                const icon = header.querySelector(".sort-icon");
+                const isActive = header.dataset.column === state.column;
+                if (icon) {
+                    icon.textContent = isActive ? (state.direction === "asc" ? "↑" : "↓") : "↕️";
+                }
+                header.classList.toggle("sorted", isActive);
+                header.setAttribute("aria-sort", isActive ? (state.direction === "asc" ? "ascending" : "descending") : "none");
             });
-            return `/api/data?${params.toString()}`;
+        });
+    }
+
+    function updatePaginationControls() {
+        if (!currentData) return;
+        const tableKey = getActiveTableKey();
+        const pagination = currentData[tableKey]?.pagination;
+        if (!pagination) return;
+
+        const totalPages = Math.max(pagination.total_pages || 0, 1);
+        document.getElementById("page-meta").textContent =
+            `${getLabelForTable(tableKey)}: Page ${pagination.current_page} of ${totalPages} (${pagination.total_items} total)`;
+        document.getElementById("prev-page").disabled = !pagination.has_prev;
+        document.getElementById("next-page").disabled = !pagination.has_next;
+        document.getElementById("page-limit").value = String(currentLimit);
+    }
+
+    async function fetchData() {
+        const refreshIcon = document.getElementById("refresh-icon");
+        try {
+            refreshIcon.style.animation = "spin 1s linear infinite";
+
+            const response = await fetch(buildApiUrl());
+            if (!response.ok) {
+                throw new Error(`Request failed with status ${response.status}`);
+            }
+
+            const data = await response.json();
+            const newHash = simpleHash(data);
+            const hasChanged = newHash !== lastDataHash;
+
+            currentData = data;
+            updateTables(data);
+            updateSortIcons();
+            updatePaginationControls();
+
+            if (lastDataHash !== "" && hasChanged) {
+                showUpdateNotification();
+            }
+            lastDataHash = newHash;
+
+            document.getElementById("last-updated").textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            document.getElementById("last-updated").textContent = `Error loading data: ${new Date().toLocaleTimeString()}`;
+        } finally {
+            refreshIcon.style.animation = "";
+        }
+    }
+
+    function showUpdateNotification() {
+        if (window.Toastify) {
+            Toastify({
+                text: "Data viewer refreshed with latest records.",
+                duration: 2500,
+                gravity: "top",
+                position: "right",
+                close: true,
+                stopOnFocus: true,
+                style: {
+                    background: "#15803d",
+                    color: "#f8fafc",
+                    borderRadius: "0.75rem",
+                },
+            }).showToast();
+            return;
         }
 
-        function updateSortIcons() {
-            ["videos", "channels", "history"].forEach((tableKey) => {
-                const table = document.getElementById(`${tableKey}-table`);
-                if (!table) return;
+        const notification = document.createElement("div");
+        notification.className = "fixed right-4 top-4 z-[9999] rounded-lg border border-emerald-700 bg-emerald-800 px-4 py-3 text-sm text-white shadow-lg";
+        notification.textContent = "Data viewer refreshed with latest records.";
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            if (notification.parentNode) notification.remove();
+        }, 2500);
+    }
 
-                const state = sortState[tableKey];
-                const headers = table.querySelectorAll("th.sortable");
-                headers.forEach((header) => {
-                    const icon = header.querySelector(".sort-icon");
-                    const isActive = header.dataset.column === state.column;
-                    if (icon) {
-                        icon.textContent = isActive ? (state.direction === "asc" ? "↑" : "↓") : "↕️";
-                    }
-                    header.classList.toggle("sorted", isActive);
+    function updateTables(data) {
+        document.getElementById("total-videos").textContent = data.counts.total_videos;
+        document.getElementById("total-channels").textContent = data.counts.total_channels;
+        document.getElementById("total-history").textContent = data.counts.total_history_records;
+
+        document.getElementById("videos-count").textContent = data.counts.total_videos;
+        document.getElementById("channels-count").textContent = data.counts.total_channels;
+        document.getElementById("history-count").textContent = data.counts.total_history_records;
+
+        updateVideosTable(data.videos.items);
+        updateChannelsTable(data.channels.items);
+        updateHistoryTable(data.history.items);
+    }
+
+    function updateVideosTable(videos) {
+        const tbody = document.getElementById("videos-tbody");
+        if (!videos || videos.length === 0) {
+            tbody.innerHTML = '<tr class="transition-colors hover:bg-slate-700/50"><td colspan="9" class="px-6 py-6 text-center text-slate-400">No videos found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = videos.map((video) => `
+            <tr class="transition-colors hover:bg-slate-700/50">
+                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${video.id}</td>
+                <td class="px-6 py-4 border-b border-slate-700 text-slate-200" title="${escapeHtml(video.title)}">${escapeHtml(truncateText(video.title, 40))}</td>
+                <td class="px-6 py-4 border-b border-slate-700 text-slate-200 whitespace-nowrap">${escapeHtml(video.channel_username)}</td>
+                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${formatNumber(video.views)}</td>
+                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${formatNumber(video.likes)}</td>
+                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${formatNumber(video.comments)}</td>
+                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${escapeHtml(video.video_length || "N/A")}</td>
+                <td class="px-6 py-4 border-b border-slate-700 text-slate-200 whitespace-nowrap">${escapeHtml(video.posted || "N/A")}</td>
+                <td class="px-6 py-4 border-b border-slate-700 text-slate-200 whitespace-nowrap">${formatDate(video.saved_at)}</td>
+            </tr>
+        `).join("");
+    }
+
+    function updateChannelsTable(channels) {
+        const tbody = document.getElementById("channels-tbody");
+        if (!channels || channels.length === 0) {
+            tbody.innerHTML = '<tr class="transition-colors hover:bg-slate-700/50"><td colspan="3" class="px-6 py-6 text-center text-slate-400">No channels found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = channels.map((channel) => `
+            <tr class="transition-colors hover:bg-slate-700/50">
+                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${channel.id}</td>
+                <td class="px-6 py-4 border-b border-slate-700 text-slate-200">${escapeHtml(channel.channel_username)}</td>
+                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${formatNumber(channel.subscribers)}</td>
+            </tr>
+        `).join("");
+    }
+
+    function updateHistoryTable(history) {
+        const tbody = document.getElementById("history-tbody");
+        if (!history || history.length === 0) {
+            tbody.innerHTML = '<tr class="transition-colors hover:bg-slate-700/50"><td colspan="4" class="px-6 py-6 text-center text-slate-400">No history records found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = history.map((record) => `
+            <tr class="transition-colors hover:bg-slate-700/50">
+                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${record.id}</td>
+                <td class="px-6 py-4 border-b border-slate-700 text-slate-200">${escapeHtml(record.channel_username)}</td>
+                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${formatNumber(record.previous_subscribers)}</td>
+                <td class="px-6 py-4 border-b border-slate-700 text-slate-200 whitespace-nowrap">${formatDate(record.recorded_at)}</td>
+            </tr>
+        `).join("");
+    }
+
+    function setupSorting() {
+        ["videos", "channels", "history"].forEach((tableKey) => {
+            const table = document.getElementById(`${tableKey}-table`);
+            if (!table) return;
+
+            table.querySelectorAll("th.sortable").forEach((header) => {
+                header.addEventListener("click", async () => {
+                    const clickedColumn = header.dataset.column;
+                    const current = sortState[tableKey];
+                    const nextDirection = current.column === clickedColumn && current.direction === "asc" ? "desc" : "asc";
+                    sortState[tableKey] = { column: clickedColumn, direction: nextDirection };
+                    pageState[tableKey] = 1;
+                    await fetchData();
                 });
             });
-        }
+        });
+    }
 
-        function updatePaginationControls() {
-            if (!currentData) return;
+    function setupPagination() {
+        document.getElementById("prev-page").addEventListener("click", async () => {
             const tableKey = getActiveTableKey();
-            const pagination = currentData[tableKey]?.pagination;
-            if (!pagination) return;
-
-            const totalPages = Math.max(pagination.total_pages || 0, 1);
-            document.getElementById("page-meta").textContent =
-                `${getLabelForTable(tableKey)}: Page ${pagination.current_page} of ${totalPages} (${pagination.total_items} total)`;
-            document.getElementById("prev-page").disabled = !pagination.has_prev;
-            document.getElementById("next-page").disabled = !pagination.has_next;
-            document.getElementById("page-limit").value = String(currentLimit);
-        }
-
-        async function fetchData() {
-            const refreshIcon = document.getElementById("refresh-icon");
-            try {
-                refreshIcon.style.animation = "spin 1s linear infinite";
-
-                const response = await fetch(buildApiUrl());
-                if (!response.ok) {
-                    throw new Error(`Request failed with status ${response.status}`);
-                }
-
-                const data = await response.json();
-                const newHash = simpleHash(data);
-                const hasChanged = newHash !== lastDataHash;
-
-                currentData = data;
-                updateTables(data);
-                updateSortIcons();
-                updatePaginationControls();
-
-                if (lastDataHash !== "" && hasChanged) {
-                    showUpdateNotification();
-                }
-                lastDataHash = newHash;
-
-                document.getElementById("last-updated").textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-            } catch (error) {
-                console.error("Error fetching data:", error);
-                document.getElementById("last-updated").textContent = `Error loading data: ${new Date().toLocaleTimeString()}`;
-            } finally {
-                refreshIcon.style.animation = "";
+            if (pageState[tableKey] > 1) {
+                pageState[tableKey] -= 1;
+                await fetchData();
             }
-        }
+        });
 
-        function showUpdateNotification() {
-            const notification = document.createElement("div");
-            notification.className = "alert alert-success alert-dismissible fade show position-fixed";
-            notification.style.cssText = "top: 20px; right: 20px; z-index: 9999; min-width: 300px;";
-            notification.innerHTML = `
-                <strong>Data Updated!</strong> Data viewer refreshed with latest records.
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.body.appendChild(notification);
-            setTimeout(() => {
-                if (notification.parentNode) notification.remove();
-            }, 3000);
-        }
-
-        function updateTables(data) {
-            document.getElementById("total-videos").textContent = data.counts.total_videos;
-            document.getElementById("total-channels").textContent = data.counts.total_channels;
-            document.getElementById("total-history").textContent = data.counts.total_history_records;
-
-            document.getElementById("videos-count").textContent = data.counts.total_videos;
-            document.getElementById("channels-count").textContent = data.counts.total_channels;
-            document.getElementById("history-count").textContent = data.counts.total_history_records;
-
-            updateVideosTable(data.videos.items);
-            updateChannelsTable(data.channels.items);
-            updateHistoryTable(data.history.items);
-        }
-
-        function updateVideosTable(videos) {
-            const tbody = document.getElementById("videos-tbody");
-            if (!videos || videos.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No videos found</td></tr>';
-                return;
+        document.getElementById("next-page").addEventListener("click", async () => {
+            const tableKey = getActiveTableKey();
+            const pagination = currentData?.[tableKey]?.pagination;
+            if (pagination?.has_next) {
+                pageState[tableKey] += 1;
+                await fetchData();
             }
+        });
 
-            tbody.innerHTML = videos.map((video) => `
-                <tr>
-                    <td>${video.id}</td>
-                    <td title="${escapeHtml(video.title)}">${escapeHtml(truncateText(video.title, 40))}</td>
-                    <td>${escapeHtml(video.channel_username)}</td>
-                    <td>${formatNumber(video.views)}</td>
-                    <td>${formatNumber(video.likes)}</td>
-                    <td>${formatNumber(video.comments)}</td>
-                    <td>${escapeHtml(video.video_length || "N/A")}</td>
-                    <td>${escapeHtml(video.posted || "N/A")}</td>
-                    <td>${formatDate(video.saved_at)}</td>
-                </tr>
-            `).join("");
-        }
+        document.getElementById("page-limit").addEventListener("change", async (event) => {
+            const parsed = parseInt(event.target.value, 10);
+            currentLimit = Number.isNaN(parsed) ? 25 : parsed;
+            pageState.videos = 1;
+            pageState.channels = 1;
+            pageState.history = 1;
+            await fetchData();
+        });
+    }
 
-        function updateChannelsTable(channels) {
-            const tbody = document.getElementById("channels-tbody");
-            if (!channels || channels.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No channels found</td></tr>';
-                return;
-            }
+    function setTabActiveState(tab, isActive) {
+        tab.classList.toggle("active", isActive);
+        tab.classList.toggle("border-rose-500", isActive);
+        tab.classList.toggle("text-rose-500", isActive);
+        tab.classList.toggle("font-semibold", isActive);
 
-            tbody.innerHTML = channels.map((channel) => `
-                <tr>
-                    <td>${channel.id}</td>
-                    <td>${escapeHtml(channel.channel_username)}</td>
-                    <td>${formatNumber(channel.subscribers)}</td>
-                </tr>
-            `).join("");
-        }
+        tab.classList.toggle("border-transparent", !isActive);
+        tab.classList.toggle("text-slate-400", !isActive);
+        tab.classList.toggle("font-medium", !isActive);
 
-        function updateHistoryTable(history) {
-            const tbody = document.getElementById("history-tbody");
-            if (!history || history.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No history records found</td></tr>';
-                return;
-            }
+        tab.setAttribute("aria-selected", String(isActive));
+    }
 
-            tbody.innerHTML = history.map((record) => `
-                <tr>
-                    <td>${record.id}</td>
-                    <td>${escapeHtml(record.channel_username)}</td>
-                    <td>${formatNumber(record.previous_subscribers)}</td>
-                    <td>${formatDate(record.recorded_at)}</td>
-                </tr>
-            `).join("");
-        }
+    function setupTabRefresh() {
+        const tabs = document.querySelectorAll("#dataTabs .tab-button");
+        const panes = document.querySelectorAll("#dataTabsContent .tab-pane");
 
-        function setupSorting() {
-            ["videos", "channels", "history"].forEach((tableKey) => {
-                const table = document.getElementById(`${tableKey}-table`);
-                if (!table) return;
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", async () => {
+                if (tab.classList.contains("active")) return;
 
-                table.querySelectorAll("th.sortable").forEach((header) => {
-                    header.style.cursor = "pointer";
-                    header.addEventListener("click", async () => {
-                        const clickedColumn = header.dataset.column;
-                        const current = sortState[tableKey];
-                        const nextDirection = current.column === clickedColumn && current.direction === "asc" ? "desc" : "asc";
-                        sortState[tableKey] = { column: clickedColumn, direction: nextDirection };
-                        pageState[tableKey] = 1;
-                        await fetchData();
-                    });
-                });
-            });
-        }
+                tabs.forEach((item) => setTabActiveState(item, false));
+                panes.forEach((pane) => pane.classList.add("hidden"));
 
-        function setupPagination() {
-            document.getElementById("prev-page").addEventListener("click", async () => {
-                const tableKey = getActiveTableKey();
-                if (pageState[tableKey] > 1) {
-                    pageState[tableKey] -= 1;
-                    await fetchData();
-                }
-            });
+                setTabActiveState(tab, true);
+                const targetPane = document.getElementById(tab.dataset.target);
+                if (targetPane) targetPane.classList.remove("hidden");
 
-            document.getElementById("next-page").addEventListener("click", async () => {
-                const tableKey = getActiveTableKey();
-                const pagination = currentData?.[tableKey]?.pagination;
-                if (pagination?.has_next) {
-                    pageState[tableKey] += 1;
-                    await fetchData();
-                }
-            });
-
-            document.getElementById("page-limit").addEventListener("change", async (event) => {
-                const parsed = parseInt(event.target.value, 10);
-                currentLimit = Number.isNaN(parsed) ? 25 : parsed;
-                pageState.videos = 1;
-                pageState.channels = 1;
-                pageState.history = 1;
                 await fetchData();
             });
-        }
-
-        function setupTabRefresh() {
-            document.querySelectorAll('#dataTabs button[data-bs-toggle="tab"]').forEach((tab) => {
-                tab.addEventListener("shown.bs.tab", fetchData);
-            });
-        }
-
-        function setupAutoRefresh() {
-            const autoRefreshCheckbox = document.getElementById("auto-refresh");
-
-            function toggleAutoRefresh() {
-                if (autoRefreshCheckbox.checked) {
-                    autoRefreshInterval = setInterval(fetchData, 5000);
-                } else {
-                    clearInterval(autoRefreshInterval);
-                }
-            }
-
-            autoRefreshCheckbox.addEventListener("change", toggleAutoRefresh);
-            toggleAutoRefresh();
-        }
-
-        function setupManualRefresh() {
-            document.getElementById("refresh-btn").addEventListener("click", fetchData);
-        }
-
-        const style = document.createElement("style");
-        style.textContent = `
-            @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-            .sortable {
-                user-select: none;
-                position: relative;
-            }
-            .sortable:hover {
-                background-color: rgba(255, 255, 255, 0.1) !important;
-            }
-            .sortable.sorted {
-                background-color: rgba(255, 255, 255, 0.2) !important;
-            }
-            .sort-icon {
-                font-size: 0.8em;
-                margin-left: 5px;
-            }
-        `;
-        document.head.appendChild(style);
-
-        document.addEventListener("DOMContentLoaded", () => {
-            setupSorting();
-            setupPagination();
-            setupTabRefresh();
-            setupAutoRefresh();
-            setupManualRefresh();
-            fetchData();
         });
+    }
 
-        window.addEventListener("beforeunload", () => {
-            clearInterval(autoRefreshInterval);
-        });
-    </script>
+    function setupAutoRefresh() {
+        const autoRefreshCheckbox = document.getElementById("auto-refresh");
+
+        function toggleAutoRefresh() {
+            if (autoRefreshCheckbox.checked) {
+                autoRefreshInterval = setInterval(fetchData, 5000);
+            } else {
+                clearInterval(autoRefreshInterval);
+            }
+        }
+
+        autoRefreshCheckbox.addEventListener("change", toggleAutoRefresh);
+        toggleAutoRefresh();
+    }
+
+    function setupManualRefresh() {
+        document.getElementById("refresh-btn").addEventListener("click", fetchData);
+    }
+
+    const style = document.createElement("style");
+    style.textContent = `
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .sortable {
+            user-select: none;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .sortable:hover {
+            background-color: rgba(51, 65, 85, 0.45);
+        }
+        .sortable.sorted {
+            color: #fb7185;
+            background-color: rgba(225, 29, 72, 0.12);
+        }
+        .sort-icon {
+            font-size: 0.8em;
+            margin-left: 5px;
+        }
+    `;
+    document.head.appendChild(style);
+
+    document.addEventListener("DOMContentLoaded", () => {
+        setupSorting();
+        setupPagination();
+        setupTabRefresh();
+        setupAutoRefresh();
+        setupManualRefresh();
+        fetchData();
+    });
+
+    window.addEventListener("beforeunload", () => {
+        clearInterval(autoRefreshInterval);
+    });
+</script>
 
 {% endblock %}

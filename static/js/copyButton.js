@@ -1,79 +1,146 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const body = document.body;
-    const navbar = document.getElementById("navbar");
-    const videoDetails = document.getElementById("videoDetails");
-    const button = document.getElementById("theme-toggle");
+(() => {
+    const THEME_STORAGE_KEY = "theme_preference";
+    const THEME_VALUES = ["system", "light", "dark"];
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
-    // Load theme preference
-    const theme = localStorage.getItem("theme");
-
-    if (theme === "light") {
-        body.classList.remove("bg-dark", "text-white");
-        body.classList.add("bg-light", "text-dark");
-        navbar.classList.remove("navbar-dark", "bg-dark");
-        navbar.classList.add("navbar-light", "bg-light");
-        if (videoDetails) {
-            videoDetails.classList.add("bg-light", "text-dark");
+    function safeGetStorage(key) {
+        try {
+            return localStorage.getItem(key);
+        } catch (_) {
+            return null;
         }
-        button.textContent = "🌙 Dark Mode";
-        button.classList.replace("btn-outline-light", "btn-outline-dark");
-    } else {
-        body.classList.remove("bg-light", "text-dark");
-        body.classList.add("bg-dark", "text-white");
-        navbar.classList.remove("navbar-light", "bg-light");
-        navbar.classList.add("navbar-dark", "bg-dark");
-        if (videoDetails) {
-            videoDetails.classList.add("bg-dark", "text-white");
-        }
-        button.textContent = "☀️ Light Mode";
-        button.classList.replace("btn-outline-dark", "btn-outline-light");
     }
 
-    function toggleTheme() {
-        if (body.classList.contains("bg-dark")) {
-            body.classList.remove("bg-dark", "text-white");
-            body.classList.add("bg-light", "text-dark");
-            navbar.classList.remove("navbar-dark", "bg-dark");
-            navbar.classList.add("navbar-light", "bg-light");
-            if (videoDetails) {
-                videoDetails.classList.remove("bg-dark", "text-white");
-                videoDetails.classList.add("bg-light", "text-dark");
-            }
-            localStorage.setItem("theme", "light");
-            button.textContent = "🌙 Dark Mode";
-            button.classList.replace("btn-outline-light", "btn-outline-dark");
+    function safeSetStorage(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (_) {
+            // Ignore storage failures (private mode, blocked storage, etc.)
+        }
+    }
+
+    function getStoredThemePreference() {
+        const stored = safeGetStorage(THEME_STORAGE_KEY);
+        if (THEME_VALUES.includes(stored)) {
+            return stored;
+        }
+
+        const legacyTheme = safeGetStorage("theme");
+        if (legacyTheme === "light" || legacyTheme === "dark") {
+            return legacyTheme;
+        }
+
+        return "system";
+    }
+
+    function getEffectiveTheme(preference) {
+        if (preference === "system") {
+            return mediaQuery.matches ? "dark" : "light";
+        }
+        return preference;
+    }
+
+    function updateThemeToggleButton(preference, effectiveTheme) {
+        const button = document.getElementById("theme-toggle");
+        if (!button) return;
+
+        if (preference === "system") {
+            button.textContent = `Theme: Auto (${effectiveTheme === "dark" ? "Dark" : "Light"})`;
+        } else if (preference === "dark") {
+            button.textContent = "Theme: Dark";
         } else {
-            body.classList.remove("bg-light", "text-dark");
-            body.classList.add("bg-dark", "text-white");
-            navbar.classList.remove("navbar-light", "bg-light");
-            navbar.classList.add("navbar-dark", "bg-dark");
-            if (videoDetails) {
-                videoDetails.classList.remove("bg-light", "text-dark");
-                videoDetails.classList.add("bg-dark", "text-white");
-            }
-            localStorage.setItem("theme", "dark");
-            button.textContent = "☀️ Light Mode";
-            button.classList.replace("btn-outline-dark", "btn-outline-light");
+            button.textContent = "Theme: Light";
+        }
+
+        button.setAttribute("title", "Click to cycle theme: Auto -> Light -> Dark");
+        button.setAttribute("aria-label", button.textContent);
+    }
+
+    function applyTheme(preference) {
+        const effectiveTheme = getEffectiveTheme(preference);
+        const root = document.documentElement;
+
+        root.setAttribute("data-theme-preference", preference);
+        root.setAttribute("data-theme", effectiveTheme);
+        root.classList.toggle("dark", effectiveTheme === "dark");
+
+        updateThemeToggleButton(preference, effectiveTheme);
+    }
+
+    function cycleThemePreference() {
+        const current = getStoredThemePreference();
+        const currentIndex = THEME_VALUES.indexOf(current);
+        const nextPreference = THEME_VALUES[(currentIndex + 1) % THEME_VALUES.length];
+
+        safeSetStorage(THEME_STORAGE_KEY, nextPreference);
+        applyTheme(nextPreference);
+    }
+
+    function handleSystemThemeChange() {
+        if (getStoredThemePreference() === "system") {
+            applyTheme("system");
         }
     }
 
     function copyToClipboard() {
-        const videoDetails = document.getElementById("videoDetails");  // Ensure element exists
+        const videoDetails = document.getElementById("videoDetails");
         if (!videoDetails) {
-            alert("No video details available to copy.");
+            if (window.Toastify) {
+                Toastify({
+                    text: "No video details available to copy.",
+                    duration: 2500,
+                    gravity: "top",
+                    position: "right",
+                    close: true,
+                    style: { background: "#d97706", color: "#f8fafc" },
+                }).showToast();
+            }
             return;
         }
-        
-        let text = videoDetails.innerText;
+
+        const text = videoDetails.innerText;
         navigator.clipboard.writeText(text).then(() => {
-            alert("Copied to clipboard!");
-        }).catch(err => {
-            console.error("Could not copy text: ", err);
-            alert("Failed to copy.");
+            if (window.Toastify) {
+                Toastify({
+                    text: "Copied to clipboard.",
+                    duration: 2000,
+                    gravity: "top",
+                    position: "right",
+                    close: true,
+                    style: { background: "#15803d", color: "#f8fafc" },
+                }).showToast();
+            }
+        }).catch((err) => {
+            console.error("Could not copy text:", err);
+            if (window.Toastify) {
+                Toastify({
+                    text: "Failed to copy details.",
+                    duration: 2500,
+                    gravity: "top",
+                    position: "right",
+                    close: true,
+                    style: { background: "#b91c1c", color: "#f8fafc" },
+                }).showToast();
+            }
         });
     }
 
-    // Attach event listeners
-    button.addEventListener("click", toggleTheme);
-    document.getElementById("copy-button")?.addEventListener("click", copyToClipboard);
-});
+    // Apply theme as early as possible to reduce flash before the page is interactive.
+    applyTheme(getStoredThemePreference());
+
+    document.addEventListener("DOMContentLoaded", function () {
+        applyTheme(getStoredThemePreference());
+
+        const toggleButton = document.getElementById("theme-toggle");
+        toggleButton?.addEventListener("click", cycleThemePreference);
+
+        const copyButton = document.getElementById("copy-button");
+        copyButton?.addEventListener("click", copyToClipboard);
+
+        if (typeof mediaQuery.addEventListener === "function") {
+            mediaQuery.addEventListener("change", handleSystemThemeChange);
+        } else if (typeof mediaQuery.addListener === "function") {
+            mediaQuery.addListener(handleSystemThemeChange);
+        }
+    });
+})();
