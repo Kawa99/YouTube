@@ -3,59 +3,59 @@
 {% block title %}Data Viewer - YouTube Tracker{% endblock %}
 
 {% block content %}
-<section class="space-y-6">
+<section class="space-y-8">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div class="space-y-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Analytics Workspace</p>
-            <h1 class="text-3xl font-semibold tracking-tight text-white">Database Viewer</h1>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Analytics Workspace</p>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Enterprise Data Viewer</h1>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-            <span id="last-updated" class="text-xs text-slate-400"></span>
-            <button id="refresh-btn" class="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:border-slate-500 hover:bg-slate-700">
+            <span id="last-updated" class="text-xs text-slate-500 dark:text-slate-400"></span>
+            <button id="refresh-btn" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
                 <span id="refresh-icon" class="inline-block">↻</span>
                 Refresh
             </button>
-            <label for="auto-refresh" class="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2">
-                <input class="h-4 w-4 rounded border-slate-600 bg-slate-900 text-rose-500 focus:ring-rose-500 focus:ring-offset-slate-900" type="checkbox" id="auto-refresh" checked>
-                <span class="text-sm text-slate-300">Auto-refresh (5s)</span>
+            <label for="auto-refresh" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900">
+                <input class="h-4 w-4 rounded border-slate-300 bg-white text-rose-500 focus:ring-rose-500" type="checkbox" id="auto-refresh" checked>
+                <span class="text-sm text-slate-600 dark:text-slate-300">Auto-refresh (5s)</span>
             </label>
         </div>
     </div>
 
     <div class="grid gap-4 md:grid-cols-3">
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Total Videos</p>
-            <p id="total-videos" class="mt-3 font-mono text-4xl font-bold text-rose-500">-</p>
+        <article class="rounded-xl border border-slate-200 p-5 dark:border-slate-700">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Total Videos</p>
+            <p id="total-videos" class="mt-3 font-mono text-5xl font-semibold leading-none text-slate-900 dark:text-slate-100">-</p>
         </article>
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Total Channels</p>
-            <p id="total-channels" class="mt-3 font-mono text-4xl font-bold text-rose-500">-</p>
+        <article class="rounded-xl border border-slate-200 p-5 dark:border-slate-700">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Total Channels</p>
+            <p id="total-channels" class="mt-3 font-mono text-5xl font-semibold leading-none text-slate-900 dark:text-slate-100">-</p>
         </article>
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">History Records</p>
-            <p id="total-history" class="mt-3 font-mono text-4xl font-bold text-rose-500">-</p>
+        <article class="rounded-xl border border-slate-200 p-5 dark:border-slate-700">
+            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">History Records</p>
+            <p id="total-history" class="mt-3 font-mono text-5xl font-semibold leading-none text-slate-900 dark:text-slate-100">-</p>
         </article>
     </div>
 
-    <div id="dataTabs" class="border-b border-slate-700">
+    <div id="dataTabs" class="border-b border-slate-200 dark:border-slate-700">
         <div class="flex flex-wrap items-end gap-6">
-            <button class="tab-button active -mb-px border-b-2 border-rose-500 pb-3 text-sm font-semibold text-rose-500 transition-colors" id="videos-tab" data-target="videos" type="button" role="tab" aria-controls="videos" aria-selected="true">
-                Videos <span id="videos-count" class="ml-2 rounded-full bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-200">0</span>
+            <button class="tab-button active -mb-px border-b-2 border-rose-500 pb-3 text-sm font-semibold text-rose-600 transition-colors dark:text-rose-400" id="videos-tab" data-target="videos" type="button" role="tab" aria-controls="videos" aria-selected="true">
+                Videos <span id="videos-count" class="ml-2 rounded-full border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400">0</span>
             </button>
-            <button class="tab-button -mb-px border-b-2 border-transparent pb-3 text-sm font-medium text-slate-400 transition-colors hover:text-slate-200" id="channels-tab" data-target="channels" type="button" role="tab" aria-controls="channels" aria-selected="false">
-                Channels <span id="channels-count" class="ml-2 rounded-full bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-200">0</span>
+            <button class="tab-button -mb-px border-b-2 border-transparent pb-3 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" id="channels-tab" data-target="channels" type="button" role="tab" aria-controls="channels" aria-selected="false">
+                Channels <span id="channels-count" class="ml-2 rounded-full border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400">0</span>
             </button>
-            <button class="tab-button -mb-px border-b-2 border-transparent pb-3 text-sm font-medium text-slate-400 transition-colors hover:text-slate-200" id="history-tab" data-target="history" type="button" role="tab" aria-controls="history" aria-selected="false">
-                Subscriber History <span id="history-count" class="ml-2 rounded-full bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-200">0</span>
+            <button class="tab-button -mb-px border-b-2 border-transparent pb-3 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" id="history-tab" data-target="history" type="button" role="tab" aria-controls="history" aria-selected="false">
+                Subscriber History <span id="history-count" class="ml-2 rounded-full border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400">0</span>
             </button>
         </div>
     </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-2">
-            <label for="page-limit" class="text-sm text-slate-400">Rows per page:</label>
-            <select id="page-limit" class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500">
+            <label for="page-limit" class="text-sm text-slate-600 dark:text-slate-400">Rows per page:</label>
+            <select id="page-limit" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                 <option value="10">10</option>
                 <option value="25" selected>25</option>
                 <option value="50">50</option>
@@ -63,112 +63,74 @@
             </select>
         </div>
         <div class="flex items-center gap-2">
-            <button id="prev-page" class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40" type="button">Previous</button>
-            <span id="page-meta" class="text-sm text-slate-400">Page 1 of 1</span>
-            <button id="next-page" class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40" type="button">Next</button>
+            <button id="prev-page" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" type="button">Previous</button>
+            <span id="page-meta" class="text-sm text-slate-600 dark:text-slate-400">Page 1 of 1</span>
+            <button id="next-page" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" type="button">Next</button>
         </div>
     </div>
 
     <div id="dataTabsContent" class="space-y-4">
         <section class="tab-pane" id="videos" role="tabpanel" aria-labelledby="videos-tab">
-            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-left text-sm text-slate-200" id="videos-table">
-                        <thead class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur">
-                            <tr>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="id" data-type="number">
-                                    ID <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="title" data-type="text">
-                                    Title <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="channel_username" data-type="text">
-                                    Channel <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="views" data-type="number">
-                                    Views <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="likes" data-type="number">
-                                    Likes <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="comments" data-type="number">
-                                    Comments <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="video_length" data-type="time">
-                                    Length <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="posted" data-type="date">
-                                    Posted <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="saved_at" data-type="date">
-                                    Saved At <span class="sort-icon">↕️</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="videos-tbody">
-                            <tr class="transition-colors hover:bg-slate-700/50">
-                                <td colspan="9" class="px-6 py-6 text-center text-slate-400">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm dark:border-slate-700">
+                <table class="min-w-full text-left" id="videos-table">
+                    <thead class="sticky top-0 z-10 bg-slate-50/90 text-xs uppercase tracking-wider text-slate-500 backdrop-blur dark:bg-slate-800/90 dark:text-slate-400">
+                        <tr>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="id" data-type="number">ID <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="title" data-type="text">Title <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="channel_username" data-type="text">Channel <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="views" data-type="number">Views <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="likes" data-type="number">Likes <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="comments" data-type="number">Comments <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="video_length" data-type="time">Length <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="posted" data-type="date">Posted <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="saved_at" data-type="date">Saved At <span class="sort-icon">↕</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="videos-tbody" class="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                        <tr class="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <td colspan="9" class="px-6 py-6 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </section>
 
         <section class="tab-pane hidden" id="channels" role="tabpanel" aria-labelledby="channels-tab">
-            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-left text-sm text-slate-200" id="channels-table">
-                        <thead class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur">
-                            <tr>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="id" data-type="number">
-                                    ID <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="channel_username" data-type="text">
-                                    Channel Username <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="subscribers" data-type="number">
-                                    Subscribers <span class="sort-icon">↕️</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="channels-tbody">
-                            <tr class="transition-colors hover:bg-slate-700/50">
-                                <td colspan="3" class="px-6 py-6 text-center text-slate-400">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm dark:border-slate-700">
+                <table class="min-w-full text-left" id="channels-table">
+                    <thead class="sticky top-0 z-10 bg-slate-50/90 text-xs uppercase tracking-wider text-slate-500 backdrop-blur dark:bg-slate-800/90 dark:text-slate-400">
+                        <tr>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="id" data-type="number">ID <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="channel_username" data-type="text">Channel Name <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="subscribers" data-type="number">Subscribers <span class="sort-icon">↕</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="channels-tbody" class="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                        <tr class="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <td colspan="3" class="px-6 py-6 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </section>
 
         <section class="tab-pane hidden" id="history" role="tabpanel" aria-labelledby="history-tab">
-            <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-left text-sm text-slate-200" id="history-table">
-                        <thead class="sticky top-0 z-10 bg-slate-800/95 backdrop-blur">
-                            <tr>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="id" data-type="number">
-                                    ID <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="channel_username" data-type="text">
-                                    Channel <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="previous_subscribers" data-type="number">
-                                    Previous Subscribers <span class="sort-icon">↕️</span>
-                                </th>
-                                <th class="sortable px-6 py-4 border-b border-slate-700 font-semibold text-slate-300" data-column="recorded_at" data-type="date">
-                                    Recorded At <span class="sort-icon">↕️</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="history-tbody">
-                            <tr class="transition-colors hover:bg-slate-700/50">
-                                <td colspan="4" class="px-6 py-6 text-center text-slate-400">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 shadow-sm dark:border-slate-700">
+                <table class="min-w-full text-left" id="history-table">
+                    <thead class="sticky top-0 z-10 bg-slate-50/90 text-xs uppercase tracking-wider text-slate-500 backdrop-blur dark:bg-slate-800/90 dark:text-slate-400">
+                        <tr>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="id" data-type="number">ID <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="channel_username" data-type="text">Channel Name <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="previous_subscribers" data-type="number">Previous Subscribers <span class="sort-icon">↕</span></th>
+                            <th class="sortable px-6 py-4 font-semibold" data-column="recorded_at" data-type="date">Recorded At <span class="sort-icon">↕</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody" class="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                        <tr class="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <td colspan="4" class="px-6 py-6 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </section>
     </div>
@@ -242,6 +204,23 @@
         return `/api/data?${params.toString()}`;
     }
 
+    function getEmptyStateRow(colspan) {
+        return `
+            <tr>
+                <td colspan="${colspan}" class="px-6 py-10">
+                    <div class="flex min-h-[180px] flex-col items-center justify-center text-center">
+                        <svg class="h-10 w-10 text-slate-300 dark:text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.5h16.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H3.75a.75.75 0 01-.75-.75V5.25a.75.75 0 01.75-.75z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9h7.5M8.25 12h7.5M8.25 15h4.5"></path>
+                        </svg>
+                        <p class="mt-3 text-sm font-semibold text-slate-700 dark:text-slate-200">No data found</p>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Data will appear here once processed.</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
     function updateSortIcons() {
         ["videos", "channels", "history"].forEach((tableKey) => {
             const table = document.getElementById(`${tableKey}-table`);
@@ -253,7 +232,7 @@
                 const icon = header.querySelector(".sort-icon");
                 const isActive = header.dataset.column === state.column;
                 if (icon) {
-                    icon.textContent = isActive ? (state.direction === "asc" ? "↑" : "↓") : "↕️";
+                    icon.textContent = isActive ? (state.direction === "asc" ? "↑" : "↓") : "↕";
                 }
                 header.classList.toggle("sorted", isActive);
                 header.setAttribute("aria-sort", isActive ? (state.direction === "asc" ? "ascending" : "descending") : "none");
@@ -313,7 +292,7 @@
             Toastify({
                 text: "Data viewer refreshed with latest records.",
                 duration: 2500,
-                gravity: "top",
+                gravity: "bottom",
                 position: "right",
                 close: true,
                 stopOnFocus: true,
@@ -327,7 +306,7 @@
         }
 
         const notification = document.createElement("div");
-        notification.className = "fixed right-4 top-4 z-[9999] rounded-lg border border-emerald-700 bg-emerald-800 px-4 py-3 text-sm text-white shadow-lg";
+        notification.className = "fixed right-4 bottom-4 z-[9999] rounded-lg border border-emerald-700 bg-emerald-800 px-4 py-3 text-sm text-white shadow-lg";
         notification.textContent = "Data viewer refreshed with latest records.";
         document.body.appendChild(notification);
         setTimeout(() => {
@@ -336,13 +315,13 @@
     }
 
     function updateTables(data) {
-        document.getElementById("total-videos").textContent = data.counts.total_videos;
-        document.getElementById("total-channels").textContent = data.counts.total_channels;
-        document.getElementById("total-history").textContent = data.counts.total_history_records;
+        document.getElementById("total-videos").textContent = formatNumber(data.counts.total_videos);
+        document.getElementById("total-channels").textContent = formatNumber(data.counts.total_channels);
+        document.getElementById("total-history").textContent = formatNumber(data.counts.total_history_records);
 
-        document.getElementById("videos-count").textContent = data.counts.total_videos;
-        document.getElementById("channels-count").textContent = data.counts.total_channels;
-        document.getElementById("history-count").textContent = data.counts.total_history_records;
+        document.getElementById("videos-count").textContent = formatNumber(data.counts.total_videos);
+        document.getElementById("channels-count").textContent = formatNumber(data.counts.total_channels);
+        document.getElementById("history-count").textContent = formatNumber(data.counts.total_history_records);
 
         updateVideosTable(data.videos.items);
         updateChannelsTable(data.channels.items);
@@ -352,21 +331,25 @@
     function updateVideosTable(videos) {
         const tbody = document.getElementById("videos-tbody");
         if (!videos || videos.length === 0) {
-            tbody.innerHTML = '<tr class="transition-colors hover:bg-slate-700/50"><td colspan="9" class="px-6 py-6 text-center text-slate-400">No videos found</td></tr>';
+            tbody.innerHTML = getEmptyStateRow(9);
             return;
         }
 
         tbody.innerHTML = videos.map((video) => `
-            <tr class="transition-colors hover:bg-slate-700/50">
-                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${video.id}</td>
-                <td class="px-6 py-4 border-b border-slate-700 text-slate-200" title="${escapeHtml(video.title)}">${escapeHtml(truncateText(video.title, 40))}</td>
-                <td class="px-6 py-4 border-b border-slate-700 text-slate-200 whitespace-nowrap">${escapeHtml(video.channel_username)}</td>
-                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${formatNumber(video.views)}</td>
-                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${formatNumber(video.likes)}</td>
-                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${formatNumber(video.comments)}</td>
-                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${escapeHtml(video.video_length || "N/A")}</td>
-                <td class="px-6 py-4 border-b border-slate-700 text-slate-200 whitespace-nowrap">${escapeHtml(video.posted || "N/A")}</td>
-                <td class="px-6 py-4 border-b border-slate-700 text-slate-200 whitespace-nowrap">${formatDate(video.saved_at)}</td>
+            <tr class="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${video.id}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
+                    <span class="block max-w-xs truncate" title="${escapeHtml(video.title)}">${escapeHtml(truncateText(video.title, 80))}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
+                    <span class="block max-w-xs truncate" title="${escapeHtml(video.channel_username)}">${escapeHtml(video.channel_username || "N/A")}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${formatNumber(video.views)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${formatNumber(video.likes)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${formatNumber(video.comments)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${escapeHtml(video.video_length || "N/A")}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">${escapeHtml(video.posted || "N/A")}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">${formatDate(video.saved_at)}</td>
             </tr>
         `).join("");
     }
@@ -374,15 +357,17 @@
     function updateChannelsTable(channels) {
         const tbody = document.getElementById("channels-tbody");
         if (!channels || channels.length === 0) {
-            tbody.innerHTML = '<tr class="transition-colors hover:bg-slate-700/50"><td colspan="3" class="px-6 py-6 text-center text-slate-400">No channels found</td></tr>';
+            tbody.innerHTML = getEmptyStateRow(3);
             return;
         }
 
         tbody.innerHTML = channels.map((channel) => `
-            <tr class="transition-colors hover:bg-slate-700/50">
-                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${channel.id}</td>
-                <td class="px-6 py-4 border-b border-slate-700 text-slate-200">${escapeHtml(channel.channel_username)}</td>
-                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${formatNumber(channel.subscribers)}</td>
+            <tr class="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${channel.id}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
+                    <span class="block max-w-xs truncate" title="${escapeHtml(channel.channel_username)}">${escapeHtml(channel.channel_username || "N/A")}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${formatNumber(channel.subscribers)}</td>
             </tr>
         `).join("");
     }
@@ -390,16 +375,18 @@
     function updateHistoryTable(history) {
         const tbody = document.getElementById("history-tbody");
         if (!history || history.length === 0) {
-            tbody.innerHTML = '<tr class="transition-colors hover:bg-slate-700/50"><td colspan="4" class="px-6 py-6 text-center text-slate-400">No history records found</td></tr>';
+            tbody.innerHTML = getEmptyStateRow(4);
             return;
         }
 
         tbody.innerHTML = history.map((record) => `
-            <tr class="transition-colors hover:bg-slate-700/50">
-                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${record.id}</td>
-                <td class="px-6 py-4 border-b border-slate-700 text-slate-200">${escapeHtml(record.channel_username)}</td>
-                <td class="px-6 py-4 border-b border-slate-700 font-mono text-sm text-slate-100 whitespace-nowrap">${formatNumber(record.previous_subscribers)}</td>
-                <td class="px-6 py-4 border-b border-slate-700 text-slate-200 whitespace-nowrap">${formatDate(record.recorded_at)}</td>
+            <tr class="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${record.id}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">
+                    <span class="block max-w-xs truncate" title="${escapeHtml(record.channel_username)}">${escapeHtml(record.channel_username || "N/A")}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-slate-600 dark:text-slate-300">${formatNumber(record.previous_subscribers)}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-700 dark:text-slate-200">${formatDate(record.recorded_at)}</td>
             </tr>
         `).join("");
     }
@@ -453,11 +440,15 @@
     function setTabActiveState(tab, isActive) {
         tab.classList.toggle("active", isActive);
         tab.classList.toggle("border-rose-500", isActive);
-        tab.classList.toggle("text-rose-500", isActive);
+        tab.classList.toggle("text-rose-600", isActive);
+        tab.classList.toggle("dark:text-rose-400", isActive);
         tab.classList.toggle("font-semibold", isActive);
 
         tab.classList.toggle("border-transparent", !isActive);
-        tab.classList.toggle("text-slate-400", !isActive);
+        tab.classList.toggle("text-slate-500", !isActive);
+        tab.classList.toggle("dark:text-slate-400", !isActive);
+        tab.classList.toggle("hover:text-slate-900", !isActive);
+        tab.classList.toggle("dark:hover:text-slate-100", !isActive);
         tab.classList.toggle("font-medium", !isActive);
 
         tab.setAttribute("aria-selected", String(isActive));
@@ -512,17 +503,25 @@
             user-select: none;
             cursor: pointer;
             white-space: nowrap;
+            transition: background-color 150ms ease, color 150ms ease;
         }
         .sortable:hover {
-            background-color: rgba(51, 65, 85, 0.45);
+            background-color: rgba(241, 245, 249, 0.85);
+        }
+        .dark .sortable:hover {
+            background-color: rgba(51, 65, 85, 0.5);
         }
         .sortable.sorted {
-            color: #fb7185;
-            background-color: rgba(225, 29, 72, 0.12);
+            color: rgb(225, 29, 72);
+            background-color: rgba(225, 29, 72, 0.08);
+        }
+        .dark .sortable.sorted {
+            color: rgb(251, 113, 133);
+            background-color: rgba(190, 24, 93, 0.24);
         }
         .sort-icon {
-            font-size: 0.8em;
-            margin-left: 5px;
+            font-size: 0.78em;
+            margin-left: 0.4rem;
         }
     `;
     document.head.appendChild(style);

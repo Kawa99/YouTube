@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +10,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: "class",
             theme: {
                 extend: {
                     fontFamily: {
@@ -17,55 +18,83 @@
                         mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"],
                     },
                     colors: {
-                        brand: "#E11D48",
-                        darkbg: "#0f172a",
+                        rose: tailwind.colors.rose,
                     },
                 },
             },
         };
     </script>
+    <script>
+        (function () {
+            const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+            document.documentElement.classList.toggle("dark", prefersDark);
+        })();
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
-    <script src="{{ url_for('static', filename='js/copyButton.js') }}"></script>
 </head>
-    <body class="font-sans bg-slate-900 text-slate-100 antialiased min-h-screen flex flex-col">
+<body class="font-sans antialiased min-h-screen flex flex-col bg-slate-50 text-slate-900 transition-colors duration-200 dark:bg-slate-900 dark:text-slate-100">
+    <div class="relative isolate flex min-h-screen flex-col overflow-x-clip">
+        <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 -top-36 -z-10 flex justify-center">
+            <div class="h-80 w-[46rem] rounded-full bg-gradient-to-r from-rose-200/70 via-white to-sky-200/70 blur-3xl dark:from-rose-900/35 dark:via-slate-900 dark:to-sky-900/30"></div>
+        </div>
+        <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-[-18rem] -z-10 flex justify-center">
+            <div class="h-96 w-[56rem] rounded-full bg-gradient-to-r from-rose-100/70 via-slate-100/80 to-cyan-100/70 blur-3xl dark:from-rose-900/20 dark:via-slate-900 dark:to-cyan-900/20"></div>
+        </div>
 
-        {% include 'navbar.html' %}  <!-- Include the navbar -->
+        {% include 'navbar.html' %}
 
-        <main class="flex-1 w-full max-w-6xl mx-auto px-4 py-8">
-            {% block content %}{% endblock %}
+        <main class="relative z-10 flex-1">
+            <section class="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+                <div class="rounded-3xl border border-white/70 bg-white/70 p-5 shadow-[0_24px_60px_-36px_rgba(15,23,42,0.35)] backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/40 sm:p-8">
+                    {% block content %}{% endblock %}
+                </div>
+            </section>
         </main>
 
-        <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <script>
-            document.addEventListener("DOMContentLoaded", function () {
-                const messages = {{ messages | tojson }};
-                messages.forEach(([category, message]) => {
-                    let background = "#334155";
-                    if (category === "success") background = "#15803d";
-                    if (category === "warning") background = "#d97706";
-                    if (category === "error" || category === "danger") background = "#b91c1c";
+        <footer class="relative z-10 border-t border-slate-200/80 bg-white/65 py-6 backdrop-blur dark:border-slate-800 dark:bg-slate-950/35">
+            <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 text-sm text-slate-500 dark:text-slate-400 sm:px-6 lg:px-8">
+                <p>YouTube Tracker</p>
+                <p class="font-mono text-xs">Modern SaaS Minimalism</p>
+            </div>
+        </footer>
+    </div>
 
-                    Toastify({
-                        text: message,
-                        duration: 4000,
-                        gravity: "top",
-                        position: "right",
-                        close: true,
-                        stopOnFocus: true,
-                        style: {
-                            background,
-                            color: "#f8fafc",
-                            borderRadius: "0.75rem",
-                            boxShadow: "0 10px 25px rgba(2, 6, 23, 0.45)",
-                        },
-                    }).showToast();
-                });
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="{{ url_for('static', filename='js/copyButton.js') }}"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const flashMessages = {{ get_flashed_messages(with_categories=true) | tojson }};
+            if (!flashMessages || !flashMessages.length || !window.Toastify) {
+                return;
+            }
+
+            const stylesByCategory = {
+                success: "linear-gradient(135deg, #059669, #10b981)",
+                warning: "linear-gradient(135deg, #d97706, #f59e0b)",
+                error: "linear-gradient(135deg, #dc2626, #ef4444)",
+                danger: "linear-gradient(135deg, #dc2626, #ef4444)",
+                info: "linear-gradient(135deg, #2563eb, #3b82f6)",
+            };
+
+            flashMessages.forEach(function ([category, message]) {
+                Toastify({
+                    text: message,
+                    duration: 4200,
+                    gravity: "bottom",
+                    position: "right",
+                    close: true,
+                    stopOnFocus: true,
+                    offset: { x: 16, y: 16 },
+                    style: {
+                        background: stylesByCategory[category] || "linear-gradient(135deg, #334155, #475569)",
+                        color: "#f8fafc",
+                        borderRadius: "0.9rem",
+                        boxShadow: "0 18px 45px rgba(2, 6, 23, 0.38)",
+                    },
+                }).showToast();
             });
-        </script>
-        {% endif %}
-        {% endwith %}
-    </body>
+        });
+    </script>
+</body>
 </html>

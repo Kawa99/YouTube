@@ -1,85 +1,32 @@
 (() => {
-    const THEME_STORAGE_KEY = "theme_preference";
-    const THEME_VALUES = ["system", "light", "dark"];
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const moonIcon = '<svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M17.293 13.293A8 8 0 016.707 2.707a.75.75 0 00-.87-.22A8.5 8.5 0 1017.513 14.16a.75.75 0 00-.22-.867z"></path></svg>';
+    const sunIcon = '<svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 4.5a.75.75 0 01.75.75v1a.75.75 0 01-1.5 0v-1A.75.75 0 0110 4.5zm0 9a.75.75 0 01.75.75v1a.75.75 0 01-1.5 0v-1A.75.75 0 0110 13.5zm5.5-3.5a.75.75 0 01.75.75v.5a.75.75 0 01-1.5 0v-.5a.75.75 0 01.75-.75zM4.5 10a.75.75 0 01.75.75v.5a.75.75 0 01-1.5 0v-.5A.75.75 0 014.5 10zm8.36-4.11a.75.75 0 011.06 0l.7.7a.75.75 0 11-1.06 1.06l-.7-.7a.75.75 0 010-1.06zm-6.78 6.78a.75.75 0 011.06 0l.7.7a.75.75 0 11-1.06 1.06l-.7-.7a.75.75 0 010-1.06zm7.48 1.76a.75.75 0 010 1.06l-.7.7a.75.75 0 11-1.06-1.06l.7-.7a.75.75 0 011.06 0zM7.14 6.3a.75.75 0 010 1.06l-.7.7A.75.75 0 115.38 7l.7-.7a.75.75 0 011.06 0zM10 7.25a3.5 3.5 0 100 7 3.5 3.5 0 000-7z"></path></svg>';
 
-    function safeGetStorage(key) {
-        try {
-            return localStorage.getItem(key);
-        } catch (_) {
-            return null;
-        }
+    function getSystemTheme() {
+        return mediaQuery.matches ? "dark" : "light";
     }
 
-    function safeSetStorage(key, value) {
-        try {
-            localStorage.setItem(key, value);
-        } catch (_) {
-            // Ignore storage failures (private mode, blocked storage, etc.)
-        }
-    }
-
-    function getStoredThemePreference() {
-        const stored = safeGetStorage(THEME_STORAGE_KEY);
-        if (THEME_VALUES.includes(stored)) {
-            return stored;
-        }
-
-        const legacyTheme = safeGetStorage("theme");
-        if (legacyTheme === "light" || legacyTheme === "dark") {
-            return legacyTheme;
-        }
-
-        return "system";
-    }
-
-    function getEffectiveTheme(preference) {
-        if (preference === "system") {
-            return mediaQuery.matches ? "dark" : "light";
-        }
-        return preference;
-    }
-
-    function updateThemeToggleButton(preference, effectiveTheme) {
+    function updateThemeToggleButton(theme) {
         const button = document.getElementById("theme-toggle");
         if (!button) return;
 
-        if (preference === "system") {
-            button.textContent = `Theme: Auto (${effectiveTheme === "dark" ? "Dark" : "Light"})`;
-        } else if (preference === "dark") {
-            button.textContent = "Theme: Dark";
-        } else {
-            button.textContent = "Theme: Light";
-        }
+        const isDark = theme === "dark";
+        button.classList.add("inline-flex", "items-center", "justify-center");
+        button.innerHTML = `${isDark ? moonIcon : sunIcon}<span class="sr-only">Theme follows your system setting</span>`;
 
-        button.setAttribute("title", "Click to cycle theme: Auto -> Light -> Dark");
-        button.setAttribute("aria-label", button.textContent);
+        button.setAttribute("title", "Theme follows your system setting");
+        button.setAttribute("aria-label", "Theme follows your system setting");
     }
 
-    function applyTheme(preference) {
-        const effectiveTheme = getEffectiveTheme(preference);
+    function applyTheme(theme) {
         const root = document.documentElement;
-
-        root.setAttribute("data-theme-preference", preference);
-        root.setAttribute("data-theme", effectiveTheme);
-        root.classList.toggle("dark", effectiveTheme === "dark");
-
-        updateThemeToggleButton(preference, effectiveTheme);
+        root.classList.toggle("dark", theme === "dark");
+        updateThemeToggleButton(theme);
     }
 
-    function cycleThemePreference() {
-        const current = getStoredThemePreference();
-        const currentIndex = THEME_VALUES.indexOf(current);
-        const nextPreference = THEME_VALUES[(currentIndex + 1) % THEME_VALUES.length];
-
-        safeSetStorage(THEME_STORAGE_KEY, nextPreference);
-        applyTheme(nextPreference);
-    }
-
-    function handleSystemThemeChange() {
-        if (getStoredThemePreference() === "system") {
-            applyTheme("system");
-        }
+    function handleSystemThemeChange(event) {
+        applyTheme(event.matches ? "dark" : "light");
     }
 
     function copyToClipboard() {
@@ -89,7 +36,7 @@
                 Toastify({
                     text: "No video details available to copy.",
                     duration: 2500,
-                    gravity: "top",
+                    gravity: "bottom",
                     position: "right",
                     close: true,
                     style: { background: "#d97706", color: "#f8fafc" },
@@ -104,7 +51,7 @@
                 Toastify({
                     text: "Copied to clipboard.",
                     duration: 2000,
-                    gravity: "top",
+                    gravity: "bottom",
                     position: "right",
                     close: true,
                     style: { background: "#15803d", color: "#f8fafc" },
@@ -116,7 +63,7 @@
                 Toastify({
                     text: "Failed to copy details.",
                     duration: 2500,
-                    gravity: "top",
+                    gravity: "bottom",
                     position: "right",
                     close: true,
                     style: { background: "#b91c1c", color: "#f8fafc" },
@@ -125,14 +72,8 @@
         });
     }
 
-    // Apply theme as early as possible to reduce flash before the page is interactive.
-    applyTheme(getStoredThemePreference());
-
     document.addEventListener("DOMContentLoaded", function () {
-        applyTheme(getStoredThemePreference());
-
-        const toggleButton = document.getElementById("theme-toggle");
-        toggleButton?.addEventListener("click", cycleThemePreference);
+        applyTheme(getSystemTheme());
 
         const copyButton = document.getElementById("copy-button");
         copyButton?.addEventListener("click", copyToClipboard);

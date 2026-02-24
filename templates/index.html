@@ -3,87 +3,95 @@
 {% block title %}YouTube Tracker{% endblock %}
 
 {% block content %}
-<section class="space-y-8">
-    <div class="space-y-3">
-        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Single Video Extractor</p>
-        <h1 class="text-3xl font-semibold tracking-tight text-white">YouTube Video Data Extractor</h1>
-    </div>
+<section class="space-y-10">
+    <section class="mx-auto max-w-4xl space-y-6 text-center">
+        <div class="space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">Single Video Extractor</p>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">YouTube Video Data Dashboard</h1>
+            <p class="mx-auto max-w-2xl text-sm text-slate-600 dark:text-slate-400">Paste any YouTube video URL and generate structured metrics, metadata, and transcript details in one premium view.</p>
+        </div>
 
-    <form method="post" class="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <input
-            type="text"
-            name="video_url"
-            value="{{ request.form.get('video_url', '') }}"
-            class="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-slate-100 placeholder-slate-400 shadow-sm outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500"
-            placeholder="Enter YouTube Video URL"
-            required
-        >
-        <button type="submit" class="rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-700">
-            Get Video Data
-        </button>
-    </form>
+        <form method="post" class="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:flex-row sm:items-center">
+            <input
+                type="text"
+                name="video_url"
+                value="{{ request.form.get('video_url', '') }}"
+                class="h-14 w-full rounded-2xl border border-slate-300 bg-white px-5 py-0 text-base text-slate-900 shadow-inner shadow-slate-200/60 outline-none ring-0 transition placeholder:text-slate-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:shadow-slate-950/40 dark:placeholder:text-slate-500"
+                placeholder="https://www.youtube.com/watch?v=..."
+                required
+            >
+            <button type="submit" class="inline-flex h-14 items-center justify-center rounded-2xl bg-rose-600 px-6 text-sm font-semibold text-white transition hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900">
+                Extract Data
+            </button>
+        </form>
+    </section>
 
     {% if data %}
-    <div class="flex flex-wrap items-center gap-3">
-        <form action="/save" method="post" class="flex flex-wrap items-center gap-3">
-            <input type="hidden" name="youtube_video_id" value="{{ data.youtube_video_id }}">
-            <input type="hidden" name="channel_username" value="{{ data.channel_username }}">
-            <input type="hidden" name="subscribers" value="{{ data.subscribers }}">
-            <input type="hidden" name="title" value="{{ data.title }}">
-            <input type="hidden" name="views" value="{{ data.views }}">
-            <input type="hidden" name="likes" value="{{ data.likes }}">
-            <input type="hidden" name="comments" value="{{ data.comments }}">
-            <input type="hidden" name="posted" value="{{ data.posted }}">
-            <input type="hidden" name="video_length" value="{{ data.video_length }}">
-            <input type="hidden" name="transcript" value="{{ data.transcript }}">
-            <input type="hidden" name="description" value="{{ data.description }}">
+    <section class="space-y-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Actions</p>
+            <form action="/save" method="post" class="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="youtube_video_id" value="{{ data.youtube_video_id }}">
+                <input type="hidden" name="channel_username" value="{{ data.channel_username }}">
+                <input type="hidden" name="subscribers" value="{{ data.subscribers }}">
+                <input type="hidden" name="title" value="{{ data.title }}">
+                <input type="hidden" name="views" value="{{ data.views }}">
+                <input type="hidden" name="likes" value="{{ data.likes }}">
+                <input type="hidden" name="comments" value="{{ data.comments }}">
+                <input type="hidden" name="posted" value="{{ data.posted }}">
+                <input type="hidden" name="video_length" value="{{ data.video_length }}">
+                <input type="hidden" name="transcript" value="{{ data.transcript }}">
+                <input type="hidden" name="description" value="{{ data.description }}">
 
-            <button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700">Save to Database</button>
-            <button id="copy-button" type="button" class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-amber-400">Copy Details</button>
-        </form>
-    </div>
+                <button type="submit" class="inline-flex items-center rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-rose-700">
+                    Save to Database
+                </button>
+                <button id="copy-button" type="button" class="inline-flex items-center rounded-xl border border-slate-300 bg-transparent px-4 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">
+                    Copy Details
+                </button>
+            </form>
+        </div>
 
-    <div id="videoDetails" class="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm md:col-span-3">
-            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Title</p>
-            <h2 class="mt-2 text-2xl font-semibold leading-tight text-white">{{ data.title }}</h2>
-            <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-slate-300">
-                <span><strong class="font-medium text-slate-200">Channel:</strong> {{ data.channel_username }}</span>
-                <span><strong class="font-medium text-slate-200">Subscribers:</strong> {{ "{:,}".format(data.subscribers|int) }}</span>
-                <span><strong class="font-medium text-slate-200">Video ID:</strong> <span class="font-mono">{{ data.youtube_video_id }}</span></span>
-            </div>
-        </article>
+        <div id="videoDetails" class="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3 md:grid-rows-auto">
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:col-span-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Video Header</p>
+                <h2 class="mt-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">{{ data.title }}</h2>
+                <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
+                    <span><span class="font-medium text-slate-700 dark:text-slate-200">Channel:</span> {{ data.channel_username }}</span>
+                    <span><span class="font-medium text-slate-700 dark:text-slate-200">Video ID:</span> <span class="font-mono">{{ data.youtube_video_id }}</span></span>
+                </div>
+            </article>
 
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Views</p>
-            <p class="mt-3 font-mono text-3xl font-bold text-white">{{ "{:,}".format(data.views|int) }}</p>
-        </article>
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Likes</p>
-            <p class="mt-3 font-mono text-3xl font-bold text-white">{{ "{:,}".format(data.likes|int) }}</p>
-        </article>
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Comments</p>
-            <p class="mt-3 font-mono text-3xl font-bold text-white">{{ "{:,}".format(data.comments|int) }}</p>
-        </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Views</p>
+                <p class="mt-3 font-mono text-3xl font-bold text-slate-900 dark:text-slate-100">{{ "{:,}".format(data.views|int) }}</p>
+            </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Likes</p>
+                <p class="mt-3 font-mono text-3xl font-bold text-slate-900 dark:text-slate-100">{{ "{:,}".format(data.likes|int) }}</p>
+            </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Comments</p>
+                <p class="mt-3 font-mono text-3xl font-bold text-slate-900 dark:text-slate-100">{{ "{:,}".format(data.comments|int) }}</p>
+            </article>
 
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm md:col-span-1">
-            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Video Length</p>
-            <p class="mt-2 text-lg font-medium text-white">{{ data.video_length }}</p>
-            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Posted Date</p>
-            <p class="mt-2 text-lg font-medium text-white">{{ data.posted }}</p>
-        </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:col-span-1">
+                <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Posted Date</p>
+                <p class="mt-2 text-base font-medium text-slate-900 dark:text-slate-100">{{ data.posted }}</p>
+                <p class="mt-5 text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Video Length</p>
+                <p class="mt-2 text-base font-medium text-slate-900 dark:text-slate-100">{{ data.video_length }}</p>
+            </article>
 
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm md:col-span-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Description</p>
-            <p class="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{{ data.description }}</p>
-        </article>
-
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm md:col-span-3">
-            <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">Transcript</p>
-            <p class="mt-3 max-h-96 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-200">{{ data.transcript }}</p>
-        </article>
-    </div>
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:col-span-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Transcript</p>
+                <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+                    <p class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Description</p>
+                    <p class="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">{{ data.description }}</p>
+                </div>
+                <div class="mt-3 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 [scrollbar-width:thin] [scrollbar-color:rgb(148_163_184)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-track]:bg-transparent dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200 dark:[scrollbar-color:rgb(100_116_139)_transparent] dark:[&::-webkit-scrollbar-thumb]:bg-slate-600">{{ data.transcript }}</div>
+            </article>
+        </div>
+    </section>
     {% endif %}
 </section>
 

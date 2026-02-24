@@ -3,111 +3,115 @@
 {% block title %}Channel Scraper - YouTube Tracker{% endblock %}
 
 {% block content %}
-<section class="space-y-8">
-    <div class="space-y-3">
-        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Bulk Extraction</p>
-        <h1 class="text-3xl font-semibold tracking-tight text-white">YouTube Channel Scraper</h1>
-        <p class="text-slate-300">Extract data from all videos in a YouTube channel.</p>
-    </div>
+<section class="space-y-10">
+    <header class="space-y-3">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Bulk Extraction</p>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">YouTube Channel Scraper</h1>
+        <p class="max-w-3xl text-slate-600 dark:text-slate-300">Queue a background scrape for an entire channel and monitor progress in real time.</p>
+    </header>
 
-    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
-        <form method="post" class="space-y-6">
-            <div class="space-y-2">
-                <label for="channel_url" class="block text-sm font-medium text-slate-200">Channel URL</label>
-                <input
-                    type="url"
-                    name="channel_url"
-                    id="channel_url"
-                    value="{{ request.form.get('channel_url', '') }}"
-                    class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 placeholder-slate-400 shadow-sm outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500"
-                    placeholder="https://www.youtube.com/@channelname or https://www.youtube.com/channel/UC..."
-                    required
-                >
-                <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-4 text-sm text-slate-300">
-                    <p class="font-medium text-slate-200">Supported formats:</p>
-                    <ul class="mt-2 list-disc space-y-1 pl-5">
-                        <li>https://www.youtube.com/@channelname</li>
-                        <li>https://www.youtube.com/channel/UC...</li>
-                        <li>https://www.youtube.com/c/channelname</li>
-                        <li>https://www.youtube.com/user/username</li>
-                    </ul>
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <form method="post" class="space-y-6">
+                <div class="space-y-2.5">
+                    <label for="channel_url" class="text-sm font-medium text-slate-700 dark:text-slate-300">Channel URL</label>
+                    <input
+                        type="url"
+                        name="channel_url"
+                        id="channel_url"
+                        value="{{ request.form.get('channel_url', '') }}"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 shadow-sm outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                        placeholder="https://www.youtube.com/@channelname"
+                        required
+                    >
                 </div>
-            </div>
 
-            <div class="space-y-2">
-                <label for="max_videos" class="block text-sm font-medium text-slate-200">Maximum Videos to Process</label>
-                <input
-                    type="number"
-                    name="max_videos"
-                    id="max_videos"
-                    value="{{ request.form.get('max_videos', '50') }}"
-                    min="1"
-                    max="1000"
-                    class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 shadow-sm outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500"
-                    required
-                >
-                <p class="text-sm leading-relaxed text-slate-300">
-                    Note: Processing large numbers of videos may take a significant amount of time due to API rate limits.
-                    Each video requires multiple API calls and transcript fetching.
-                </p>
-            </div>
+                <div class="space-y-2.5">
+                    <label for="max_videos" class="text-sm font-medium text-slate-700 dark:text-slate-300">Maximum Videos to Process</label>
+                    <input
+                        type="number"
+                        name="max_videos"
+                        id="max_videos"
+                        value="{{ request.form.get('max_videos', '50') }}"
+                        min="1"
+                        max="1000"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                        required
+                    >
+                </div>
 
-            <button type="submit" class="rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-700">
-                Start Channel Scraping
-            </button>
-        </form>
+                <button type="submit" class="inline-flex items-center rounded-xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-700">
+                    Start Channel Scraping
+                </button>
+            </form>
+        </article>
+
+        <aside class="space-y-4">
+            <article class="rounded-2xl border border-sky-200 border-l-4 border-l-sky-500 bg-sky-50/85 p-5 dark:border-sky-900/70 dark:border-l-sky-400 dark:bg-sky-950/30">
+                <h2 class="text-sm font-semibold text-sky-900 dark:text-sky-200">Supported URL Formats</h2>
+                <ul class="mt-3 space-y-1.5 text-sm text-sky-800 dark:text-sky-100/90">
+                    <li>https://www.youtube.com/@channelname</li>
+                    <li>https://www.youtube.com/channel/UC...</li>
+                    <li>https://www.youtube.com/c/channelname</li>
+                    <li>https://www.youtube.com/user/username</li>
+                </ul>
+            </article>
+
+            <article class="rounded-2xl border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50/85 p-5 dark:border-amber-900/70 dark:border-l-amber-400 dark:bg-amber-950/25">
+                <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-200">Operational Notes</h2>
+                <ul class="mt-3 space-y-1.5 text-sm text-amber-800 dark:text-amber-100/90">
+                    <li>Large batch sizes increase runtime because each video triggers multiple API requests.</li>
+                    <li>Some videos can fail due to privacy settings or unavailable transcripts.</li>
+                    <li>Progress updates are polled live while processing continues in the background worker.</li>
+                </ul>
+            </article>
+        </aside>
     </div>
 
     {% if job_id %}
-    <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm" id="job-progress" data-job-id="{{ job_id }}">
+    <section id="job-progress" data-job-id="{{ job_id }}" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-lg font-semibold text-white">Active Job</h2>
-            <span id="job-status" class="inline-flex items-center rounded-full border border-slate-600 bg-slate-700 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-100">queued</span>
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Active Job Dashboard</h2>
+            <span id="job-status" class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200">queued</span>
         </div>
 
-        <p id="job-message" class="mt-3 text-sm text-slate-300">Waiting for worker...</p>
+        <p id="job-message" class="mt-3 text-sm text-slate-600 dark:text-slate-300">Waiting for worker...</p>
 
-        <div class="mt-4 h-3 overflow-hidden rounded-full bg-slate-700" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-            <div id="job-progress-bar" class="h-full w-0 rounded-full bg-rose-500 transition-all duration-300" style="width: 0%;" aria-valuenow="0">&nbsp;</div>
-        </div>
-        <p class="mt-2 text-xs font-mono text-slate-400" id="job-progress-text">0%</p>
-
-        <div class="mt-5 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-3"><span class="text-slate-400">Total:</span> <span id="job-total" class="font-mono text-slate-100">0</span></div>
-            <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-3"><span class="text-slate-400">Inserted:</span> <span id="job-processed" class="font-mono text-slate-100">0</span></div>
-            <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-3"><span class="text-slate-400">Failed:</span> <span id="job-failed" class="font-mono text-slate-100">0</span></div>
-            <div class="rounded-lg border border-slate-700 bg-slate-900/50 p-3"><span class="text-slate-400">Skipped:</span> <span id="job-skipped" class="font-mono text-slate-100">0</span></div>
+        <div class="mt-5">
+            <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Progress</span>
+                <span id="job-progress-text" class="font-mono">0%</span>
+            </div>
+            <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <div id="job-progress-bar" class="h-full w-0 rounded-full bg-rose-500 transition-[width] duration-500 ease-out" style="width: 0%;" aria-valuenow="0"></div>
+            </div>
         </div>
 
-        <p class="mt-4 text-sm text-slate-300">
-            <span class="font-medium text-slate-200">Current video:</span>
-            <code id="job-current" class="rounded bg-slate-900 px-2 py-1 font-mono text-xs text-slate-200">-</code>
+        <div class="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Total</p>
+                <p id="job-total" class="mt-1 font-mono text-xl font-semibold text-slate-900 dark:text-slate-100">0</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Inserted</p>
+                <p id="job-processed" class="mt-1 font-mono text-xl font-semibold text-slate-900 dark:text-slate-100">0</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Failed</p>
+                <p id="job-failed" class="mt-1 font-mono text-xl font-semibold text-slate-900 dark:text-slate-100">0</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Skipped</p>
+                <p id="job-skipped" class="mt-1 font-mono text-xl font-semibold text-slate-900 dark:text-slate-100">0</p>
+            </div>
+        </div>
+
+        <p class="mt-5 text-sm text-slate-600 dark:text-slate-300">
+            <span class="font-medium text-slate-700 dark:text-slate-200">Current video:</span>
+            <code id="job-current" class="ml-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200">-</code>
         </p>
-    </div>
+    </section>
     {% endif %}
-
-    <div class="grid gap-4 lg:grid-cols-2">
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
-            <h3 class="text-base font-semibold text-white">How it works</h3>
-            <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-300">
-                <li>Enter any YouTube channel URL in the supported formats</li>
-                <li>Choose how many videos to process (starting from most recent)</li>
-                <li>The system runs scraping in a background worker queue so web requests stay responsive</li>
-                <li>Progress is tracked live from the polling endpoint</li>
-                <li>All data is saved to your database for export later</li>
-            </ul>
-        </article>
-
-        <article class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-sm">
-            <h3 class="text-base font-semibold text-white">Important Notes</h3>
-            <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-300">
-                <li>This process can take a long time for channels with many videos</li>
-                <li>Some videos may fail to process due to privacy settings or unavailable transcripts</li>
-                <li>The process includes retry/backoff for transient API limits and network failures</li>
-                <li>You can export all collected data using the Export feature in the navbar</li>
-            </ul>
-        </article>
-    </div>
 </section>
 
 {% if job_id %}
@@ -132,16 +136,16 @@
         let timer = null;
 
         function updateStatusBadge(status) {
-            statusEl.className = "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide border";
+            statusEl.className = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium";
 
             if (status === "completed") {
-                statusEl.classList.add("border-emerald-600", "bg-emerald-900/40", "text-emerald-300");
+                statusEl.classList.add("bg-emerald-100", "text-emerald-700", "dark:bg-emerald-900/40", "dark:text-emerald-300");
             } else if (status === "failed") {
-                statusEl.classList.add("border-red-600", "bg-red-900/40", "text-red-300");
+                statusEl.classList.add("bg-red-100", "text-red-700", "dark:bg-red-900/40", "dark:text-red-300");
             } else if (status === "running") {
-                statusEl.classList.add("border-sky-600", "bg-sky-900/40", "text-sky-300");
+                statusEl.classList.add("bg-rose-100", "text-rose-700", "dark:bg-rose-900/40", "dark:text-rose-300");
             } else {
-                statusEl.classList.add("border-slate-600", "bg-slate-700", "text-slate-100");
+                statusEl.classList.add("bg-slate-100", "text-slate-700", "dark:bg-slate-700", "dark:text-slate-200");
             }
 
             statusEl.textContent = status;
@@ -153,7 +157,6 @@
                 if (!response.ok) {
                     messageEl.textContent = "Unable to load job status.";
                     updateStatusBadge("failed");
-                    progressBarEl.classList.remove("animate-pulse");
                     if (timer) {
                         clearInterval(timer);
                     }
@@ -161,7 +164,7 @@
                 }
 
                 const job = await response.json();
-                const progress = Number(job.progress_pct || 0);
+                const progress = Math.max(0, Math.min(100, Number(job.progress_pct || 0)));
 
                 updateStatusBadge(job.status || "queued");
                 messageEl.textContent = job.message || "Working...";
@@ -172,21 +175,17 @@
                 currentEl.textContent = job.current_video_id || "-";
 
                 progressBarEl.style.width = `${progress}%`;
-                progressBarEl.setAttribute("aria-valuenow", progress);
+                progressBarEl.setAttribute("aria-valuenow", String(progress));
                 progressTextEl.textContent = `${progress}%`;
 
-                if (job.status === "running") {
-                    progressBarEl.classList.add("animate-pulse");
-                }
-
                 if (job.status === "completed" || job.status === "failed") {
-                    progressBarEl.classList.remove("animate-pulse");
                     if (timer) {
                         clearInterval(timer);
                     }
                 }
-            } catch (error) {
+            } catch (_) {
                 messageEl.textContent = "Error polling job status.";
+                updateStatusBadge("failed");
             }
         }
 
