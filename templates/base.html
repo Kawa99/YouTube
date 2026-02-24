@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}YouTube Tracker{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/acorn-svgrepo-com.svg') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -49,8 +50,8 @@
         <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 -top-36 -z-10 flex justify-center">
             <div class="h-80 w-[46rem] rounded-full bg-gradient-to-r from-rose-200/70 via-white to-sky-200/70 blur-3xl dark:from-rose-900/35 dark:via-slate-900 dark:to-sky-900/30"></div>
         </div>
-        <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-[-18rem] -z-10 flex justify-center">
-            <div class="h-96 w-[56rem] rounded-full bg-gradient-to-r from-rose-100/70 via-slate-100/80 to-cyan-100/70 blur-3xl dark:from-rose-900/20 dark:via-slate-900 dark:to-cyan-900/20"></div>
+        <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bottom-0 -z-10 flex justify-center">
+            <div class="h-80 w-[52rem] rounded-full bg-gradient-to-r from-rose-100/55 via-slate-100/60 to-cyan-100/55 blur-3xl dark:from-rose-900/20 dark:via-slate-900 dark:to-cyan-900/20"></div>
         </div>
 
         {% include 'navbar.html' %}
@@ -63,10 +64,23 @@
             </section>
         </main>
 
-        <footer class="relative z-10 border-t border-slate-200/80 bg-white/65 py-6 backdrop-blur dark:border-slate-800 dark:bg-slate-950/35">
-            <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 text-sm text-slate-500 dark:text-slate-400 sm:px-6 lg:px-8">
-                <p>YouTube Tracker</p>
-                <p class="font-mono text-xs">Modern SaaS Minimalism</p>
+        <footer class="relative z-10 border-t border-slate-200/80 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/55">
+            <div class="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm font-semibold tracking-tight text-slate-700 dark:text-slate-200">Baroo YouTube Tracker</p>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Simple analytics for videos, channels, and history snapshots.</p>
+                    </div>
+                    <nav class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm" aria-label="Footer navigation">
+                        <a href="{{ url_for('index') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Single Video</a>
+                        <a href="{{ url_for('channel_scraper') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Channel Scraper</a>
+                        <a href="{{ url_for('data_viewer') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Data Viewer</a>
+                    </nav>
+                </div>
+                <div class="mt-4 flex items-center justify-between border-t border-slate-200/80 pt-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                    <p>Export-ready CSV and Excel downloads</p>
+                    <p class="font-mono">Modern SaaS Minimalism</p>
+                </div>
             </div>
         </footer>
     </div>

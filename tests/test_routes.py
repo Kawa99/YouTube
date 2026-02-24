@@ -1,4 +1,7 @@
+import io
+
 import pytest
+from openpyxl import load_workbook
 
 from app import create_app
 from models import Channel, db
@@ -57,3 +60,36 @@ def test_api_data_invalid_parameters_fallback(client):
     payload = response.get_json()
     assert payload["query"]["page"] == 1
     assert payload["query"]["limit"] == 25
+
+
+def test_export_csv_success(client):
+    response = client.get("/export?format=csv")
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/csv"
+    body = response.get_data(as_text=True)
+    assert "=== VIDEOS ===" in body
+    assert "=== CHANNELS ===" in body
+    assert "=== CHANNEL_VIDEOS ===" in body
+    assert "=== CHANNEL_HISTORY ===" in body
+
+
+def test_export_xlsx_success(client):
+    response = client.get("/export?format=xlsx")
+
+    assert response.status_code == 200
+    assert (
+        response.mimetype
+        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    workbook = load_workbook(io.BytesIO(response.data), read_only=True)
+    try:
+        assert set(workbook.sheetnames) == {
+            "videos",
+            "channels",
+            "channel_videos",
+            "channel_history",
+        }
+    finally:
+        workbook.close()
