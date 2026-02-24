@@ -1,0 +1,50 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: youtube-web
+    environment:
+      APP_ROLE: web
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+      REDIS_URL: redis://redis:6379/0
+      RQ_QUEUE_NAME: ${RQ_QUEUE_NAME:-channel-scrape}
+      SECRET_KEY: ${SECRET_KEY:-change-this-in-real-environments}
+      CHANNEL_JOB_TIMEOUT_SECONDS: ${CHANNEL_JOB_TIMEOUT_SECONDS:-7200}
+      CHANNEL_JOB_RESULT_TTL_SECONDS: ${CHANNEL_JOB_RESULT_TTL_SECONDS:-86400}
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./videos.db:/app/videos.db:Z
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: youtube-worker
+    environment:
+      APP_ROLE: worker
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+      REDIS_URL: redis://redis:6379/0
+      RQ_QUEUE_NAME: ${RQ_QUEUE_NAME:-channel-scrape}
+      SECRET_KEY: ${SECRET_KEY:-change-this-in-real-environments}
+      CHANNEL_JOB_TIMEOUT_SECONDS: ${CHANNEL_JOB_TIMEOUT_SECONDS:-7200}
+      CHANNEL_JOB_RESULT_TTL_SECONDS: ${CHANNEL_JOB_RESULT_TTL_SECONDS:-86400}
+    depends_on:
+      - redis
+    volumes:
+      - ./videos.db:/app/videos.db:Z
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: youtube-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:
