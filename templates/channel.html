@@ -133,6 +133,16 @@
         const failedEl = document.getElementById("job-failed");
         const skippedEl = document.getElementById("job-skipped");
         const currentEl = document.getElementById("job-current");
+        const terminalStatuses = new Set(["completed", "failed"]);
+        const pollIntervalMs = 2000;
+        const initialJob = {{ job|tojson }};
+        let socket = null;
+        let pollTimer = null;
+        let socketConnected = false;
+
+        function isTerminalStatus(status) {
+            return terminalStatuses.has(status);
+        }
 
         function updateStatusBadge(status) {
             statusEl.className = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium";
@@ -183,26 +193,66 @@
             progressBarEl.setAttribute("aria-valuenow", String(progress));
             progressTextEl.textContent = `${progress}%`;
 
-            if (status === "completed" || status === "failed") {
-                socket.disconnect();
+            if (isTerminalStatus(status)) {
+                if (pollTimer) {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                }
+                if (socket && socket.connected) {
+                    socket.disconnect();
+                }
             }
         }
 
-        const socket = io();
+        async function fetchJobStatus() {
+            try {
+                const response = await fetch(`/api/channel-jobs/${encodeURIComponent(jobId)}`, {
+                    headers: {
+                        "Accept": "application/json"
+                    },
+                    cache: "no-store"
+                });
 
-        socket.on("connect", function () {
-            socket.emit("join", { jobId: jobId });
-        });
+                if (!response.ok) {
+                    throw new Error(`status ${response.status}`);
+                }
 
-        socket.on("progress_update", function (data) {
-            updateDashboard(data);
-        });
-
-        socket.on("disconnect", function () {
-            if (statusEl.textContent !== "completed" && statusEl.textContent !== "failed") {
-                messageEl.textContent = "Connection lost. Reconnecting...";
+                const payload = await response.json();
+                updateDashboard(payload);
+            } catch (_error) {
+                if (!socketConnected && !isTerminalStatus(statusEl.textContent)) {
+                    messageEl.textContent = "Realtime disconnected. Polling for updates...";
+                }
             }
-        });
+        }
+
+        if (initialJob) {
+            updateDashboard(initialJob);
+        }
+
+        fetchJobStatus();
+        pollTimer = setInterval(fetchJobStatus, pollIntervalMs);
+
+        if (typeof io === "function") {
+            socket = io();
+
+            socket.on("connect", function () {
+                socketConnected = true;
+                socket.emit("join", { jobId: jobId });
+                fetchJobStatus();
+            });
+
+            socket.on("progress_update", function (data) {
+                updateDashboard(data);
+            });
+
+            socket.on("disconnect", function () {
+                socketConnected = false;
+                if (!isTerminalStatus(statusEl.textContent)) {
+                    messageEl.textContent = "Realtime disconnected. Polling for updates...";
+                }
+            });
+        }
     })();
 </script>
 {% endif %}

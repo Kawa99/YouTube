@@ -37,7 +37,11 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 RQ_QUEUE_NAME = os.environ.get("RQ_QUEUE_NAME", "channel-scrape")
 CHANNEL_JOB_TIMEOUT = int(os.environ.get("CHANNEL_JOB_TIMEOUT_SECONDS", "7200"))
 CHANNEL_JOB_RESULT_TTL = int(os.environ.get("CHANNEL_JOB_RESULT_TTL_SECONDS", "86400"))
-external_sio = SocketIO(message_queue=os.environ.get("REDIS_URL"))
+SOCKETIO_ASYNC_MODE = os.environ.get("SOCKETIO_ASYNC_MODE", "threading")
+external_sio = SocketIO(
+    message_queue=os.environ.get("REDIS_URL"),
+    async_mode=SOCKETIO_ASYNC_MODE,
+)
 
 if RQ_AVAILABLE and REDIS_URL:
     redis_connection = Redis.from_url(REDIS_URL)

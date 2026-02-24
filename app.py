@@ -4,12 +4,14 @@ import shutil
 import sentry_sdk
 from flask import Flask
 from flask_migrate import Migrate
-from flask_socketio import SocketIO
-from models import db
+from flask_socketio import SocketIO, join_room
 from sentry_sdk.integrations.flask import FlaskIntegration
+
+from models import db
 
 migrate = Migrate()
 socketio = None
+SOCKETIO_ASYNC_MODE = os.environ.get("SOCKETIO_ASYNC_MODE", "threading")
 
 if "SENTRY_DSN" in os.environ:
     sentry_sdk.init(
@@ -66,9 +68,24 @@ def create_app():
         app,
         message_queue=os.environ.get("REDIS_URL"),
         cors_allowed_origins="*",
+        async_mode=SOCKETIO_ASYNC_MODE,
     )
+    _register_socket_handlers(socketio)
 
     return app
+
+
+def _register_socket_handlers(socketio_instance):
+    @socketio_instance.on("join")
+    def handle_join(payload):
+        if not isinstance(payload, dict):
+            return
+
+        job_id = payload.get("jobId") or payload.get("job_id")
+        if not job_id:
+            return
+
+        join_room(str(job_id))
 
 
 app = create_app()
