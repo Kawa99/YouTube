@@ -1,11 +1,22 @@
 import os
 import shutil
 
+import sentry_sdk
 from flask import Flask
 from flask_migrate import Migrate
+from flask_socketio import SocketIO
 from models import db
+from sentry_sdk.integrations.flask import FlaskIntegration
 
 migrate = Migrate()
+socketio = None
+
+if "SENTRY_DSN" in os.environ:
+    sentry_sdk.init(
+        dsn=os.environ["SENTRY_DSN"],
+        integrations=[FlaskIntegration()],
+        traces_sample_rate=1.0,
+    )
 
 try:
     from flask_limiter import Limiter
@@ -28,6 +39,7 @@ class NoopLimiter:
 
 
 def create_app():
+    global socketio
     app = Flask(__name__)
     app.secret_key = os.environ.get("SECRET_KEY", "default-dev-key")
     data_dir = os.path.join(app.root_path, "data")
@@ -50,6 +62,11 @@ def create_app():
     from routes import register_routes
 
     register_routes(app, limiter)
+    socketio = SocketIO(
+        app,
+        message_queue=os.environ.get("REDIS_URL"),
+        cors_allowed_origins="*",
+    )
 
     return app
 
@@ -57,4 +74,4 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    socketio.run(app, debug=True)

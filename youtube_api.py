@@ -2,6 +2,7 @@ import os
 import random
 import re
 import time
+import logging
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Type
 from urllib.parse import ParseResult, parse_qs, urlparse
 
@@ -10,6 +11,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from youtube_transcript_api import YouTubeTranscriptApi, _errors as transcript_errors
+
+logger = logging.getLogger(__name__)
 
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
 YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3"
@@ -316,7 +319,8 @@ def parse_duration(duration: str) -> str:
     try:
         parsed_duration = isodate.parse_duration(duration)
         return str(parsed_duration)
-    except Exception:
+    except Exception as e:
+        logger.exception("An error occurred: %s", str(e))
         return "Unknown"
 
 
@@ -342,9 +346,17 @@ def get_transcript(video_id: str) -> str:
             return " ".join([line.text for line in transcript])
         except (TranscriptsDisabled, NoTranscriptFound):
             return TRANSCRIPT_UNAVAILABLE_MESSAGE
-        except Exception as exc:
-            if attempt >= API_MAX_RETRIES - 1 or not _should_retry_transcript_exception(exc):
+        except Exception as e:
+            if attempt >= API_MAX_RETRIES - 1 or not _should_retry_transcript_exception(e):
+                logger.exception("An error occurred: %s", str(e))
                 return TRANSCRIPT_UNAVAILABLE_MESSAGE
+            logger.warning(
+                "Retrying transcript fetch for video %s after transient error (%s/%s): %s",
+                video_id,
+                attempt + 1,
+                API_MAX_RETRIES,
+                str(e),
+            )
             _sleep_with_backoff(attempt)
 
     return TRANSCRIPT_UNAVAILABLE_MESSAGE

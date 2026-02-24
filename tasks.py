@@ -1,11 +1,15 @@
 import os
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from flask import has_app_context
+from flask_socketio import SocketIO
 
 from crud import save_video
 from youtube_api import get_channel_videos, get_video_data
+
+logger = logging.getLogger(__name__)
 
 try:
     from redis import Redis
@@ -33,6 +37,7 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 RQ_QUEUE_NAME = os.environ.get("RQ_QUEUE_NAME", "channel-scrape")
 CHANNEL_JOB_TIMEOUT = int(os.environ.get("CHANNEL_JOB_TIMEOUT_SECONDS", "7200"))
 CHANNEL_JOB_RESULT_TTL = int(os.environ.get("CHANNEL_JOB_RESULT_TTL_SECONDS", "86400"))
+external_sio = SocketIO(message_queue=os.environ.get("REDIS_URL"))
 
 if RQ_AVAILABLE and REDIS_URL:
     redis_connection = Redis.from_url(REDIS_URL)
@@ -168,6 +173,7 @@ def _update_current_job_meta(**updates: Any) -> None:
 
     job.meta.update(updates)
     job.save_meta()
+    external_sio.emit("progress_update", updates, room=job.id)
 
 
 def _process_channel_background_impl(channel_id: str, max_videos: int) -> Dict[str, int]:
@@ -215,7 +221,8 @@ def _process_channel_background_impl(channel_id: str, max_videos: int) -> Dict[s
                         skipped_count += 1
                 else:
                     failed_count += 1
-            except Exception:
+            except Exception as e:
+                logger.exception("An error occurred: %s", str(e))
                 failed_count += 1
 
             _update_current_job_meta(
@@ -244,10 +251,11 @@ def _process_channel_background_impl(channel_id: str, max_videos: int) -> Dict[s
             **summary,
         )
         return summary
-    except Exception as exc:
+    except Exception as e:
+        logger.exception("An error occurred: %s", str(e))
         _update_current_job_meta(
             completed_at=utc_now_iso(),
-            error=str(exc),
+            error=str(e),
             message="Channel processing failed.",
         )
         raise

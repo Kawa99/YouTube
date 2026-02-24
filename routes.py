@@ -1,4 +1,5 @@
 import os
+import logging
 
 from crud import save_video
 from export import build_xlsx_export_file, stream_all_tables_csv
@@ -26,6 +27,8 @@ from youtube_api import (
     is_valid_youtube_channel_url,
     is_valid_youtube_video_url,
 )
+
+logger = logging.getLogger(__name__)
 
 MAX_API_PAGE_SIZE = 200
 
@@ -187,6 +190,7 @@ def register_routes(app, limiter):
             else:
                 flash("Video already exists. Stored record was refreshed.", "info")
         except Exception as e:
+            logger.exception("An error occurred: %s", str(e))
             flash(f"Error saving video: {str(e)}", "danger")
 
         return redirect(url_for("index"))

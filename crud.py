@@ -1,4 +1,8 @@
+import logging
+
 from models import Channel, ChannelHistory, ChannelVideo, Video, db
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_int(value, default=0):
@@ -73,6 +77,7 @@ def save_video(data):
 
         db.session.commit()
         return {"video_id": video.id, "created": created}
-    except Exception:
+    except Exception as e:
         db.session.rollback()
+        logger.exception("An error occurred: %s", str(e))
         raise

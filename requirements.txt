@@ -8,7 +8,9 @@ et_xmlfile==2.0.0
 Flask==3.1.0
 Flask-Limiter==3.12
 Flask-Migrate==4.0.5
+Flask-SocketIO==5.3.6
 Flask-SQLAlchemy==3.1.1
+gevent-websocket==0.10.1
 idna==3.10
 isodate==0.7.2
 itsdangerous==2.2.0
@@ -25,6 +27,7 @@ pytz==2025.1
 requests==2.32.3
 redis==5.2.1
 rq==1.16.2
+sentry-sdk[flask]==1.39.1
 six==1.17.0
 tzdata==2025.1
 urllib3==2.3.0
