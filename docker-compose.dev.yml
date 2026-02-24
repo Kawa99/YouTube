@@ -1,0 +1,13 @@
+services:
+  web:
+    volumes:
+      - ./:/app
+      - ./data:/app/data:Z
+    environment:
+      FLASK_DEBUG: "1"
+    command: flask --app app run --host=0.0.0.0 --port=5000 --debug
+
+  worker:
+    volumes:
+      - ./:/app
+      - ./data:/app/data:Z

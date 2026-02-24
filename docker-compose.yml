@@ -8,6 +8,7 @@ services:
       APP_ROLE: web
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
       REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://baroo:baroo_pass@db:5432/baroo_db
       RQ_QUEUE_NAME: ${RQ_QUEUE_NAME:-channel-scrape}
       SECRET_KEY: ${SECRET_KEY:-change-this-in-real-environments}
       CHANNEL_JOB_TIMEOUT_SECONDS: ${CHANNEL_JOB_TIMEOUT_SECONDS:-7200}
@@ -16,8 +17,10 @@ services:
       - "5000:5000"
     volumes:
       - ./data:/app/data:Z
+      - ./migrations:/app/migrations:Z
     depends_on:
       - redis
+      - db
     restart: unless-stopped
 
   worker:
@@ -29,14 +32,17 @@ services:
       APP_ROLE: worker
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
       REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://baroo:baroo_pass@db:5432/baroo_db
       RQ_QUEUE_NAME: ${RQ_QUEUE_NAME:-channel-scrape}
       SECRET_KEY: ${SECRET_KEY:-change-this-in-real-environments}
       CHANNEL_JOB_TIMEOUT_SECONDS: ${CHANNEL_JOB_TIMEOUT_SECONDS:-7200}
       CHANNEL_JOB_RESULT_TTL_SECONDS: ${CHANNEL_JOB_RESULT_TTL_SECONDS:-86400}
     depends_on:
       - redis
+      - db
     volumes:
       - ./data:/app/data:Z
+      - ./migrations:/app/migrations:Z
     restart: unless-stopped
 
   redis:
@@ -46,5 +52,17 @@ services:
     volumes:
       - redis-data:/data
 
+  db:
+    image: postgres:15-alpine
+    container_name: youtube-db
+    environment:
+      POSTGRES_USER: baroo
+      POSTGRES_PASSWORD: baroo_pass
+      POSTGRES_DB: baroo_db
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
 volumes:
   redis-data:
+  postgres_data:

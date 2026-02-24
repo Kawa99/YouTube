@@ -1,20 +1,12 @@
 import pytest
 
-import app as app_module
 from app import create_app
 from models import Channel, db
 
 
 @pytest.fixture
 def client(monkeypatch):
-    original_join = app_module.os.path.join
-
-    def join_with_in_memory_db(path, *paths):
-        if paths and paths[-1] == "videos.db":
-            return ":memory:"
-        return original_join(path, *paths)
-
-    monkeypatch.setattr(app_module.os.path, "join", join_with_in_memory_db)
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")
 
     app = create_app()
     app.config["TESTING"] = True

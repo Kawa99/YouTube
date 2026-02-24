@@ -26,8 +26,19 @@
     </script>
     <script>
         (function () {
+            let preference = "auto";
+            try {
+                const storedTheme = localStorage.getItem("theme");
+                if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "auto") {
+                    preference = storedTheme;
+                }
+            } catch (_) {
+                // Ignore storage failures and fall back to automatic mode.
+            }
+
             const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-            document.documentElement.classList.toggle("dark", prefersDark);
+            const effectiveTheme = preference === "auto" ? (prefersDark ? "dark" : "light") : preference;
+            document.documentElement.classList.toggle("dark", effectiveTheme === "dark");
         })();
     </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
