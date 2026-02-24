@@ -8,7 +8,7 @@ from openpyxl import Workbook
 
 EXPORT_TABLES = ("videos", "channels", "channel_videos", "channel_history")
 DB_FETCH_CHUNK_SIZE = 1000
-DB_PATH = os.path.join(os.path.dirname(__file__), "videos.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "data", "videos.db")
 
 
 def open_videos_db_connection():

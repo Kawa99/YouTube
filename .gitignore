@@ -21,3 +21,7 @@ Thumbs.db  # Windows
 
 # Ignore Jupyter Notebook checkpoints (if using)
 .ipynb_checkpoints/
+
+# Ignore secrets and runtime data
+.env
+data/

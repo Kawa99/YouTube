@@ -15,7 +15,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./videos.db:/app/videos.db:Z
+      - sqlite_data:/app/data
     depends_on:
       - redis
     restart: unless-stopped
@@ -36,7 +36,7 @@ services:
     depends_on:
       - redis
     volumes:
-      - ./videos.db:/app/videos.db:Z
+      - sqlite_data:/app/data
     restart: unless-stopped
 
   redis:
@@ -48,3 +48,4 @@ services:
 
 volumes:
   redis-data:
+  sqlite_data:

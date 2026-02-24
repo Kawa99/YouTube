@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from flask import Flask
 from models import db
@@ -26,7 +27,12 @@ class NoopLimiter:
 def create_app():
     app = Flask(__name__)
     app.secret_key = os.environ.get("SECRET_KEY", "default-dev-key")
-    db_path = os.path.join(app.root_path, "videos.db")
+    data_dir = os.path.join(app.root_path, "data")
+    os.makedirs(data_dir, exist_ok=True)
+    db_path = os.path.join(data_dir, "videos.db")
+    legacy_db_path = os.path.join(app.root_path, "videos.db")
+    if not os.path.exists(db_path) and os.path.exists(legacy_db_path):
+        shutil.copy2(legacy_db_path, db_path)
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
