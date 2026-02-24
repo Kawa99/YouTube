@@ -11,7 +11,9 @@ class Channel(db.Model):
     subscribers = db.Column(db.Integer, nullable=False, default=0)
 
     videos = db.relationship("Video", back_populates="channel", lazy=True)
-    history_records = db.relationship("ChannelHistory", back_populates="channel", lazy=True)
+    history_records = db.relationship(
+        "ChannelHistory", back_populates="channel", lazy=True
+    )
     linked_videos = db.relationship("ChannelVideo", back_populates="channel", lazy=True)
 
 

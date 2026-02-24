@@ -52,7 +52,9 @@ def _normalize_sort_direction(value):
     return "asc" if str(value).lower() == "asc" else "desc"
 
 
-def _build_order_clause(column_map, sort_column, sort_direction, default_column, default_direction="desc"):
+def _build_order_clause(
+    column_map, sort_column, sort_direction, default_column, default_direction="desc"
+):
     if sort_column in column_map:
         target_column = column_map[sort_column]
         direction = sort_direction
@@ -86,22 +88,32 @@ def register_routes(app, limiter):
 
         if request.method == "POST":
             if not YOUTUBE_API_KEY:
-                flash("YouTube API key is not configured. Set the YOUTUBE_API_KEY environment variable.", "danger")
+                flash(
+                    "YouTube API key is not configured. Set the YOUTUBE_API_KEY environment variable.",
+                    "danger",
+                )
                 return render_template("index.html", data=None)
 
             video_url = request.form.get("video_url", "").strip()
             if not is_valid_youtube_video_url(video_url):
-                flash("URL must be a valid youtube.com or youtu.be video link.", "warning")
+                flash(
+                    "URL must be a valid youtube.com or youtu.be video link.", "warning"
+                )
                 return render_template("index.html", data=None)
 
             video_id = extract_video_id(video_url)
             if not video_id:
-                flash("Invalid YouTube URL. Please paste a valid video link.", "warning")
+                flash(
+                    "Invalid YouTube URL. Please paste a valid video link.", "warning"
+                )
                 return render_template("index.html", data=None)
 
             video_data = get_video_data(video_id)
             if not video_data:
-                flash("Could not fetch video data. Check your API key/quota and try again.", "warning")
+                flash(
+                    "Could not fetch video data. Check your API key/quota and try again.",
+                    "warning",
+                )
 
         return render_template("index.html", data=video_data)
 
@@ -110,7 +122,10 @@ def register_routes(app, limiter):
     def channel_scraper():
         if request.method == "POST":
             if not YOUTUBE_API_KEY:
-                flash("YouTube API key is not configured. Set the YOUTUBE_API_KEY environment variable.", "danger")
+                flash(
+                    "YouTube API key is not configured. Set the YOUTUBE_API_KEY environment variable.",
+                    "danger",
+                )
                 return render_template("channel.html", job_id=None, job=None)
 
             channel_url = request.form.get("channel_url", "").strip()
@@ -130,13 +145,19 @@ def register_routes(app, limiter):
             channel_id = get_channel_id_from_url(channel_url)
 
             if not channel_id:
-                flash("Could not extract channel ID from URL. Please check the URL format.", "danger")
+                flash(
+                    "Could not extract channel ID from URL. Please check the URL format.",
+                    "danger",
+                )
                 return render_template("channel.html", job_id=None, job=None)
 
             try:
                 job_id = enqueue_channel_job(channel_id, max_videos)
             except RedisError:
-                flash("Background queue is unavailable. Ensure Redis and the RQ worker are running.", "danger")
+                flash(
+                    "Background queue is unavailable. Ensure Redis and the RQ worker are running.",
+                    "danger",
+                )
                 return render_template("channel.html", job_id=None, job=None)
 
             flash("Channel scrape job queued. Progress is shown below.", "info")
@@ -155,14 +176,20 @@ def register_routes(app, limiter):
     def process_channel(channel_id, max_videos):
         """Backward-compatible route: now enqueues background job instead of blocking."""
         if not YOUTUBE_API_KEY:
-            flash("YouTube API key is not configured. Set the YOUTUBE_API_KEY environment variable.", "danger")
+            flash(
+                "YouTube API key is not configured. Set the YOUTUBE_API_KEY environment variable.",
+                "danger",
+            )
             return redirect(url_for("channel_scraper"))
 
         max_videos = max(1, min(max_videos, 1000))
         try:
             job_id = enqueue_channel_job(channel_id, max_videos)
         except RedisError:
-            flash("Background queue is unavailable. Ensure Redis and the RQ worker are running.", "danger")
+            flash(
+                "Background queue is unavailable. Ensure Redis and the RQ worker are running.",
+                "danger",
+            )
             return redirect(url_for("channel_scraper"))
 
         flash("Channel scrape job queued. Progress is shown below.", "info")
@@ -181,7 +208,12 @@ def register_routes(app, limiter):
         try:
             validated_data = VideoCreateSchema.model_validate(request.form.to_dict())
         except ValidationError as error:
-            return jsonify({"error": "Invalid request payload.", "details": error.errors()}), 400
+            return (
+                jsonify(
+                    {"error": "Invalid request payload.", "details": error.errors()}
+                ),
+                400,
+            )
 
         try:
             result = save_video(validated_data.model_dump())
@@ -202,9 +234,13 @@ def register_routes(app, limiter):
     @app.route("/api/data")
     def get_data_api():
         page = _parse_positive_int(request.args.get("page", 1), default=1)
-        limit = _parse_positive_int(request.args.get("limit", 25), default=25, maximum=MAX_API_PAGE_SIZE)
+        limit = _parse_positive_int(
+            request.args.get("limit", 25), default=25, maximum=MAX_API_PAGE_SIZE
+        )
         sort_column = request.args.get("sort_column", "saved_at")
-        sort_direction = _normalize_sort_direction(request.args.get("sort_direction", "desc"))
+        sort_direction = _normalize_sort_direction(
+            request.args.get("sort_direction", "desc")
+        )
 
         videos_sort_columns = {
             "id": Video.id,
@@ -261,7 +297,9 @@ def register_routes(app, limiter):
             default_column=Channel.subscribers,
             default_direction="desc",
         )
-        channels_page = Channel.query.order_by(channels_order).paginate(page=page, per_page=limit, error_out=False)
+        channels_page = Channel.query.order_by(channels_order).paginate(
+            page=page, per_page=limit, error_out=False
+        )
         channels = [
             {
                 "id": channel.id,
@@ -302,29 +340,29 @@ def register_routes(app, limiter):
 
         return jsonify(
             {
-            "query": {
-                "page": page,
-                "limit": limit,
-                "sort_column": sort_column,
-                "sort_direction": sort_direction,
-            },
-            "videos": {
-                "items": videos,
-                "pagination": _pagination_metadata(videos_page),
-            },
-            "channels": {
-                "items": channels,
-                "pagination": _pagination_metadata(channels_page),
-            },
-            "history": {
-                "items": history,
-                "pagination": _pagination_metadata(history_page),
-            },
-            "counts": {
-                "total_videos": videos_page.total,
-                "total_channels": channels_page.total,
-                "total_history_records": history_page.total,
-            },
+                "query": {
+                    "page": page,
+                    "limit": limit,
+                    "sort_column": sort_column,
+                    "sort_direction": sort_direction,
+                },
+                "videos": {
+                    "items": videos,
+                    "pagination": _pagination_metadata(videos_page),
+                },
+                "channels": {
+                    "items": channels,
+                    "pagination": _pagination_metadata(channels_page),
+                },
+                "history": {
+                    "items": history,
+                    "pagination": _pagination_metadata(history_page),
+                },
+                "counts": {
+                    "total_videos": videos_page.total,
+                    "total_channels": channels_page.total,
+                    "total_history_records": history_page.total,
+                },
             }
         )
 
@@ -336,7 +374,9 @@ def register_routes(app, limiter):
             return Response(
                 stream_with_context(stream_all_tables_csv()),
                 mimetype="text/csv",
-                headers={"Content-Disposition": "attachment; filename=exported_data.csv"},
+                headers={
+                    "Content-Disposition": "attachment; filename=exported_data.csv"
+                },
             )
 
         if export_format == "xlsx":

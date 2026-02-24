@@ -30,7 +30,10 @@ def test_api_data_empty(client):
 
 def test_api_data_pagination_limits(client):
     with client.application.app_context():
-        channels = [Channel(channel_username=f"@channel_{idx}", subscribers=idx) for idx in range(30)]
+        channels = [
+            Channel(channel_username=f"@channel_{idx}", subscribers=idx)
+            for idx in range(30)
+        ]
         db.session.add_all(channels)
         db.session.commit()
 

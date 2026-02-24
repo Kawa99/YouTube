@@ -181,7 +181,9 @@ def test_get_video_data_missing_fields(mock_youtube_api_get, mock_get_transcript
         return {}
 
     mock_youtube_api_get.side_effect = mock_api_side_effect
-    mock_get_transcript.return_value = "Transcript unavailable or disabled by the uploader."
+    mock_get_transcript.return_value = (
+        "Transcript unavailable or disabled by the uploader."
+    )
 
     result = get_video_data("dQw4w9WgXcQ")
 

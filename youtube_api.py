@@ -80,7 +80,7 @@ def _sleep_with_backoff(
     base_delay: float = API_BACKOFF_BASE_SECONDS,
     max_delay: float = 8.0,
 ) -> None:
-    delay = min(max_delay, base_delay * (2 ** attempt))
+    delay = min(max_delay, base_delay * (2**attempt))
     jitter = random.uniform(0, delay * 0.2 if delay > 0 else 0)
     time.sleep(delay + jitter)
 
@@ -145,7 +145,11 @@ def extract_video_id(video_url: Optional[str]) -> Optional[str]:
     elif host in YOUTUBE_CHANNEL_HOSTS:
         if parsed.path == "/watch":
             video_id = parse_qs(parsed.query).get("v", [None])[0]
-        elif path_parts and path_parts[0] in {"embed", "shorts", "live"} and len(path_parts) > 1:
+        elif (
+            path_parts
+            and path_parts[0] in {"embed", "shorts", "live"}
+            and len(path_parts) > 1
+        ):
             video_id = path_parts[1]
 
     if not video_id or not VIDEO_ID_PATTERN.match(video_id):
@@ -154,7 +158,9 @@ def extract_video_id(video_url: Optional[str]) -> Optional[str]:
     return video_id
 
 
-def extract_channel_info(channel_url: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+def extract_channel_info(
+    channel_url: Optional[str],
+) -> Tuple[Optional[str], Optional[str]]:
     """Extract (identifier_type, identifier) from common YouTube channel URL formats."""
     parsed = _parse_input_url(channel_url)
     if not parsed:
@@ -202,7 +208,17 @@ def get_channel_id_from_url(channel_url: Optional[str]) -> Optional[str]:
         call_plan.append(("channels", {"part": "id", "forHandle": identifier}))
         call_plan.append(("channels", {"part": "id", "forHandle": handle_no_at}))
     else:
-        call_plan.append(("search", {"part": "snippet", "type": "channel", "q": identifier, "maxResults": 1}))
+        call_plan.append(
+            (
+                "search",
+                {
+                    "part": "snippet",
+                    "type": "channel",
+                    "q": identifier,
+                    "maxResults": 1,
+                },
+            )
+        )
 
     call_plan.extend(
         [
@@ -210,7 +226,15 @@ def get_channel_id_from_url(channel_url: Optional[str]) -> Optional[str]:
             ("channels", {"part": "id", "forUsername": identifier}),
             ("channels", {"part": "id", "forHandle": identifier}),
             ("channels", {"part": "id", "forHandle": handle_no_at}),
-            ("search", {"part": "snippet", "type": "channel", "q": identifier, "maxResults": 1}),
+            (
+                "search",
+                {
+                    "part": "snippet",
+                    "type": "channel",
+                    "q": identifier,
+                    "maxResults": 1,
+                },
+            ),
         ]
     )
 
@@ -274,12 +298,16 @@ def get_channel_videos(channel_id: str, max_results: int = 50) -> List[str]:
     videos = []
     next_page_token = None
 
-    channel_response = youtube_api_get("channels", {"part": "contentDetails", "id": channel_id})
+    channel_response = youtube_api_get(
+        "channels", {"part": "contentDetails", "id": channel_id}
+    )
     items = channel_response.get("items", [])
     if not items:
         return videos
 
-    uploads_playlist_id = items[0].get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
+    uploads_playlist_id = (
+        items[0].get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
+    )
     if not uploads_playlist_id:
         return get_channel_videos_from_search(channel_id, max_results)
 
@@ -347,7 +375,10 @@ def get_transcript(video_id: str) -> str:
         except (TranscriptsDisabled, NoTranscriptFound):
             return TRANSCRIPT_UNAVAILABLE_MESSAGE
         except Exception as e:
-            if attempt >= API_MAX_RETRIES - 1 or not _should_retry_transcript_exception(e):
+            if (
+                attempt >= API_MAX_RETRIES - 1
+                or not _should_retry_transcript_exception(e)
+            ):
                 logger.exception("An error occurred: %s", str(e))
                 return TRANSCRIPT_UNAVAILABLE_MESSAGE
             logger.warning(

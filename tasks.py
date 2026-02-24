@@ -41,7 +41,9 @@ external_sio = SocketIO(message_queue=os.environ.get("REDIS_URL"))
 
 if RQ_AVAILABLE and REDIS_URL:
     redis_connection = Redis.from_url(REDIS_URL)
-    channel_queue = Queue(RQ_QUEUE_NAME, connection=redis_connection, default_timeout=CHANNEL_JOB_TIMEOUT)
+    channel_queue = Queue(
+        RQ_QUEUE_NAME, connection=redis_connection, default_timeout=CHANNEL_JOB_TIMEOUT
+    )
 else:
     redis_connection = None
     channel_queue = None
@@ -176,7 +178,9 @@ def _update_current_job_meta(**updates: Any) -> None:
     external_sio.emit("progress_update", updates, room=job.id)
 
 
-def _process_channel_background_impl(channel_id: str, max_videos: int) -> Dict[str, int]:
+def _process_channel_background_impl(
+    channel_id: str, max_videos: int
+) -> Dict[str, int]:
     _update_current_job_meta(
         channel_id=channel_id,
         max_videos=max_videos,

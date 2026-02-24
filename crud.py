@@ -37,7 +37,9 @@ def save_video(data):
                 )
                 channel.subscribers = subscribers
         else:
-            channel = Channel(channel_username=channel_username, subscribers=subscribers)
+            channel = Channel(
+                channel_username=channel_username, subscribers=subscribers
+            )
             db.session.add(channel)
             db.session.flush()
 
@@ -71,7 +73,9 @@ def save_video(data):
             db.session.flush()
             created = True
 
-        existing_link = ChannelVideo.query.filter_by(video_id=video.id, channel_id=channel.id).first()
+        existing_link = ChannelVideo.query.filter_by(
+            video_id=video.id, channel_id=channel.id
+        ).first()
         if not existing_link:
             db.session.add(ChannelVideo(video_id=video.id, channel_id=channel.id))
 
