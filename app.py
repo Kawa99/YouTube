@@ -5,6 +5,8 @@ from flask import Flask
 from flask_migrate import Migrate
 from models import db
 
+migrate = Migrate()
+
 try:
     from flask_limiter import Limiter
     from flask_limiter.util import get_remote_address
@@ -34,10 +36,11 @@ def create_app():
     legacy_db_path = os.path.join(app.root_path, "videos.db")
     if not os.path.exists(db_path) and os.path.exists(legacy_db_path):
         shutil.copy2(legacy_db_path, db_path)
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", f"sqlite:///{db_path}")
+    database_url = os.environ.get("DATABASE_URL")
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url or f"sqlite:///{db_path}"
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
-    Migrate(app, db)
+    migrate.init_app(app, db)
 
     if Limiter is not None:
         limiter = Limiter(app=app, key_func=get_remote_address, default_limits=[])
