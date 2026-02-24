@@ -7,6 +7,12 @@ import tempfile
 from openpyxl import Workbook
 
 EXPORT_TABLES = ("videos", "channels", "channel_videos", "channel_history")
+TABLE_SELECT_QUERIES = {
+    "videos": "SELECT * FROM videos",
+    "channels": "SELECT * FROM channels",
+    "channel_videos": "SELECT * FROM channel_videos",
+    "channel_history": "SELECT * FROM channel_history",
+}
 DB_FETCH_CHUNK_SIZE = 1000
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "videos.db")
 
@@ -16,7 +22,10 @@ def open_videos_db_connection():
 
 
 def iter_table_csv(conn, table_name):
-    cursor = conn.execute(f"SELECT * FROM {table_name}")
+    query = TABLE_SELECT_QUERIES.get(table_name)
+    if query is None:
+        raise ValueError(f"Unsupported table name: {table_name}")
+    cursor = conn.execute(query)
     columns = [description[0] for description in cursor.description]
 
     buffer = io.StringIO()
@@ -57,7 +66,10 @@ def build_xlsx_export_file():
     try:
         for table_name in EXPORT_TABLES:
             sheet = workbook.create_sheet(title=table_name[:31])
-            cursor = conn.execute(f"SELECT * FROM {table_name}")
+            query = TABLE_SELECT_QUERIES.get(table_name)
+            if query is None:
+                raise ValueError(f"Unsupported table name: {table_name}")
+            cursor = conn.execute(query)
             columns = [description[0] for description in cursor.description]
             sheet.append(columns)
 

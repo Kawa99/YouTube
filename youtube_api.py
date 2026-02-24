@@ -1,6 +1,6 @@
 import os
-import random
 import re
+import secrets
 import time
 import logging
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Type
@@ -81,7 +81,7 @@ def _sleep_with_backoff(
     max_delay: float = 8.0,
 ) -> None:
     delay = min(max_delay, base_delay * (2**attempt))
-    jitter = random.uniform(0, delay * 0.2 if delay > 0 else 0)
+    jitter = (secrets.randbelow(1000) / 1000) * (delay * 0.2 if delay > 0 else 0)
     time.sleep(delay + jitter)
 
 

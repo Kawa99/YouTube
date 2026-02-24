@@ -74,4 +74,5 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    debug_mode = os.environ.get("FLASK_DEBUG", "").lower() in {"1", "true", "yes", "on"}
+    socketio.run(app, debug=debug_mode)

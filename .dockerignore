@@ -9,6 +9,6 @@ __pycache__/
 *.db
 *.rdb
 instance/
-tests/
+# tests/
 .env
 data/
