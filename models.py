@@ -53,6 +53,15 @@ class Video(db.Model):
         """Comments as a percentage of views."""
         return self._safe_percentage_rate(self.comments)
 
+    @property
+    def engagement_rate(self):
+        """Combined likes + comments as a percentage of views."""
+        try:
+            engagement_total = (self.likes or 0) + (self.comments or 0)
+        except TypeError:
+            engagement_total = 0
+        return self._safe_percentage_rate(engagement_total)
+
 
 class ChannelHistory(db.Model):
     __tablename__ = "channel_history"

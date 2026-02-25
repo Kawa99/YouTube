@@ -18,6 +18,7 @@ from flask import (
 from models import Channel, ChannelHistory, Video, db
 from pydantic import ValidationError
 from schemas import VideoCreateSchema
+from sqlalchemy import case, func
 from tasks import RedisError, enqueue_channel_job, get_channel_job
 from youtube_api import (
     YOUTUBE_API_KEY,
@@ -78,6 +79,23 @@ def _pagination_metadata(page_obj):
     }
 
 
+def _safe_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _safe_percentage_rate(numerator, denominator):
+    try:
+        denominator_value = _safe_float(denominator)
+        if denominator_value == 0:
+            return 0.0
+        return round((_safe_float(numerator) / denominator_value) * 100, 2)
+    except (ZeroDivisionError, TypeError, ValueError):
+        return 0.0
+
+
 def register_routes(app, limiter):
     """Register application routes."""
 
@@ -113,6 +131,15 @@ def register_routes(app, limiter):
                 flash(
                     "Could not fetch video data. Check your API key/quota and try again.",
                     "warning",
+                )
+            else:
+                likes = _safe_float(video_data.get("likes"))
+                comments = _safe_float(video_data.get("comments"))
+                views = video_data.get("views")
+                video_data["like_rate"] = _safe_percentage_rate(likes, views)
+                video_data["comment_rate"] = _safe_percentage_rate(comments, views)
+                video_data["engagement_rate"] = _safe_percentage_rate(
+                    likes + comments, views
                 )
 
         return render_template("index.html", data=video_data)
@@ -267,6 +294,25 @@ def register_routes(app, limiter):
             request.args.get("sort_direction", "desc")
         )
 
+        engagement_rate_order = case(
+            (Video.views.is_(None), 0.0),
+            (Video.views == 0, 0.0),
+            else_=(
+                (func.coalesce(Video.likes, 0) + func.coalesce(Video.comments, 0))
+                * 100.0
+                / Video.views
+            ),
+        )
+        like_rate_order = case(
+            (Video.views.is_(None), 0.0),
+            (Video.views == 0, 0.0),
+            else_=(func.coalesce(Video.likes, 0) * 100.0 / Video.views),
+        )
+        comment_rate_order = case(
+            (Video.views.is_(None), 0.0),
+            (Video.views == 0, 0.0),
+            else_=(func.coalesce(Video.comments, 0) * 100.0 / Video.views),
+        )
         videos_sort_columns = {
             "id": Video.id,
             "youtube_video_id": Video.youtube_video_id,
@@ -275,6 +321,9 @@ def register_routes(app, limiter):
             "views": Video.views,
             "likes": Video.likes,
             "comments": Video.comments,
+            "like_rate": like_rate_order,
+            "comment_rate": comment_rate_order,
+            "engagement_rate": engagement_rate_order,
             "posted": Video.posted,
             "video_length": Video.video_length,
             "saved_at": Video.saved_at,
@@ -302,6 +351,9 @@ def register_routes(app, limiter):
                 "views": video.views,
                 "likes": video.likes,
                 "comments": video.comments,
+                "like_rate": video.like_rate,
+                "comment_rate": video.comment_rate,
+                "engagement_rate": video.engagement_rate,
                 "posted": video.posted,
                 "video_length": video.video_length,
                 "saved_at": video.saved_at,

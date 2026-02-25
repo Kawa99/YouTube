@@ -3,6 +3,7 @@ import io
 import pytest
 from openpyxl import load_workbook
 
+import routes
 from app import create_app
 from models import Channel, ChannelHistory, Video, db
 
@@ -60,6 +61,138 @@ def test_api_data_invalid_parameters_fallback(client):
     payload = response.get_json()
     assert payload["query"]["page"] == 1
     assert payload["query"]["limit"] == 25
+
+
+def test_api_data_includes_and_sorts_by_engagement_rate(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@engagement_sort_channel", subscribers=2000)
+        db.session.add(channel)
+        db.session.flush()
+
+        high_engagement = Video(
+            youtube_video_id="engagement_sort_high",
+            title="High engagement",
+            views=100,
+            likes=8,
+            comments=2,
+            channel_id=channel.id,
+        )
+        low_engagement = Video(
+            youtube_video_id="engagement_sort_low",
+            title="Low engagement",
+            views=100,
+            likes=1,
+            comments=1,
+            channel_id=channel.id,
+        )
+        zero_views = Video(
+            youtube_video_id="engagement_sort_zero",
+            title="Zero views",
+            views=0,
+            likes=999,
+            comments=999,
+            channel_id=channel.id,
+        )
+        db.session.add_all([high_engagement, low_engagement, zero_views])
+        db.session.commit()
+
+    response = client.get("/api/data?sort_column=engagement_rate&sort_direction=desc")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    items = payload["videos"]["items"]
+    assert payload["query"]["sort_column"] == "engagement_rate"
+    assert len(items) >= 3
+    assert "engagement_rate" in items[0]
+    assert items[0]["youtube_video_id"] == "engagement_sort_high"
+    assert items[0]["engagement_rate"] == 10.0
+    assert items[-1]["youtube_video_id"] == "engagement_sort_zero"
+    assert items[-1]["engagement_rate"] == 0.0
+
+
+def test_api_data_sorts_by_like_and_comment_rate(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@rate_sort_channel", subscribers=1500)
+        db.session.add(channel)
+        db.session.flush()
+
+        highest_like_rate = Video(
+            youtube_video_id="like_rate_high",
+            title="Highest like rate",
+            views=100,
+            likes=20,
+            comments=1,
+            channel_id=channel.id,
+        )
+        highest_comment_rate = Video(
+            youtube_video_id="comment_rate_high",
+            title="Highest comment rate",
+            views=100,
+            likes=1,
+            comments=30,
+            channel_id=channel.id,
+        )
+        baseline = Video(
+            youtube_video_id="rate_baseline",
+            title="Baseline",
+            views=100,
+            likes=2,
+            comments=2,
+            channel_id=channel.id,
+        )
+        db.session.add_all([highest_like_rate, highest_comment_rate, baseline])
+        db.session.commit()
+
+    like_rate_response = client.get(
+        "/api/data?sort_column=like_rate&sort_direction=desc"
+    )
+    assert like_rate_response.status_code == 200
+    like_rate_items = like_rate_response.get_json()["videos"]["items"]
+    assert like_rate_items[0]["youtube_video_id"] == "like_rate_high"
+    assert like_rate_items[0]["like_rate"] == 20.0
+
+    comment_rate_response = client.get(
+        "/api/data?sort_column=comment_rate&sort_direction=desc"
+    )
+    assert comment_rate_response.status_code == 200
+    comment_rate_items = comment_rate_response.get_json()["videos"]["items"]
+    assert comment_rate_items[0]["youtube_video_id"] == "comment_rate_high"
+    assert comment_rate_items[0]["comment_rate"] == 30.0
+
+
+def test_single_video_scraper_displays_engagement_rates(client, monkeypatch):
+    monkeypatch.setattr(routes, "YOUTUBE_API_KEY", "test-api-key")
+    monkeypatch.setattr(
+        routes,
+        "get_video_data",
+        lambda _video_id: {
+            "youtube_video_id": "dQw4w9WgXcQ",
+            "channel_username": "@test_channel",
+            "subscribers": "1000",
+            "title": "Single video test",
+            "views": "10000",
+            "likes": "500",
+            "comments": "200",
+            "posted": "2025-01-01",
+            "video_length": "0:05:00",
+            "transcript": "Test transcript",
+            "description": "Test description",
+        },
+    )
+
+    response = client.post(
+        "/",
+        data={"video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"},
+    )
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Engagement Rate" in body
+    assert "Like Rate" in body
+    assert "Comment Rate" in body
+    assert "5.00%" in body
+    assert "2.00%" in body
+    assert "7.00%" in body
 
 
 def test_export_csv_success(client):
@@ -142,12 +275,14 @@ def test_video_like_rate_bdd_scenario(client):
 
         assert video.like_rate == 5.0
         assert video.comment_rate == 2.0
+        assert video.engagement_rate == 7.0
 
     response = client.get(f"/video/{video_id}")
     assert response.status_code == 200
     body = response.get_data(as_text=True)
     assert "5.00%" in body
     assert "2.00%" in body
+    assert "7.00%" in body
 
 
 def test_video_engagement_handles_zero_views_and_none(client):
@@ -178,8 +313,10 @@ def test_video_engagement_handles_zero_views_and_none(client):
 
         assert zero_video.like_rate == 0.0
         assert zero_video.comment_rate == 0.0
+        assert zero_video.engagement_rate == 0.0
         assert none_video.like_rate == 0.0
         assert none_video.comment_rate == 0.0
+        assert none_video.engagement_rate == 0.0
 
     response = client.get(f"/video/{zero_video_id}")
     assert response.status_code == 200
