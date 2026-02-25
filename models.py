@@ -36,6 +36,23 @@ class Video(db.Model):
     channel = db.relationship("Channel", back_populates="videos")
     linked_channels = db.relationship("ChannelVideo", back_populates="video", lazy=True)
 
+    def _safe_percentage_rate(self, numerator):
+        """Return a 2-decimal percentage, suppressing invalid math states."""
+        try:
+            return round((numerator / self.views) * 100, 2)
+        except (ZeroDivisionError, TypeError):
+            return 0.0
+
+    @property
+    def like_rate(self):
+        """Likes as a percentage of views."""
+        return self._safe_percentage_rate(self.likes)
+
+    @property
+    def comment_rate(self):
+        """Comments as a percentage of views."""
+        return self._safe_percentage_rate(self.comments)
+
 
 class ChannelHistory(db.Model):
     __tablename__ = "channel_history"

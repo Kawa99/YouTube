@@ -122,6 +122,71 @@ def test_video_detail_route_success(client):
     assert "Video detail test" in body
 
 
+def test_video_like_rate_bdd_scenario(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@engagement_channel", subscribers=8000)
+        db.session.add(channel)
+        db.session.flush()
+
+        video = Video(
+            youtube_video_id="engagement_1",
+            title="Engagement baseline",
+            views=10000,
+            likes=500,
+            comments=200,
+            channel_id=channel.id,
+        )
+        db.session.add(video)
+        db.session.commit()
+        video_id = video.id
+
+        assert video.like_rate == 5.0
+        assert video.comment_rate == 2.0
+
+    response = client.get(f"/video/{video_id}")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "5.00%" in body
+    assert "2.00%" in body
+
+
+def test_video_engagement_handles_zero_views_and_none(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@zero_metrics_channel", subscribers=900)
+        db.session.add(channel)
+        db.session.flush()
+
+        zero_video = Video(
+            youtube_video_id="engagement_zero",
+            title="Zero Engagement",
+            views=0,
+            likes=0,
+            comments=0,
+            channel_id=channel.id,
+        )
+        none_video = Video(
+            youtube_video_id="engagement_none",
+            title="None Engagement",
+            views=None,
+            likes=None,
+            comments=None,
+            channel_id=channel.id,
+        )
+        db.session.add_all([zero_video, none_video])
+        db.session.commit()
+        zero_video_id = zero_video.id
+
+        assert zero_video.like_rate == 0.0
+        assert zero_video.comment_rate == 0.0
+        assert none_video.like_rate == 0.0
+        assert none_video.comment_rate == 0.0
+
+    response = client.get(f"/video/{zero_video_id}")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "0.00%" in body
+
+
 def test_channel_detail_route_success(client):
     with client.application.app_context():
         channel = Channel(channel_username="@channel_detail_channel", subscribers=5000)
