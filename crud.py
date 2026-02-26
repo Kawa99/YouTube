@@ -1,6 +1,6 @@
 import logging
 
-from models import Channel, ChannelHistory, ChannelVideo, Video, db
+from models import Channel, ChannelHistory, ChannelVideo, Video, VideoHistory, db
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ def _safe_int(value, default=0):
 
 
 def save_video(data):
-    """Idempotently insert/update video data and manage channel subscriber history."""
+    """Idempotently upsert video data and append snapshot history rows."""
     youtube_video_id = data.get("youtube_video_id")
     if not youtube_video_id:
         raise ValueError("youtube_video_id is required to save video data.")
@@ -78,6 +78,16 @@ def save_video(data):
         ).first()
         if not existing_link:
             db.session.add(ChannelVideo(video_id=video.id, channel_id=channel.id))
+
+        # Append-only: store a fresh stats snapshot on every scrape/update cycle.
+        db.session.add(
+            VideoHistory(
+                video_id=video.id,
+                views=_safe_int(video.views, 0),
+                likes=_safe_int(video.likes, 0),
+                comments=_safe_int(video.comments, 0),
+            )
+        )
 
         db.session.commit()
         return {"video_id": video.id, "created": created}

@@ -5,13 +5,23 @@
 {% block content %}
 <section class="space-y-6">
     <header class="space-y-4">
-        <a
-            href="{{ url_for('data_viewer') }}"
-            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300 dark:hover:bg-slate-700"
-        >
-            <span aria-hidden="true">←</span>
-            Back to Data Viewer
-        </a>
+        <div class="flex flex-wrap items-center gap-3">
+            <a
+                href="{{ url_for('data_viewer') }}"
+                class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-4 py-2 text-sm font-medium text-slate-600 shadow-sm backdrop-blur-sm transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+                <span aria-hidden="true">←</span>
+                Back to Data Viewer
+            </a>
+            <form method="POST" action="{{ url_for('refresh_video_detail', video_id=video.id) }}">
+                <button
+                    type="submit"
+                    class="inline-flex items-center gap-2 rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition-colors hover:bg-rose-100 dark:border-rose-900/70 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/45"
+                >
+                    Refresh Data
+                </button>
+            </form>
+        </div>
     </header>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -110,6 +120,27 @@
             </div>
         </article>
 
+        <article class="lg:col-span-2 rounded-2xl border border-slate-200 bg-white/70 shadow-sm backdrop-blur-sm p-6 dark:border-slate-700 dark:bg-slate-800/70">
+            <div class="flex items-center justify-between gap-3">
+                <span class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">Performance over time</span>
+                <span id="views-chart-points" class="text-xs font-medium text-slate-500 dark:text-slate-400">Loading...</span>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                    <span class="h-2.5 w-2.5 rounded-full bg-rose-600"></span> Views
+                </span>
+                <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                    <span class="h-2.5 w-2.5 rounded-full bg-sky-500"></span> Likes
+                </span>
+                <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-300">
+                    <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span> Comments
+                </span>
+            </div>
+            <div class="mt-4 h-72 sm:h-80 lg:h-96 rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+                <canvas id="views-over-time-chart" aria-label="Views over time chart" role="img"></canvas>
+            </div>
+        </article>
+
         <article class="rounded-2xl border border-slate-200 bg-white/70 shadow-sm backdrop-blur-sm p-6 dark:border-slate-700 dark:bg-slate-800/70">
             <div class="flex items-center justify-between gap-3">
                 <span class="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400 mb-0 block">Transcript</span>
@@ -126,4 +157,135 @@
         </article>
     </div>
 </section>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", async function () {
+        const canvas = document.getElementById("views-over-time-chart");
+        const pointsLabel = document.getElementById("views-chart-points");
+        if (!canvas || !window.Chart) {
+            return;
+        }
+
+        const historyEndpoint = "{{ url_for('video_history_api', video_id=video.id) }}";
+
+        try {
+            const response = await fetch(historyEndpoint);
+            if (!response.ok) {
+                throw new Error("History request failed");
+            }
+            const payload = await response.json();
+            const labels = Array.isArray(payload.timestamps) ? payload.timestamps : [];
+            const views = Array.isArray(payload.views) ? payload.views : [];
+            const likes = Array.isArray(payload.likes) ? payload.likes : [];
+            const comments = Array.isArray(payload.comments) ? payload.comments : [];
+
+            pointsLabel.textContent = labels.length ? `${labels.length} points` : "No history yet";
+
+            const textColor = document.documentElement.classList.contains("dark") ? "#cbd5e1" : "#334155";
+
+            new Chart(canvas, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: "Views",
+                            data: views,
+                            borderColor: "#e11d48",
+                            backgroundColor: "rgba(225, 29, 72, 0.15)",
+                            borderWidth: 3,
+                            pointRadius: 2.5,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: "#e11d48",
+                            tension: 0.35,
+                            fill: false
+                        },
+                        {
+                            label: "Likes",
+                            data: likes,
+                            borderColor: "#0ea5e9",
+                            backgroundColor: "rgba(14, 165, 233, 0.12)",
+                            borderWidth: 2.5,
+                            pointRadius: 2.5,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: "#0ea5e9",
+                            tension: 0.35,
+                            fill: false
+                        },
+                        {
+                            label: "Comments",
+                            data: comments,
+                            borderColor: "#10b981",
+                            backgroundColor: "rgba(16, 185, 129, 0.12)",
+                            borderWidth: 2.5,
+                            pointRadius: 2.5,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: "#10b981",
+                            tension: 0.35,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: "index" },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: "bottom",
+                            labels: {
+                                color: textColor,
+                                usePointStyle: true,
+                                boxWidth: 10
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (ctx) {
+                                    const value = Number(ctx.parsed.y || 0);
+                                    return `${ctx.dataset.label}: ${value.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: textColor,
+                                maxRotation: 0,
+                                autoSkip: true,
+                                callback: function (value) {
+                                    const rawLabel = this.getLabelForValue(value);
+                                    if (!rawLabel) {
+                                        return "";
+                                    }
+                                    const date = new Date(rawLabel);
+                                    if (Number.isNaN(date.getTime())) {
+                                        return rawLabel;
+                                    }
+                                    return date.toLocaleDateString();
+                                }
+                            },
+                            grid: { display: false },
+                            border: { display: false }
+                        },
+                        y: {
+                            ticks: {
+                                color: textColor,
+                                callback: function (value) {
+                                    return Number(value).toLocaleString();
+                                }
+                            },
+                            grid: { display: false },
+                            border: { display: false }
+                        }
+                    }
+                }
+            });
+        } catch (_error) {
+            pointsLabel.textContent = "Unable to load";
+        }
+    });
+</script>
 {% endblock %}

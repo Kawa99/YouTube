@@ -2,7 +2,7 @@ from flask import Flask
 import pytest
 
 from crud import save_video
-from models import Channel, ChannelHistory, ChannelVideo, Video, db
+from models import Channel, ChannelHistory, ChannelVideo, Video, VideoHistory, db
 
 
 @pytest.fixture
@@ -34,6 +34,13 @@ def test_save_video_creates_new_records(app_and_db):
     assert Channel.query.count() == 1
     assert ChannelVideo.query.count() == 1
     assert ChannelHistory.query.count() == 0
+    assert VideoHistory.query.count() == 1
+
+    history_row = VideoHistory.query.one()
+    assert history_row.views == 250
+    assert history_row.likes == 0
+    assert history_row.comments == 0
+    assert history_row.timestamp is not None
 
 
 def test_save_video_updates_existing_and_tracks_history(app_and_db):
@@ -65,3 +72,8 @@ def test_save_video_updates_existing_and_tracks_history(app_and_db):
     history_records = ChannelHistory.query.all()
     assert len(history_records) == 1
     assert history_records[0].previous_subscribers == 100
+
+    video_history_rows = VideoHistory.query.order_by(VideoHistory.id.asc()).all()
+    assert len(video_history_rows) == 2
+    assert video_history_rows[0].views == 1000
+    assert video_history_rows[1].views == 2000

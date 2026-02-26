@@ -15,7 +15,7 @@ from flask import (
     stream_with_context,
     url_for,
 )
-from models import Channel, ChannelHistory, Video, db
+from models import Channel, ChannelHistory, Video, VideoHistory, db
 from pydantic import ValidationError
 from schemas import VideoCreateSchema
 from sqlalchemy import case, func
@@ -258,10 +258,79 @@ def register_routes(app, limiter):
     def data_viewer():
         return render_template("data_viewer.html")
 
+    @app.route("/api/video/<int:video_id>/history")
+    def video_history_api(video_id):
+        Video.query.get_or_404(video_id)
+        history_rows = (
+            VideoHistory.query.filter_by(video_id=video_id)
+            .order_by(VideoHistory.timestamp.asc())
+            .all()
+        )
+
+        timestamps = []
+        views = []
+        likes = []
+        comments = []
+        for row in history_rows:
+            if row.timestamp is None:
+                continue
+            timestamps.append(f"{row.timestamp.isoformat()}Z")
+            views.append(int(row.views or 0))
+            likes.append(int(row.likes or 0))
+            comments.append(int(row.comments or 0))
+
+        return jsonify(
+            {
+                "timestamps": timestamps,
+                "views": views,
+                "likes": likes,
+                "comments": comments,
+            }
+        )
+
     @app.route("/video/<int:video_id>")
     def video_detail(video_id):
         video = Video.query.get_or_404(video_id)
         return render_template("video_detail.html", video=video)
+
+    @app.route("/video/<int:video_id>/refresh", methods=["POST"])
+    @limiter.limit("15 per minute")
+    def refresh_video_detail(video_id):
+        video = Video.query.get_or_404(video_id)
+
+        if not YOUTUBE_API_KEY:
+            flash(
+                "YouTube API key is not configured. Set the YOUTUBE_API_KEY environment variable.",
+                "danger",
+            )
+            return redirect(url_for("video_detail", video_id=video.id))
+
+        youtube_video_id = (video.youtube_video_id or "").strip()
+        if not youtube_video_id:
+            flash(
+                "Cannot refresh this record because its YouTube video ID is missing.",
+                "warning",
+            )
+            return redirect(url_for("video_detail", video_id=video.id))
+
+        latest_video_data = get_video_data(youtube_video_id)
+        if not latest_video_data:
+            flash(
+                "Could not refresh video data. Check API quota/connectivity and try again.",
+                "warning",
+            )
+            return redirect(url_for("video_detail", video_id=video.id))
+
+        latest_video_data.setdefault("youtube_video_id", youtube_video_id)
+
+        try:
+            save_video(latest_video_data)
+            flash("Video details refreshed. A new history point was added.", "success")
+        except Exception as e:
+            logger.exception("An error occurred: %s", str(e))
+            flash(f"Error refreshing video data: {str(e)}", "danger")
+
+        return redirect(url_for("video_detail", video_id=video.id))
 
     @app.route("/channel/<int:channel_id>")
     def channel_detail(channel_id):

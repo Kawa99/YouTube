@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -35,6 +37,12 @@ class Video(db.Model):
 
     channel = db.relationship("Channel", back_populates="videos")
     linked_channels = db.relationship("ChannelVideo", back_populates="video", lazy=True)
+    history = db.relationship(
+        "VideoHistory",
+        back_populates="video",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
 
     def _safe_percentage_rate(self, numerator):
         """Return a 2-decimal percentage, suppressing invalid math states."""
@@ -72,6 +80,19 @@ class ChannelHistory(db.Model):
     recorded_at = db.Column(db.Text, server_default=db.text("CURRENT_TIMESTAMP"))
 
     channel = db.relationship("Channel", back_populates="history_records")
+
+
+class VideoHistory(db.Model):
+    __tablename__ = "video_history"
+
+    id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
+    views = db.Column(db.Integer, nullable=False, default=0)
+    likes = db.Column(db.Integer, nullable=False, default=0)
+    comments = db.Column(db.Integer, nullable=False, default=0)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    video = db.relationship("Video", back_populates="history")
 
 
 class ChannelVideo(db.Model):

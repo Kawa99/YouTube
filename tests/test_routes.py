@@ -1,11 +1,12 @@
 import io
+from datetime import datetime
 
 import pytest
 from openpyxl import load_workbook
 
 import routes
 from app import create_app
-from models import Channel, ChannelHistory, Video, db
+from models import Channel, ChannelHistory, Video, VideoHistory, db
 
 
 @pytest.fixture
@@ -253,6 +254,113 @@ def test_video_detail_route_success(client):
     assert response.status_code == 200
     body = response.get_data(as_text=True)
     assert "Video detail test" in body
+
+
+def test_video_history_api_returns_ordered_time_series(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@history_channel", subscribers=2500)
+        db.session.add(channel)
+        db.session.flush()
+
+        video = Video(
+            youtube_video_id="video_history_123",
+            title="History API test",
+            views=100,
+            likes=12,
+            comments=2,
+            channel_id=channel.id,
+        )
+        db.session.add(video)
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                VideoHistory(
+                    video_id=video.id,
+                    views=50,
+                    likes=5,
+                    comments=1,
+                    timestamp=datetime(2026, 1, 1, 0, 0, 0),
+                ),
+                VideoHistory(
+                    video_id=video.id,
+                    views=100,
+                    likes=12,
+                    comments=2,
+                    timestamp=datetime(2026, 1, 2, 0, 0, 0),
+                ),
+            ]
+        )
+        db.session.commit()
+        video_id = video.id
+
+    response = client.get(f"/api/video/{video_id}/history")
+    assert response.status_code == 200
+
+    payload = response.get_json()
+    assert payload["timestamps"] == ["2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z"]
+    assert payload["views"] == [50, 100]
+    assert payload["likes"] == [5, 12]
+    assert payload["comments"] == [1, 2]
+
+
+def test_refresh_video_detail_updates_stats_and_appends_history(client, monkeypatch):
+    monkeypatch.setattr(routes, "YOUTUBE_API_KEY", "test-api-key")
+
+    with client.application.app_context():
+        channel = Channel(channel_username="@refresh_channel", subscribers=1200)
+        db.session.add(channel)
+        db.session.flush()
+
+        video = Video(
+            youtube_video_id="refresh_video_1",
+            title="Before refresh",
+            views=100,
+            likes=10,
+            comments=1,
+            channel_id=channel.id,
+        )
+        db.session.add(video)
+        db.session.commit()
+        video_id = video.id
+
+    monkeypatch.setattr(
+        routes,
+        "get_video_data",
+        lambda _video_id: {
+            "youtube_video_id": "refresh_video_1",
+            "channel_username": "@refresh_channel",
+            "subscribers": "1250",
+            "title": "After refresh",
+            "description": "Updated description",
+            "views": "9999",
+            "likes": "350",
+            "comments": "40",
+            "posted": "2026-01-01",
+            "video_length": "0:12:00",
+            "transcript": "Updated transcript",
+        },
+    )
+
+    response = client.post(f"/video/{video_id}/refresh", follow_redirects=True)
+    assert response.status_code == 200
+
+    with client.application.app_context():
+        refreshed_video = Video.query.get(video_id)
+        assert refreshed_video.title == "After refresh"
+        assert refreshed_video.views == 9999
+        assert refreshed_video.likes == 350
+        assert refreshed_video.comments == 40
+
+        history_rows = (
+            VideoHistory.query.filter_by(video_id=video_id)
+            .order_by(VideoHistory.timestamp.asc())
+            .all()
+        )
+        assert len(history_rows) == 1
+        assert history_rows[0].views == 9999
+        assert history_rows[0].likes == 350
+        assert history_rows[0].comments == 40
 
 
 def test_video_like_rate_bdd_scenario(client):
