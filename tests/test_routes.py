@@ -461,3 +461,27 @@ def test_channel_detail_route_success(client):
     assert "@channel_detail_channel" in body
     assert "Linked channel video" in body
     assert "4,900" in body
+
+
+def test_toggle_channel_tracking_api(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@toggle_tracking_channel", subscribers=750)
+        db.session.add(channel)
+        db.session.commit()
+        channel_id = channel.id
+
+    response = client.post(f"/api/channel/{channel_id}/toggle-tracking")
+    assert response.status_code == 200
+    assert response.get_json() == {"is_tracked": True}
+
+    with client.application.app_context():
+        channel = Channel.query.get(channel_id)
+        assert channel.is_tracked is True
+
+    response = client.post(f"/api/channel/{channel_id}/toggle-tracking")
+    assert response.status_code == 200
+    assert response.get_json() == {"is_tracked": False}
+
+    with client.application.app_context():
+        channel = Channel.query.get(channel_id)
+        assert channel.is_tracked is False

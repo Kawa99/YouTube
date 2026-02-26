@@ -7,7 +7,7 @@ from flask import has_app_context
 from flask_socketio import SocketIO
 
 from crud import save_video
-from youtube_api import get_channel_videos, get_video_data
+from youtube_api import get_channel_id_from_url, get_channel_videos, get_video_data
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,7 @@ REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 RQ_QUEUE_NAME = os.environ.get("RQ_QUEUE_NAME", "channel-scrape")
 CHANNEL_JOB_TIMEOUT = int(os.environ.get("CHANNEL_JOB_TIMEOUT_SECONDS", "7200"))
 CHANNEL_JOB_RESULT_TTL = int(os.environ.get("CHANNEL_JOB_RESULT_TTL_SECONDS", "86400"))
+TRACKED_CHANNEL_MAX_VIDEOS = int(os.environ.get("TRACKED_CHANNEL_MAX_VIDEOS", "50"))
 SOCKETIO_ASYNC_MODE = os.environ.get("SOCKETIO_ASYNC_MODE", "threading")
 external_sio = SocketIO(
     message_queue=os.environ.get("REDIS_URL"),
@@ -97,6 +98,77 @@ def enqueue_channel_job(channel_id: str, max_videos: int) -> str:
     job.meta.update(_job_payload_defaults(channel_id, max_videos))
     job.save_meta()
     return job.id
+
+
+def _channel_identifier_to_url(channel_username: str) -> Optional[str]:
+    normalized = str(channel_username or "").strip()
+    if not normalized:
+        return None
+    if normalized.startswith("http://") or normalized.startswith("https://"):
+        return normalized
+    if normalized.startswith("@"):
+        return f"https://www.youtube.com/{normalized}"
+    if normalized.startswith("UC"):
+        return f"https://www.youtube.com/channel/{normalized}"
+    return f"https://www.youtube.com/{normalized}"
+
+
+def _scrape_tracked_channels_impl() -> Dict[str, int]:
+    from models import Channel
+
+    tracked_channels = Channel.query.filter_by(is_tracked=True).all()
+    enqueued_jobs = 0
+    failed = 0
+
+    for channel in tracked_channels:
+        channel_username = str(channel.channel_username or "").strip()
+        if not channel_username:
+            failed += 1
+            continue
+
+        channel_id = (
+            channel_username
+            if channel_username.startswith("UC")
+            else get_channel_id_from_url(_channel_identifier_to_url(channel_username))
+        )
+        if not channel_id:
+            failed += 1
+            logger.warning(
+                "Skipping tracked channel %s because it could not be resolved.",
+                channel_username,
+            )
+            continue
+
+        try:
+            enqueue_channel_job(channel_id, TRACKED_CHANNEL_MAX_VIDEOS)
+            enqueued_jobs += 1
+        except Exception as e:
+            failed += 1
+            logger.exception(
+                "Failed to enqueue tracked channel %s: %s", channel_id, str(e)
+            )
+
+    return {
+        "tracked_channels": len(tracked_channels),
+        "enqueued_jobs": enqueued_jobs,
+        "failed": failed,
+    }
+
+
+def scrape_tracked_channels() -> Dict[str, int]:
+    global _worker_app
+
+    if has_app_context():
+        return _scrape_tracked_channels_impl()
+
+    # Scheduled RQ jobs run outside request context; build one for db.session.
+    if _worker_app is None:
+        from app import create_app
+
+        _worker_app = create_app()
+
+    with _worker_app.app_context():
+        return _scrape_tracked_channels_impl()
 
 
 def _normalize_job_status(raw_status: Optional[str]) -> Optional[str]:

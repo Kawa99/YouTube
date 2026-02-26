@@ -27,6 +27,7 @@ pytz==2025.1
 requests==2.32.3
 redis==5.2.1
 rq==1.16.2
+rq-scheduler==0.13.1
 sentry-sdk[flask]==1.39.1
 six==1.17.0
 tzdata==2025.1

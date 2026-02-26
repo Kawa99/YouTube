@@ -11,6 +11,7 @@ class Channel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     channel_username = db.Column(db.String, unique=True, nullable=False)
     subscribers = db.Column(db.Integer, nullable=False, default=0)
+    is_tracked = db.Column(db.Boolean, nullable=False, default=False)
 
     videos = db.relationship("Video", back_populates="channel", lazy=True)
     history_records = db.relationship(

@@ -39,6 +39,15 @@
             >
                 Open on YouTube
             </a>
+            <button
+                id="tracking-toggle-button"
+                type="button"
+                data-toggle-url="{{ url_for('toggle_channel_tracking', channel_id=channel.id) }}"
+                data-is-tracked="{{ 'true' if channel.is_tracked else 'false' }}"
+                class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold shadow-sm transition-colors {% if channel.is_tracked %}border-rose-600 bg-rose-600 text-white hover:bg-rose-700 dark:border-rose-500 dark:bg-rose-500 dark:hover:bg-rose-400{% else %}border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700{% endif %}"
+            >
+                {{ "Stop Tracking" if channel.is_tracked else "Start Tracking" }}
+            </button>
         </div>
     </header>
 
@@ -113,4 +122,46 @@
     </section>
     {% endif %}
 </section>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const trackingToggleButton = document.getElementById("tracking-toggle-button");
+        if (!trackingToggleButton) {
+            return;
+        }
+
+        const buttonBaseClasses = "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold shadow-sm transition-colors";
+        const inactiveClasses = "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
+        const activeClasses = "border-rose-600 bg-rose-600 text-white hover:bg-rose-700 dark:border-rose-500 dark:bg-rose-500 dark:hover:bg-rose-400";
+
+        function setTrackingButtonState(isTracked) {
+            trackingToggleButton.dataset.isTracked = isTracked ? "true" : "false";
+            trackingToggleButton.textContent = isTracked ? "Stop Tracking" : "Start Tracking";
+            trackingToggleButton.className = `${buttonBaseClasses} ${isTracked ? activeClasses : inactiveClasses}`;
+        }
+
+        trackingToggleButton.addEventListener("click", async function () {
+            const previousState = trackingToggleButton.dataset.isTracked === "true";
+            trackingToggleButton.disabled = true;
+            trackingToggleButton.classList.add("opacity-70", "cursor-wait");
+
+            try {
+                const response = await fetch(trackingToggleButton.dataset.toggleUrl, {
+                    method: "POST",
+                    headers: { "Accept": "application/json" }
+                });
+                if (!response.ok) {
+                    throw new Error("Failed to toggle tracking state.");
+                }
+
+                const payload = await response.json();
+                setTrackingButtonState(Boolean(payload.is_tracked));
+            } catch (_error) {
+                setTrackingButtonState(previousState);
+            } finally {
+                trackingToggleButton.disabled = false;
+                trackingToggleButton.classList.remove("opacity-70", "cursor-wait");
+            }
+        });
+    });
+</script>
 {% endblock %}

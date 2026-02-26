@@ -352,6 +352,14 @@ def register_routes(app, limiter):
             history=history,
         )
 
+    @app.route("/api/channel/<int:channel_id>/toggle-tracking", methods=["POST"])
+    @limiter.limit("60 per minute")
+    def toggle_channel_tracking(channel_id):
+        channel = Channel.query.get_or_404(channel_id)
+        channel.is_tracked = not bool(channel.is_tracked)
+        db.session.commit()
+        return jsonify({"is_tracked": bool(channel.is_tracked)})
+
     @app.route("/api/data")
     def get_data_api():
         page = _parse_positive_int(request.args.get("page", 1), default=1)

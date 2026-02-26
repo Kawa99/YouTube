@@ -11,3 +11,8 @@ services:
     volumes:
       - ./:/app
       - ./data:/app/data:Z
+
+  scheduler:
+    volumes:
+      - ./:/app
+      - ./data:/app/data:Z
