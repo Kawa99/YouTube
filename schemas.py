@@ -11,6 +11,7 @@ class VideoCreateSchema(BaseModel):
     subscribers: int = 0
     title: str = ""
     description: str = ""
+    thumbnail_url: str = ""
     views: int = 0
     likes: int = 0
     comments: int = 0

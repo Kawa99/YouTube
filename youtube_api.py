@@ -352,6 +352,15 @@ def parse_duration(duration: str) -> str:
         return "Unknown"
 
 
+def _best_thumbnail_url(snippet: Mapping[str, Any]) -> str:
+    thumbnails = snippet.get("thumbnails", {}) or {}
+    for quality in ("maxres", "standard", "high", "medium", "default"):
+        candidate = thumbnails.get(quality, {}).get("url")
+        if candidate:
+            return str(candidate)
+    return ""
+
+
 def _should_retry_transcript_exception(exc: Exception) -> bool:
     if isinstance(exc, NON_RETRIABLE_TRANSCRIPT_EXCEPTIONS):
         return False
@@ -432,6 +441,7 @@ def get_video_data(video_id: str) -> Optional[Dict[str, Any]]:
         "youtube_video_id": video_id,
         "title": snippet.get("title", ""),
         "description": snippet.get("description", ""),
+        "thumbnail_url": _best_thumbnail_url(snippet),
         "views": statistics.get("viewCount", 0),
         "likes": statistics.get("likeCount", 0),
         "comments": statistics.get("commentCount", 0),

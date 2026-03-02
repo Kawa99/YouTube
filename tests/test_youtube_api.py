@@ -51,6 +51,9 @@ def test_get_video_data_parses_expected_dictionary():
                     "description": "Test description",
                     "publishedAt": "2009-10-25T06:57:33Z",
                     "channelId": "UC38IQsAvIsxxjztdMZQtwHA",
+                    "thumbnails": {
+                        "high": {"url": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg"}
+                    },
                 },
                 "statistics": {
                     "viewCount": "12345",
@@ -88,6 +91,7 @@ def test_get_video_data_parses_expected_dictionary():
         "youtube_video_id": "dQw4w9WgXcQ",
         "title": "Never Gonna Give You Up",
         "description": "Test description",
+        "thumbnail_url": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
         "views": "12345",
         "likes": "678",
         "comments": "90",

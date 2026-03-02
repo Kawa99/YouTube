@@ -1,6 +1,14 @@
 import logging
 
-from models import Channel, ChannelHistory, ChannelVideo, Video, VideoHistory, db
+from models import (
+    Channel,
+    ChannelHistory,
+    ChannelVideo,
+    Video,
+    VideoHistory,
+    VideoMetadataHistory,
+    db,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -10,6 +18,12 @@ def _safe_int(value, default=0):
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _safe_text(value, default=""):
+    if value is None:
+        return default
+    return str(value)
 
 
 def save_video(data):
@@ -45,27 +59,52 @@ def save_video(data):
 
         video = Video.query.filter_by(youtube_video_id=youtube_video_id).first()
 
+        latest_title = _safe_text(data.get("title"), "")
+        latest_description = _safe_text(data.get("description"), "")
+        latest_posted = _safe_text(data.get("posted"), "")
+        latest_video_length = _safe_text(data.get("video_length"), "")
+        latest_thumbnail_url = _safe_text(data.get("thumbnail_url"), "")
+        latest_transcript = _safe_text(data.get("transcript"), "")
+
         if video:
-            video.title = data.get("title", "")
-            video.description = data.get("description", "")
+            old_title = _safe_text(video.title, "")
+            old_thumbnail = _safe_text(video.thumbnail_url, "")
+            title_changed = old_title != latest_title
+            thumbnail_changed = old_thumbnail != latest_thumbnail_url
+
+            if title_changed or thumbnail_changed:
+                db.session.add(
+                    VideoMetadataHistory(
+                        video_id=video.id,
+                        old_title=old_title,
+                        new_title=latest_title,
+                        old_thumbnail=old_thumbnail,
+                        new_thumbnail=latest_thumbnail_url,
+                    )
+                )
+
+            video.title = latest_title
+            video.description = latest_description
             video.views = _safe_int(data.get("views"), 0)
             video.likes = _safe_int(data.get("likes"), 0)
             video.comments = _safe_int(data.get("comments"), 0)
-            video.posted = data.get("posted", "")
-            video.video_length = data.get("video_length", "")
-            video.transcript = data.get("transcript", "")
+            video.posted = latest_posted
+            video.video_length = latest_video_length
+            video.thumbnail_url = latest_thumbnail_url
+            video.transcript = latest_transcript
             video.channel_id = channel.id
             created = False
         else:
             video = Video(
-                title=data.get("title", ""),
-                description=data.get("description", ""),
+                title=latest_title,
+                description=latest_description,
                 views=_safe_int(data.get("views"), 0),
                 likes=_safe_int(data.get("likes"), 0),
                 comments=_safe_int(data.get("comments"), 0),
-                posted=data.get("posted", ""),
-                video_length=data.get("video_length", ""),
-                transcript=data.get("transcript", ""),
+                posted=latest_posted,
+                video_length=latest_video_length,
+                thumbnail_url=latest_thumbnail_url,
+                transcript=latest_transcript,
                 channel_id=channel.id,
                 youtube_video_id=youtube_video_id,
             )

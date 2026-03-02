@@ -32,6 +32,7 @@ class Video(db.Model):
     comments = db.Column(db.Integer)
     posted = db.Column(db.String)
     video_length = db.Column(db.String)
+    thumbnail_url = db.Column(db.String)
     transcript = db.Column(db.Text)
     saved_at = db.Column(db.Text, server_default=db.text("CURRENT_TIMESTAMP"))
     channel_id = db.Column(db.Integer, db.ForeignKey("channels.id"))
@@ -40,6 +41,12 @@ class Video(db.Model):
     linked_channels = db.relationship("ChannelVideo", back_populates="video", lazy=True)
     history = db.relationship(
         "VideoHistory",
+        back_populates="video",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+    metadata_history = db.relationship(
+        "VideoMetadataHistory",
         back_populates="video",
         lazy=True,
         cascade="all, delete-orphan",
@@ -94,6 +101,20 @@ class VideoHistory(db.Model):
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     video = db.relationship("Video", back_populates="history")
+
+
+class VideoMetadataHistory(db.Model):
+    __tablename__ = "video_metadata_history"
+
+    id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
+    old_title = db.Column(db.String, nullable=False, default="")
+    new_title = db.Column(db.String, nullable=False, default="")
+    old_thumbnail = db.Column(db.String, nullable=False, default="")
+    new_thumbnail = db.Column(db.String, nullable=False, default="")
+    changed_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    video = db.relationship("Video", back_populates="metadata_history")
 
 
 class ChannelVideo(db.Model):
