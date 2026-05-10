@@ -17,6 +17,7 @@ CORE_EXPORT_TABLES = (
     "video_snapshots",
     "video_metadata_changes",
     "video_labels",
+    "video_label_audits",
     "channel_labels",
     "collection_runs",
     "video_derived_metrics",
@@ -34,6 +35,7 @@ TABLE_SELECT_QUERIES = {
     "video_snapshots": "SELECT * FROM video_snapshots",
     "video_metadata_changes": "SELECT * FROM video_metadata_changes",
     "video_labels": "SELECT * FROM video_labels",
+    "video_label_audits": "SELECT * FROM video_label_audits",
     "channel_labels": "SELECT * FROM channel_labels",
     "collection_runs": "SELECT * FROM collection_runs",
     "video_derived_metrics": "SELECT * FROM video_derived_metrics",
@@ -105,6 +107,7 @@ RESEARCH_HEADERS = {
         "production_complexity",
         "policy_risk",
         "review_status",
+        "label_confidence",
     ],
     "manual_labels": [
         "entity_type",
@@ -126,6 +129,7 @@ RESEARCH_HEADERS = {
         "reviewer",
         "review_status",
         "reviewed_at",
+        "label_confidence",
         "notes",
     ],
     "snapshots": [
@@ -532,7 +536,8 @@ def _research_query(dataset, filters):
                 vl.topic_type,
                 vl.production_complexity,
                 vl.policy_risk,
-                vl.review_status
+                vl.review_status,
+                vl.label_confidence
             FROM videos v
             LEFT JOIN channels c ON c.id = v.channel_id
             LEFT JOIN video_labels vl ON vl.video_id = v.id
@@ -563,6 +568,7 @@ def _research_query(dataset, filters):
                     vl.reviewer,
                     vl.review_status,
                     vl.reviewed_at,
+                    vl.label_confidence,
                     vl.notes
                 FROM video_labels vl
                 JOIN videos v ON v.id = vl.video_id
@@ -588,6 +594,7 @@ def _research_query(dataset, filters):
                     cl.reviewer,
                     NULL AS review_status,
                     cl.reviewed_at,
+                    NULL AS label_confidence,
                     cl.notes
                 FROM channel_labels cl
                 JOIN channels c ON c.id = cl.channel_id
@@ -915,6 +922,7 @@ def _infer_dictionary_type(field):
     if field.endswith("_at") or field in {"published_at", "snapshot_at"}:
         return "datetime"
     if field in {
+        "label_confidence",
         "age_days",
         "views_per_day",
         "views_per_subscriber",
@@ -958,6 +966,7 @@ def _infer_source_table(dataset, field):
         "production_complexity",
         "policy_risk",
         "review_status",
+        "label_confidence",
     }:
         return "video_labels"
     return dataset

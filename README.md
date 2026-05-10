@@ -28,6 +28,7 @@ The `research-engine` branch is evolving this tracker into a market-research and
 - `docs/phase-2-research-schema.md`
 - `docs/phase-3-collection-engine.md`
 - `docs/phase-4-research-exports.md`
+- `docs/phase-5-manual-labeling.md`
 
 ## 1. Prerequisites
 

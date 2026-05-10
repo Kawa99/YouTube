@@ -18,6 +18,7 @@ from models import (
     VideoDerivedMetric,
     VideoHistory,
     VideoLabel,
+    VideoLabelAudit,
     VideoSnapshot,
     db,
 )
@@ -222,6 +223,7 @@ def test_export_csv_success(client):
     assert "=== CHANNEL_SNAPSHOTS ===" in body
     assert "=== VIDEO_METADATA_CHANGES ===" in body
     assert "=== VIDEO_LABELS ===" in body
+    assert "=== VIDEO_LABEL_AUDITS ===" in body
     assert "=== CHANNEL_LABELS ===" in body
     assert "=== COLLECTION_RUNS ===" in body
     assert "=== VIDEO_DERIVED_METRICS ===" in body
@@ -245,6 +247,7 @@ def test_export_xlsx_success(client):
             "video_snapshots",
             "video_metadata_changes",
             "video_labels",
+            "video_label_audits",
             "channel_labels",
             "collection_runs",
             "video_derived_metrics",
@@ -449,6 +452,141 @@ def test_research_jsonl_export_filters_outliers(client):
     derived_rows = [row for row in rows if row["dataset"] == "derived_metrics"]
     assert len(derived_rows) == 1
     assert derived_rows[0]["youtube_video_id"] == "jsonl_outlier"
+
+
+def test_labeling_queue_displays_video_context(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@label_channel", subscribers=1500)
+        db.session.add(channel)
+        db.session.flush()
+        video = Video(
+            youtube_video_id="label_video_1",
+            title="Label candidate",
+            description_excerpt="Description for review",
+            thumbnail_url="https://img.youtube.com/vi/label_video_1/hqdefault.jpg",
+            views=5000,
+            video_length="0:08:00",
+            posted="2026-01-01",
+            channel_id=channel.id,
+        )
+        db.session.add(video)
+        db.session.commit()
+
+    response = client.get("/labeling?mode=unlabeled")
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Label candidate" in body
+    assert "@label_channel" in body
+    assert "Description for review" in body
+    assert "Open on YouTube" in body
+    assert "faceless" in body
+
+
+def test_save_video_label_creates_audit_and_rejects_invalid_vocab(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@audit_channel", subscribers=100)
+        db.session.add(channel)
+        db.session.flush()
+        video = Video(
+            youtube_video_id="audit_video",
+            title="Audit candidate",
+            channel_id=channel.id,
+        )
+        db.session.add(video)
+        db.session.commit()
+        video_id = video.id
+
+    invalid_response = client.post(
+        f"/labeling/{video_id}",
+        data={
+            "niche": "freeform typo",
+            "format": "explainer",
+            "faceless_status": "faceless",
+            "ai_use_visible": "none_visible",
+            "visual_style": "animation",
+            "packaging_pattern": "how_to",
+            "topic_type": "evergreen",
+            "production_complexity": "low",
+            "policy_risk": "low",
+            "review_status": "reviewed",
+            "reviewer": "reviewer-a",
+            "label_confidence": "0.8",
+        },
+        follow_redirects=True,
+    )
+    assert invalid_response.status_code == 200
+
+    with client.application.app_context():
+        assert VideoLabel.query.count() == 0
+
+    response = client.post(
+        f"/labeling/{video_id}",
+        data={
+            "niche": "education",
+            "format": "explainer",
+            "faceless_status": "faceless",
+            "ai_use_visible": "none_visible",
+            "visual_style": "animation",
+            "packaging_pattern": "how_to",
+            "topic_type": "evergreen",
+            "production_complexity": "low",
+            "policy_risk": "low",
+            "review_status": "reviewed",
+            "reviewer": "reviewer-a",
+            "label_confidence": "0.8",
+            "monetization_signals": "Sponsor fit",
+            "notes": "Strong packaging",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    with client.application.app_context():
+        label = VideoLabel.query.one()
+        assert label.niche == "education"
+        assert label.label_confidence == 0.8
+        audit = VideoLabelAudit.query.one()
+        assert audit.action == "reviewed"
+        assert audit.reviewer == "reviewer-a"
+        assert audit.previous_values == {}
+        assert audit.new_values["niche"] == "education"
+
+
+def test_bulk_label_applies_controlled_value_to_selected_videos(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@bulk_channel", subscribers=100)
+        db.session.add(channel)
+        db.session.flush()
+        videos = [
+            Video(
+                youtube_video_id=f"bulk_{index}",
+                title=f"Bulk {index}",
+                channel_id=channel.id,
+            )
+            for index in range(3)
+        ]
+        db.session.add_all(videos)
+        db.session.commit()
+        selected_ids = [videos[0].id, videos[1].id]
+
+    response = client.post(
+        "/labeling/bulk",
+        data={
+            "video_ids": [str(video_id) for video_id in selected_ids],
+            "field": "policy_risk",
+            "value": "medium",
+            "reviewer": "bulk-reviewer",
+        },
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    with client.application.app_context():
+        labels = VideoLabel.query.order_by(VideoLabel.video_id.asc()).all()
+        assert len(labels) == 2
+        assert {label.policy_risk for label in labels} == {"medium"}
+        assert VideoLabelAudit.query.count() == 2
 
 
 def test_video_detail_route_success(client):

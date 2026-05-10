@@ -21,7 +21,14 @@ from flask import (
     stream_with_context,
     url_for,
 )
-from models import Channel, ChannelHistory, Video, VideoHistory, db
+from label_vocabularies import LABEL_VOCABULARIES
+from labeling import (
+    LabelValidationError,
+    bulk_apply_video_label,
+    next_unlabeled_video_id,
+    save_video_label,
+)
+from models import Channel, ChannelHistory, Video, VideoHistory, VideoLabel, db
 from pydantic import ValidationError
 from schemas import VideoCreateSchema
 from sqlalchemy import case, func
@@ -263,6 +270,96 @@ def register_routes(app, limiter):
     @app.route("/data")
     def data_viewer():
         return render_template("data_viewer.html")
+
+    @app.route("/labeling", methods=["GET"])
+    def labeling_queue():
+        selected_video_id = request.args.get("video_id", type=int)
+        if selected_video_id is None and request.args.get("mode") == "unlabeled":
+            selected_video_id = next_unlabeled_video_id()
+
+        video = None
+        if selected_video_id is not None:
+            video = Video.query.get_or_404(selected_video_id)
+        else:
+            video = (
+                Video.query.outerjoin(VideoLabel, VideoLabel.video_id == Video.id)
+                .order_by(
+                    (VideoLabel.review_status == "reviewed").asc(),
+                    Video.id.asc(),
+                )
+                .first()
+            )
+
+        queue = (
+            db.session.query(Video, VideoLabel)
+            .outerjoin(VideoLabel, VideoLabel.video_id == Video.id)
+            .order_by(Video.id.asc())
+            .limit(100)
+            .all()
+        )
+        counts = {
+            "total": Video.query.count(),
+            "reviewed": VideoLabel.query.filter_by(review_status="reviewed").count(),
+            "pending": (
+                Video.query.outerjoin(VideoLabel, VideoLabel.video_id == Video.id)
+                .filter(
+                    (VideoLabel.id.is_(None)) | (VideoLabel.review_status == "pending")
+                )
+                .count()
+            ),
+            "needs_second_review": VideoLabel.query.filter_by(
+                review_status="needs_second_review"
+            ).count(),
+            "skipped": VideoLabel.query.filter_by(review_status="skipped").count(),
+        }
+
+        return render_template(
+            "labeling.html",
+            video=video,
+            label=video.labels[0] if video and video.labels else None,
+            queue=queue,
+            counts=counts,
+            vocabularies=LABEL_VOCABULARIES,
+            next_unlabeled_id=next_unlabeled_video_id(video.id if video else None),
+        )
+
+    @app.route("/labeling/<int:video_id>", methods=["POST"])
+    def save_video_label_route(video_id):
+        action = request.form.get("action", "reviewed")
+        reviewer = request.form.get("reviewer", "").strip()
+
+        try:
+            save_video_label(video_id, request.form, reviewer=reviewer, action=action)
+            flash("Video label saved.", "success")
+        except LabelValidationError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("labeling_queue", video_id=video_id))
+
+        if request.form.get("continue_next") == "1":
+            next_video_id = next_unlabeled_video_id(video_id)
+            if next_video_id:
+                return redirect(url_for("labeling_queue", video_id=next_video_id))
+
+        return redirect(url_for("labeling_queue", video_id=video_id))
+
+    @app.route("/labeling/bulk", methods=["POST"])
+    def bulk_label_route():
+        video_ids = request.form.getlist("video_ids")
+        field = request.form.get("field", "")
+        value = request.form.get("value", "")
+        reviewer = request.form.get("reviewer", "").strip()
+
+        try:
+            parsed_video_ids = [int(video_id) for video_id in video_ids]
+            updated = bulk_apply_video_label(
+                parsed_video_ids, field, value, reviewer=reviewer
+            )
+        except (TypeError, ValueError, LabelValidationError) as error:
+            flash(str(error), "warning")
+            return redirect(url_for("labeling_queue"))
+
+        flash(f"Bulk label applied to {updated} videos.", "success")
+        return redirect(url_for("labeling_queue"))
 
     @app.route("/api/video/<int:video_id>/history")
     def video_history_api(video_id):

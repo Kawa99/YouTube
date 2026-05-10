@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Labeling - YouTube Tracker{% endblock %}
+
+{% macro select_field(name, label_text, options, selected) %}
+<label class="space-y-1.5">
+    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ label_text }}</span>
+    <select name="{{ name }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+        {% for option in options %}
+        <option value="{{ option }}" {% if selected == option %}selected{% endif %}>{{ option.replace('_', ' ') }}</option>
+        {% endfor %}
+    </select>
+</label>
+{% endmacro %}
+
+{% block content %}
+<section class="space-y-6">
+    <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Research Review</p>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Manual Video Labeling</h1>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-5">
+            {% for key, value in counts.items() %}
+            <div class="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-700">
+                <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ key.replace('_', ' ') }}</p>
+                <p class="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">{{ value }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </header>
+
+    {% if video %}
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.9fr)]">
+        <section class="space-y-5">
+            <div class="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+                <div class="overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900">
+                    {% if video.thumbnail_url %}
+                    <img src="{{ video.thumbnail_url }}" alt="" class="aspect-video h-full w-full object-cover">
+                    {% else %}
+                    <div class="flex aspect-video items-center justify-center text-sm text-slate-500 dark:text-slate-400">No thumbnail</div>
+                    {% endif %}
+                </div>
+                <div class="space-y-3">
+                    <h2 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{{ video.title or 'Untitled video' }}</h2>
+                    <div class="flex flex-wrap gap-2 text-sm text-slate-600 dark:text-slate-300">
+                        <span class="rounded-md border border-slate-200 px-2 py-1 dark:border-slate-700">{{ video.channel.channel_username if video.channel else 'unknown channel' }}</span>
+                        <span class="rounded-md border border-slate-200 px-2 py-1 dark:border-slate-700">{{ "{:,}".format(video.views or 0) }} views</span>
+                        <span class="rounded-md border border-slate-200 px-2 py-1 dark:border-slate-700">{{ "{:,}".format(video.channel.subscribers or 0) if video.channel else 0 }} subscribers</span>
+                        <span class="rounded-md border border-slate-200 px-2 py-1 dark:border-slate-700">{{ video.video_length or video.duration_seconds or 'unknown duration' }}</span>
+                        <span class="rounded-md border border-slate-200 px-2 py-1 dark:border-slate-700">{{ video.posted or video.published_at or 'unknown date' }}</span>
+                    </div>
+                    <p class="text-sm leading-6 text-slate-600 dark:text-slate-300">{{ video.description_excerpt or (video.description or '')[:500] }}</p>
+                    {% if video.youtube_video_id %}
+                    <a href="https://www.youtube.com/watch?v={{ video.youtube_video_id }}" target="_blank" rel="noopener noreferrer" class="inline-flex rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Open on YouTube</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form id="label-form" method="post" action="{{ url_for('save_video_label_route', video_id=video.id) }}" class="space-y-5 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {{ select_field('niche', 'Niche', vocabularies.niche, label.niche if label else '') }}
+                    {{ select_field('format', 'Format', vocabularies.format, label.format if label else '') }}
+                    {{ select_field('faceless_status', 'Faceless Status', vocabularies.faceless_status, label.faceless_status if label else '') }}
+                    {{ select_field('ai_use_visible', 'AI Use Visible', vocabularies.ai_use_visible, label.ai_use_visible if label else '') }}
+                    {{ select_field('visual_style', 'Visual Style', vocabularies.visual_style, label.visual_style if label else '') }}
+                    {{ select_field('packaging_pattern', 'Packaging Pattern', vocabularies.packaging_pattern, label.packaging_pattern if label else '') }}
+                    {{ select_field('topic_type', 'Topic Type', vocabularies.topic_type, label.topic_type if label else '') }}
+                    {{ select_field('production_complexity', 'Production Complexity', vocabularies.production_complexity, label.production_complexity if label else '') }}
+                    {{ select_field('policy_risk', 'Policy Risk', vocabularies.policy_risk, label.policy_risk if label else '') }}
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px_220px]">
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Reviewer</span>
+                        <input name="reviewer" value="{{ label.reviewer if label else '' }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Confidence</span>
+                        <input name="label_confidence" type="number" min="0" max="1" step="0.05" value="{{ label.label_confidence if label and label.label_confidence is not none else '' }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                    {{ select_field('review_status', 'Review Status', vocabularies.review_status, label.review_status if label else 'reviewed') }}
+                </div>
+
+                <label class="block space-y-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Monetization Signals</span>
+                    <textarea name="monetization_signals" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">{{ label.monetization_signals if label else '' }}</textarea>
+                </label>
+                <label class="block space-y-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Notes</span>
+                    <textarea name="notes" rows="3" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">{{ label.notes if label else '' }}</textarea>
+                </label>
+
+                <div class="flex flex-wrap gap-3">
+                    <button type="submit" name="action" value="reviewed" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700">Save</button>
+                    <button type="submit" name="action" value="reviewed" formaction="{{ url_for('save_video_label_route', video_id=video.id) }}" onclick="document.getElementById('continue-next').value='1'" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Save and Next</button>
+                    <button type="submit" name="action" value="skipped" class="rounded-lg border border-amber-300 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/30">Skip</button>
+                    <button type="submit" name="action" value="needs_second_review" class="rounded-lg border border-sky-300 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 dark:border-sky-700 dark:text-sky-300 dark:hover:bg-sky-950/30">Needs Review</button>
+                    {% if next_unlabeled_id %}
+                    <a href="{{ url_for('labeling_queue', video_id=next_unlabeled_id) }}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Next Unlabeled</a>
+                    {% endif %}
+                    <input id="continue-next" type="hidden" name="continue_next" value="0">
+                </div>
+            </form>
+        </section>
+
+        <aside class="space-y-4">
+            <form method="post" action="{{ url_for('bulk_label_route') }}" class="space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                <div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Bulk Field</span>
+                        <select name="field" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                            {% for field in ['niche', 'format', 'faceless_status', 'production_complexity', 'policy_risk', 'review_status'] %}
+                            <option value="{{ field }}">{{ field.replace('_', ' ') }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Value</span>
+                        <input name="value" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Reviewer</span>
+                        <input name="reviewer" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                </div>
+
+                <div class="max-h-[36rem] space-y-2 overflow-y-auto pr-1">
+                    {% for queued_video, queued_label in queue %}
+                    <label class="flex gap-3 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
+                        <input type="checkbox" name="video_ids" value="{{ queued_video.id }}" class="mt-1 h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate font-medium text-slate-800 dark:text-slate-100">{{ queued_video.title or queued_video.youtube_video_id }}</span>
+                            <span class="text-xs text-slate-500 dark:text-slate-400">{{ queued_label.review_status if queued_label else 'unlabeled' }}</span>
+                        </span>
+                        <a href="{{ url_for('labeling_queue', video_id=queued_video.id) }}" class="text-xs font-semibold text-rose-600 dark:text-rose-400">Open</a>
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <button type="submit" class="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Apply to Selected</button>
+            </form>
+        </aside>
+    </div>
+    {% else %}
+    <div class="rounded-lg border border-slate-200 p-8 text-center text-slate-600 dark:border-slate-700 dark:text-slate-300">No videos are available for labeling.</div>
+    {% endif %}
+</section>
+
+<script>
+    document.addEventListener("keydown", function (event) {
+        if (event.target && ["INPUT", "SELECT", "TEXTAREA"].includes(event.target.tagName)) {
+            return;
+        }
+        const form = document.getElementById("label-form");
+        if (!form) return;
+        if (event.key === "s") {
+            form.querySelector('button[value="reviewed"]').click();
+        } else if (event.key === "k") {
+            form.querySelector('button[value="skipped"]').click();
+        } else if (event.key === "r") {
+            form.querySelector('button[value="needs_second_review"]').click();
+        } else if (event.key === "n") {
+            const nextLink = Array.from(document.querySelectorAll("a")).find(function (link) {
+                return link.textContent.trim() === "Next Unlabeled";
+            });
+            if (nextLink) nextLink.click();
+        }
+    });
+</script>
+{% endblock %}

@@ -325,9 +325,33 @@ class VideoLabel(db.Model):
     reviewer = db.Column(db.String)
     review_status = db.Column(db.String, nullable=False, default="pending")
     reviewed_at = db.Column(db.DateTime)
+    label_confidence = db.Column(db.Float)
     notes = db.Column(db.Text)
 
     video = db.relationship("Video", back_populates="labels")
+    audits = db.relationship(
+        "VideoLabelAudit",
+        back_populates="video_label",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+
+
+class VideoLabelAudit(db.Model):
+    __tablename__ = "video_label_audits"
+
+    id = db.Column(db.Integer, primary_key=True)
+    video_label_id = db.Column(db.Integer, db.ForeignKey("video_labels.id"))
+    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
+    action = db.Column(db.String, nullable=False)
+    reviewer = db.Column(db.String)
+    previous_values = db.Column(db.JSON, nullable=False, default=dict)
+    new_values = db.Column(db.JSON, nullable=False, default=dict)
+    label_confidence = db.Column(db.Float)
+    changed_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    video_label = db.relationship("VideoLabel", back_populates="audits")
+    video = db.relationship("Video")
 
 
 class ChannelLabel(db.Model):
