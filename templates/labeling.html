@@ -65,6 +65,9 @@
                     {{ select_field('ai_use_visible', 'AI Use Visible', vocabularies.ai_use_visible, label.ai_use_visible if label else '') }}
                     {{ select_field('visual_style', 'Visual Style', vocabularies.visual_style, label.visual_style if label else '') }}
                     {{ select_field('packaging_pattern', 'Packaging Pattern', vocabularies.packaging_pattern, label.packaging_pattern if label else '') }}
+                    {{ select_field('title_pattern', 'Title Pattern', vocabularies.title_pattern, label.title_pattern if label else '') }}
+                    {{ select_field('thumbnail_pattern', 'Thumbnail Pattern', vocabularies.thumbnail_pattern, label.thumbnail_pattern if label else '') }}
+                    {{ select_field('curiosity_type', 'Curiosity Type', vocabularies.curiosity_type, label.curiosity_type if label else '') }}
                     {{ select_field('topic_type', 'Topic Type', vocabularies.topic_type, label.topic_type if label else '') }}
                     {{ select_field('production_complexity', 'Production Complexity', vocabularies.production_complexity, label.production_complexity if label else '') }}
                     {{ select_field('policy_risk', 'Policy Risk', vocabularies.policy_risk, label.policy_risk if label else '') }}
@@ -86,6 +89,32 @@
                     <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Monetization Signals</span>
                     <textarea name="monetization_signals" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">{{ label.monetization_signals if label else '' }}</textarea>
                 </label>
+                <label class="block space-y-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Viewer Promise</span>
+                    <textarea name="viewer_promise" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">{{ label.viewer_promise if label else '' }}</textarea>
+                </label>
+                <div class="grid gap-4 md:grid-cols-5">
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Clarity</span>
+                        <input name="clarity_score" type="number" min="1" max="5" step="1" value="{{ label.clarity_score if label and label.clarity_score is not none else '' }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Specificity</span>
+                        <input name="specificity_score" type="number" min="1" max="5" step="1" value="{{ label.specificity_score if label and label.specificity_score is not none else '' }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Honesty</span>
+                        <input name="honesty_score" type="number" min="1" max="5" step="1" value="{{ label.honesty_score if label and label.honesty_score is not none else '' }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Readability</span>
+                        <input name="visual_readability_score" type="number" min="1" max="5" step="1" value="{{ label.visual_readability_score if label and label.visual_readability_score is not none else '' }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Differentiation</span>
+                        <input name="differentiation_score" type="number" min="1" max="5" step="1" value="{{ label.differentiation_score if label and label.differentiation_score is not none else '' }}" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                </div>
                 <label class="block space-y-1.5">
                     <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Notes</span>
                     <textarea name="notes" rows="3" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-rose-500 focus:ring-2 focus:ring-rose-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">{{ label.notes if label else '' }}</textarea>

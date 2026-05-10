@@ -15,11 +15,13 @@ from models import (
     ChannelLabel,
     ChannelSnapshot,
     CollectionRun,
+    PackagingExperiment,
     Video,
     VideoDerivedMetric,
     VideoHistory,
     VideoLabel,
     VideoLabelAudit,
+    VideoMetadataChange,
     VideoSnapshot,
     db,
 )
@@ -229,6 +231,7 @@ def test_export_csv_success(client):
     assert "=== COLLECTION_RUNS ===" in body
     assert "=== VIDEO_DERIVED_METRICS ===" in body
     assert "=== CHANNEL_DERIVED_SUMMARIES ===" in body
+    assert "=== PACKAGING_EXPERIMENTS ===" in body
 
 
 def test_export_xlsx_success(client):
@@ -254,6 +257,7 @@ def test_export_xlsx_success(client):
             "collection_runs",
             "video_derived_metrics",
             "channel_derived_summaries",
+            "packaging_experiments",
             "channel_videos",
             "channel_history",
             "video_history",
@@ -532,12 +536,21 @@ def test_save_video_label_creates_audit_and_rejects_invalid_vocab(client):
             "ai_use_visible": "none_visible",
             "visual_style": "animation",
             "packaging_pattern": "how_to",
+            "title_pattern": "specific_question",
+            "thumbnail_pattern": "single_object_high_contrast",
+            "curiosity_type": "mystery",
             "topic_type": "evergreen",
             "production_complexity": "low",
             "policy_risk": "low",
             "review_status": "reviewed",
             "reviewer": "reviewer-a",
             "label_confidence": "0.8",
+            "viewer_promise": "Understand the surprising system.",
+            "clarity_score": "5",
+            "specificity_score": "4",
+            "honesty_score": "5",
+            "visual_readability_score": "4",
+            "differentiation_score": "3",
             "monetization_signals": "Sponsor fit",
             "notes": "Strong packaging",
         },
@@ -549,11 +562,16 @@ def test_save_video_label_creates_audit_and_rejects_invalid_vocab(client):
         label = VideoLabel.query.one()
         assert label.niche == "education"
         assert label.label_confidence == 0.8
+        assert label.title_pattern == "specific_question"
+        assert label.thumbnail_pattern == "single_object_high_contrast"
+        assert label.viewer_promise == "Understand the surprising system."
+        assert label.clarity_score == 5
         audit = VideoLabelAudit.query.one()
         assert audit.action == "reviewed"
         assert audit.reviewer == "reviewer-a"
         assert audit.previous_values == {}
         assert audit.new_values["niche"] == "education"
+        assert audit.new_values["title_pattern"] == "specific_question"
 
 
 def test_bulk_label_applies_controlled_value_to_selected_videos(client):
@@ -661,6 +679,102 @@ def test_market_analysis_compute_route_creates_derived_metrics(client):
     with client.application.app_context():
         assert VideoDerivedMetric.query.count() == 2
         assert ChannelDerivedSummary.query.count() == 1
+
+
+def test_packaging_lab_displays_patterns_changes_and_saves_experiment(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@packaging_channel", subscribers=1000)
+        db.session.add(channel)
+        db.session.flush()
+        video = Video(
+            youtube_video_id="packaging_video",
+            title="Why This System Works",
+            views=5000,
+            thumbnail_url="https://img.youtube.com/vi/packaging_video/hqdefault.jpg",
+            thumbnail_quality="high",
+            channel_id=channel.id,
+        )
+        db.session.add(video)
+        db.session.flush()
+        db.session.add_all(
+            [
+                VideoLabel(
+                    video_id=video.id,
+                    niche="education",
+                    format="explainer",
+                    title_pattern="specific_question",
+                    thumbnail_pattern="single_object_high_contrast",
+                    viewer_promise="Learn the hidden system.",
+                    curiosity_type="hidden_system",
+                    clarity_score=5,
+                    specificity_score=4,
+                    honesty_score=5,
+                    visual_readability_score=4,
+                    differentiation_score=3,
+                    review_status="reviewed",
+                ),
+                VideoDerivedMetric(
+                    video_id=video.id,
+                    snapshot_at=datetime(2026, 1, 5, 0, 0, 0),
+                    channel_recent_median_views=1000,
+                    relative_performance=5,
+                    outlier_flag=True,
+                    algorithm_version="test-v1",
+                ),
+                VideoSnapshot(
+                    video_id=video.id,
+                    snapshot_at=datetime(2026, 1, 4, 0, 0, 0),
+                    view_count=1000,
+                ),
+                VideoSnapshot(
+                    video_id=video.id,
+                    snapshot_at=datetime(2026, 1, 6, 0, 0, 0),
+                    view_count=5000,
+                ),
+                VideoMetadataChange(
+                    video_id=video.id,
+                    field_name="title",
+                    old_value="Old Title",
+                    new_value="Why This System Works",
+                    changed_at=datetime(2026, 1, 5, 0, 0, 0),
+                ),
+            ]
+        )
+        db.session.commit()
+
+    response = client.get("/packaging?niche=education")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Packaging Lab" in body
+    assert "Why This System Works" in body
+    assert "single_object_high_contrast" in body
+    assert "Metadata Change Analysis" in body
+    assert "4000" in body
+
+    create_response = client.post(
+        "/packaging/experiments",
+        data={
+            "working_title": "Pilot video",
+            "niche": "education",
+            "format": "explainer",
+            "title_candidates": "Title A\nTitle B",
+            "thumbnail_concepts": "Object on white\nDiagram cue",
+            "experiment_log_url": "https://example.com/log",
+            "final_title": "Title A",
+            "final_thumbnail_concept": "Object on white",
+            "final_choice_reason": "Highest clarity.",
+            "status": "selected",
+        },
+        follow_redirects=True,
+    )
+    assert create_response.status_code == 200
+    assert "Pilot video" in create_response.get_data(as_text=True)
+    with client.application.app_context():
+        experiment = PackagingExperiment.query.one()
+        assert experiment.title_candidates == ["Title A", "Title B"]
+        assert experiment.thumbnail_concepts == ["Object on white", "Diagram cue"]
+        assert experiment.final_thumbnail_concept == "Object on white"
+        assert experiment.status == "selected"
 
 
 def test_video_detail_route_success(client):

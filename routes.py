@@ -29,6 +29,7 @@ from labeling import (
     save_video_label,
 )
 from metrics import compute_derived_metrics, market_analysis_summary
+from packaging_lab import packaging_lab_summary, save_packaging_experiment
 from models import Channel, ChannelHistory, Video, VideoHistory, VideoLabel, db
 from pydantic import ValidationError
 from schemas import VideoCreateSchema
@@ -288,6 +289,26 @@ def register_routes(app, limiter):
             "success",
         )
         return redirect(url_for("market_analysis"))
+
+    @app.route("/packaging", methods=["GET"])
+    def packaging_lab():
+        niche = request.args.get("niche", "").strip() or None
+        return render_template(
+            "packaging_lab.html",
+            lab=packaging_lab_summary(niche=niche),
+            vocabularies=LABEL_VOCABULARIES,
+        )
+
+    @app.route("/packaging/experiments", methods=["POST"])
+    def create_packaging_experiment_route():
+        try:
+            experiment = save_packaging_experiment(request.form)
+        except ValueError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("packaging_lab"))
+
+        flash(f"Packaging experiment #{experiment.id} saved.", "success")
+        return redirect(url_for("packaging_lab"))
 
     @app.route("/labeling", methods=["GET"])
     def labeling_queue():

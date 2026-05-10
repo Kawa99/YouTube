@@ -32,6 +32,12 @@
                 Analysis
             </a>
             <a
+                href="{{ url_for('packaging_lab') }}"
+                class="text-sm font-medium transition-colors {% if request.endpoint in ['packaging_lab', 'create_packaging_experiment_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            >
+                Packaging
+            </a>
+            <a
                 href="{{ url_for('labeling_queue') }}"
                 class="text-sm font-medium transition-colors {% if request.endpoint in ['labeling_queue', 'save_video_label_route', 'bulk_label_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
             >
@@ -114,6 +120,12 @@
             class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['market_analysis', 'compute_derived_metrics_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
             Analysis
+        </a>
+        <a
+            href="{{ url_for('packaging_lab') }}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['packaging_lab', 'create_packaging_experiment_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+        >
+            Packaging
         </a>
         <a
             href="{{ url_for('labeling_queue') }}"

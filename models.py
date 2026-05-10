@@ -87,6 +87,9 @@ class Video(db.Model):
     default_language = db.Column(db.String)
     caption_available = db.Column(db.Boolean)
     thumbnail_url = db.Column(db.String)
+    thumbnail_quality = db.Column(db.String)
+    thumbnail_cached_path = db.Column(db.String)
+    thumbnail_phash = db.Column(db.String)
     transcript = db.Column(db.Text)
     transcript_status = db.Column(db.String)
     transcript_text = db.Column(db.Text)
@@ -318,6 +321,15 @@ class VideoLabel(db.Model):
     ai_use_visible = db.Column(db.String)
     visual_style = db.Column(db.String)
     packaging_pattern = db.Column(db.String)
+    title_pattern = db.Column(db.String)
+    thumbnail_pattern = db.Column(db.String)
+    viewer_promise = db.Column(db.Text)
+    curiosity_type = db.Column(db.String)
+    clarity_score = db.Column(db.Integer)
+    specificity_score = db.Column(db.Integer)
+    honesty_score = db.Column(db.Integer)
+    visual_readability_score = db.Column(db.Integer)
+    differentiation_score = db.Column(db.Integer)
     topic_type = db.Column(db.String)
     production_complexity = db.Column(db.String)
     policy_risk = db.Column(db.String)
@@ -413,3 +425,26 @@ class ChannelDerivedSummary(db.Model):
     algorithm_version = db.Column(db.String, nullable=False)
 
     channel = db.relationship("Channel")
+
+
+class PackagingExperiment(db.Model):
+    __tablename__ = "packaging_experiments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    working_title = db.Column(db.String, nullable=False)
+    niche = db.Column(db.String)
+    format = db.Column(db.String)
+    title_candidates = db.Column(db.JSON, nullable=False, default=list)
+    thumbnail_concepts = db.Column(db.JSON, nullable=False, default=list)
+    experiment_log_url = db.Column(db.String)
+    final_title = db.Column(db.String)
+    final_thumbnail_concept = db.Column(db.Text)
+    final_choice_reason = db.Column(db.Text)
+    status = db.Column(db.String, nullable=False, default="draft")
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )

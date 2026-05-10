@@ -6,13 +6,17 @@ import isodate
 logger = logging.getLogger(__name__)
 
 
-def best_thumbnail_url(snippet: Mapping[str, Any]) -> str:
+def best_thumbnail(snippet: Mapping[str, Any]) -> tuple[str, str]:
     thumbnails = snippet.get("thumbnails", {}) or {}
     for quality in ("maxres", "standard", "high", "medium", "default"):
         candidate = thumbnails.get(quality, {}).get("url")
         if candidate:
-            return str(candidate)
-    return ""
+            return str(candidate), quality
+    return "", ""
+
+
+def best_thumbnail_url(snippet: Mapping[str, Any]) -> str:
+    return best_thumbnail(snippet)[0]
 
 
 def parse_duration(duration: str) -> str:
@@ -81,6 +85,7 @@ def parse_video_item(
     published_at = snippet.get("publishedAt", "")
     duration = content_details.get("duration", "")
     channel_data = parse_channel_item(channel_item) if channel_item else {}
+    thumbnail_url, thumbnail_quality = best_thumbnail(snippet)
 
     return {
         "youtube_video_id": video_id,
@@ -88,7 +93,8 @@ def parse_video_item(
         "title": snippet.get("title", ""),
         "description": snippet.get("description", ""),
         "description_full": snippet.get("description", ""),
-        "thumbnail_url": best_thumbnail_url(snippet),
+        "thumbnail_url": thumbnail_url,
+        "thumbnail_quality": thumbnail_quality,
         "views": statistics.get("viewCount", 0),
         "likes": statistics.get("likeCount", 0),
         "comments": statistics.get("commentCount", 0),

@@ -52,6 +52,43 @@ LABEL_VOCABULARIES = {
         "how_to",
         "other",
     ],
+    "title_pattern": [
+        "mystery",
+        "reversal",
+        "consequence",
+        "transformation",
+        "hidden_system",
+        "timeline",
+        "comparison",
+        "specific_question",
+        "list_with_angle",
+        "strong_claim",
+        "other",
+    ],
+    "thumbnail_pattern": [
+        "single_object_high_contrast",
+        "before_after_contrast",
+        "map_timeline_diagram",
+        "recognizable_artifact_or_brand",
+        "human_face_substitute",
+        "text_free_curiosity",
+        "short_text_label",
+        "red_circle_arrow",
+        "split_screen_conflict",
+        "scale_contrast",
+        "other",
+    ],
+    "curiosity_type": [
+        "none",
+        "mystery",
+        "stakes",
+        "contradiction",
+        "transformation",
+        "comparison",
+        "hidden_system",
+        "specific_question",
+        "other",
+    ],
     "topic_type": [
         "evergreen",
         "trend",
@@ -73,6 +110,15 @@ VIDEO_LABEL_FIELDS = (
     "ai_use_visible",
     "visual_style",
     "packaging_pattern",
+    "title_pattern",
+    "thumbnail_pattern",
+    "viewer_promise",
+    "curiosity_type",
+    "clarity_score",
+    "specificity_score",
+    "honesty_score",
+    "visual_readability_score",
+    "differentiation_score",
     "topic_type",
     "production_complexity",
     "policy_risk",
@@ -84,6 +130,14 @@ VIDEO_LABEL_FIELDS = (
 
 CONTROLLED_VIDEO_LABEL_FIELDS = tuple(
     field for field in VIDEO_LABEL_FIELDS if field in LABEL_VOCABULARIES
+)
+
+VIDEO_LABEL_SCORE_FIELDS = (
+    "clarity_score",
+    "specificity_score",
+    "honesty_score",
+    "visual_readability_score",
+    "differentiation_score",
 )
 
 

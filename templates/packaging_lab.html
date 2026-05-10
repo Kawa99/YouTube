@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+
+{% block title %}Packaging Lab - YouTube Tracker{% endblock %}
+
+{% macro select_options(options, selected='') %}
+    {% for option in options %}
+    <option value="{{ option }}" {% if selected == option %}selected{% endif %}>{{ option.replace('_', ' ') }}</option>
+    {% endfor %}
+{% endmacro %}
+
+{% block content %}
+<section class="space-y-8">
+    <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Research Review</p>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Packaging Lab</h1>
+            <p class="max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+                Compare title and thumbnail patterns against channel baseline, relative performance, and metadata changes.
+            </p>
+        </div>
+        <form method="get" action="{{ url_for('packaging_lab') }}" class="flex flex-wrap items-end gap-3">
+            <label class="space-y-1.5">
+                <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Niche</span>
+                <select name="niche" class="w-48 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    <option value="">All niches</option>
+                    {{ select_options(vocabularies.niche, lab.selected_niche) }}
+                </select>
+            </label>
+            <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700">Filter</button>
+        </form>
+    </header>
+
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Packaging Comparison</h2>
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {% for video, channel, label, metric in lab.comparison_rows %}
+            <article class="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
+                {% if video.thumbnail_url %}
+                <img src="{{ video.thumbnail_url }}" alt="" class="aspect-video w-full object-cover">
+                {% else %}
+                <div class="flex aspect-video items-center justify-center bg-slate-100 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">No thumbnail</div>
+                {% endif %}
+                <div class="space-y-3 p-4">
+                    <h3 class="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ video.title or video.youtube_video_id }}</h3>
+                    <div class="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                            <p class="uppercase tracking-wide text-slate-500 dark:text-slate-400">Relative</p>
+                            <p class="font-mono font-semibold">{{ "%.2f"|format(metric.relative_performance or 0) if metric else "0.00" }}x</p>
+                        </div>
+                        <div>
+                            <p class="uppercase tracking-wide text-slate-500 dark:text-slate-400">Baseline</p>
+                            <p class="font-mono font-semibold">{{ "%.0f"|format(metric.channel_recent_median_views or 0) if metric else "0" }}</p>
+                        </div>
+                        <div>
+                            <p class="uppercase tracking-wide text-slate-500 dark:text-slate-400">Views</p>
+                            <p class="font-mono font-semibold">{{ "{:,}".format(video.views or 0) }}</p>
+                        </div>
+                    </div>
+                    <dl class="grid gap-2 text-xs text-slate-600 dark:text-slate-300">
+                        <div class="flex justify-between gap-3"><dt>Channel</dt><dd class="truncate font-medium">{{ channel.channel_username if channel else "" }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt>Niche</dt><dd class="truncate font-medium">{{ label.niche if label else "" }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt>Title</dt><dd class="truncate font-medium">{{ label.title_pattern if label else "" }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt>Thumbnail</dt><dd class="truncate font-medium">{{ label.thumbnail_pattern if label else "" }}</dd></div>
+                        <div class="flex justify-between gap-3"><dt>Promise</dt><dd class="truncate font-medium">{{ label.viewer_promise if label else "" }}</dd></div>
+                    </dl>
+                    <a href="{{ url_for('labeling_queue', video_id=video.id) }}" class="inline-flex rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Edit labels</a>
+                </div>
+            </article>
+            {% else %}
+            <div class="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400 sm:col-span-2 xl:col-span-3">No videos available.</div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+        <section class="space-y-3">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Top Packaging Patterns by Niche</h2>
+            <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        <tr>
+                            <th class="px-4 py-3">Niche</th>
+                            <th class="px-4 py-3">Title Pattern</th>
+                            <th class="px-4 py-3">Thumbnail Pattern</th>
+                            <th class="px-4 py-3">Relative</th>
+                            <th class="px-4 py-3">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        {% for niche, title_pattern, thumbnail_pattern, average_relative, count in lab.pattern_rows %}
+                        <tr>
+                            <td class="px-4 py-3">{{ niche }}</td>
+                            <td class="px-4 py-3">{{ title_pattern }}</td>
+                            <td class="px-4 py-3">{{ thumbnail_pattern }}</td>
+                            <td class="px-4 py-3 font-mono">{{ "%.2f"|format(average_relative or 0) }}x</td>
+                            <td class="px-4 py-3 font-mono">{{ count }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No packaging labels yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="space-y-3">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Metadata Change Analysis</h2>
+            <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        <tr>
+                            <th class="px-4 py-3">Video</th>
+                            <th class="px-4 py-3">Field</th>
+                            <th class="px-4 py-3">Changed</th>
+                            <th class="px-4 py-3">Before</th>
+                            <th class="px-4 py-3">After</th>
+                            <th class="px-4 py-3">Delta</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        {% for row in lab.metadata_change_rows %}
+                        <tr>
+                            <td class="px-4 py-3 max-w-[16rem] truncate">{{ row.video.title or row.video.youtube_video_id }}</td>
+                            <td class="px-4 py-3">{{ row.change.field_name }}</td>
+                            <td class="px-4 py-3">{{ row.change.changed_at.strftime("%Y-%m-%d") if row.change.changed_at else "" }}</td>
+                            <td class="px-4 py-3 font-mono">{{ row.before_views if row.before_views is not none else "" }}</td>
+                            <td class="px-4 py-3 font-mono">{{ row.after_views if row.after_views is not none else "" }}</td>
+                            <td class="px-4 py-3 font-mono">{{ row.view_delta if row.view_delta is not none else "" }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">No title or thumbnail changes yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <section class="space-y-3">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Pilot Packaging Workspace</h2>
+            <form method="post" action="{{ url_for('create_packaging_experiment_route') }}" class="space-y-4 rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                <label class="block space-y-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Working Title</span>
+                    <input name="working_title" required class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                </label>
+                <div class="grid gap-4 md:grid-cols-3">
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Niche</span>
+                        <select name="niche" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                            <option value="">Unassigned</option>
+                            {{ select_options(vocabularies.niche) }}
+                        </select>
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Format</span>
+                        <select name="format" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                            <option value="">Unassigned</option>
+                            {{ select_options(vocabularies.format) }}
+                        </select>
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</span>
+                        <select name="status" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                            <option value="draft">draft</option>
+                            <option value="selected">selected</option>
+                            <option value="published">published</option>
+                            <option value="retired">retired</option>
+                        </select>
+                    </label>
+                </div>
+                <label class="block space-y-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Title Candidates</span>
+                    <textarea name="title_candidates" rows="4" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                </label>
+                <label class="block space-y-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Thumbnail Concepts</span>
+                    <textarea name="thumbnail_concepts" rows="3" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                </label>
+                <div class="grid gap-4 md:grid-cols-2">
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Experiment Log URL</span>
+                        <input name="experiment_log_url" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Final Title</span>
+                        <input name="final_title" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                </div>
+                <label class="block space-y-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Final Thumbnail Concept</span>
+                    <textarea name="final_thumbnail_concept" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                </label>
+                <label class="block space-y-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Final Choice Reason</span>
+                    <textarea name="final_choice_reason" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                </label>
+                <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700">Save Experiment</button>
+            </form>
+        </section>
+
+        <section class="space-y-3">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Saved Pilot Experiments</h2>
+            <div class="space-y-3">
+                {% for experiment in lab.experiments %}
+                <article class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <h3 class="font-semibold text-slate-900 dark:text-slate-100">{{ experiment.working_title }}</h3>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ experiment.niche or 'unassigned' }} · {{ experiment.format or 'unassigned' }} · {{ experiment.status }}</p>
+                        </div>
+                        {% if experiment.experiment_log_url %}
+                        <a href="{{ experiment.experiment_log_url }}" class="text-sm font-semibold text-rose-600 dark:text-rose-400" target="_blank" rel="noopener noreferrer">Log</a>
+                        {% endif %}
+                    </div>
+                    <div class="mt-3 grid gap-3 text-sm md:grid-cols-2">
+                        <div>
+                            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Titles</p>
+                            <ul class="mt-1 list-disc space-y-1 pl-4 text-slate-700 dark:text-slate-300">
+                                {% for candidate in experiment.title_candidates %}
+                                <li>{{ candidate }}</li>
+                                {% else %}
+                                <li class="list-none text-slate-500">No title candidates.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Thumbnails</p>
+                            <ul class="mt-1 list-disc space-y-1 pl-4 text-slate-700 dark:text-slate-300">
+                                {% for concept in experiment.thumbnail_concepts %}
+                                <li>{{ concept }}</li>
+                                {% else %}
+                                <li class="list-none text-slate-500">No thumbnail concepts.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% if experiment.final_title or experiment.final_choice_reason %}
+                    <p class="mt-3 text-sm text-slate-700 dark:text-slate-300">{{ experiment.final_title or '' }} {{ experiment.final_choice_reason or '' }}</p>
+                    {% endif %}
+                </article>
+                {% else %}
+                <div class="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">No pilot experiments yet.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</section>
+{% endblock %}

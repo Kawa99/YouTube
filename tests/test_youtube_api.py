@@ -108,6 +108,7 @@ def test_get_video_data_parses_expected_dictionary():
         "description": "Test description",
         "description_full": "Test description",
         "thumbnail_url": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+        "thumbnail_quality": "high",
         "views": "12345",
         "likes": "678",
         "comments": "90",

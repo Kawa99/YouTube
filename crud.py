@@ -167,6 +167,9 @@ def save_video(data):
         latest_posted = _safe_text(data.get("posted"), "")
         latest_video_length = _safe_text(data.get("video_length"), "")
         latest_thumbnail_url = _safe_text(data.get("thumbnail_url"), "")
+        latest_thumbnail_quality = _safe_text(data.get("thumbnail_quality"), "")
+        latest_thumbnail_cached_path = _safe_text(data.get("thumbnail_cached_path"), "")
+        latest_thumbnail_phash = _safe_text(data.get("thumbnail_phash"), "")
         latest_transcript = _safe_text(data.get("transcript"), "")
         latest_transcript_text = _safe_text(
             data.get("transcript_text"), latest_transcript
@@ -233,6 +236,13 @@ def save_video(data):
                 "caption_available", bool(latest_transcript_text)
             )
             video.thumbnail_url = latest_thumbnail_url
+            video.thumbnail_quality = (
+                latest_thumbnail_quality or video.thumbnail_quality
+            )
+            video.thumbnail_cached_path = (
+                latest_thumbnail_cached_path or video.thumbnail_cached_path
+            )
+            video.thumbnail_phash = latest_thumbnail_phash or video.thumbnail_phash
             video.transcript = latest_transcript
             video.transcript_text = latest_transcript_text
             video.transcript_status = data.get("transcript_status") or (
@@ -261,6 +271,9 @@ def save_video(data):
                     "caption_available", bool(latest_transcript_text)
                 ),
                 thumbnail_url=latest_thumbnail_url,
+                thumbnail_quality=latest_thumbnail_quality,
+                thumbnail_cached_path=latest_thumbnail_cached_path,
+                thumbnail_phash=latest_thumbnail_phash,
                 transcript=latest_transcript,
                 transcript_text=latest_transcript_text,
                 transcript_status=data.get("transcript_status")

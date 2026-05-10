@@ -4,6 +4,7 @@ from label_vocabularies import (
     CONTROLLED_VIDEO_LABEL_FIELDS,
     LABEL_VOCABULARIES,
     VIDEO_LABEL_FIELDS,
+    VIDEO_LABEL_SCORE_FIELDS,
 )
 from models import Video, VideoLabel, VideoLabelAudit, db
 
@@ -26,6 +27,15 @@ def label_snapshot(label):
         "ai_use_visible": label.ai_use_visible,
         "visual_style": label.visual_style,
         "packaging_pattern": label.packaging_pattern,
+        "title_pattern": label.title_pattern,
+        "thumbnail_pattern": label.thumbnail_pattern,
+        "viewer_promise": label.viewer_promise,
+        "curiosity_type": label.curiosity_type,
+        "clarity_score": label.clarity_score,
+        "specificity_score": label.specificity_score,
+        "honesty_score": label.honesty_score,
+        "visual_readability_score": label.visual_readability_score,
+        "differentiation_score": label.differentiation_score,
         "topic_type": label.topic_type,
         "production_complexity": label.production_complexity,
         "policy_risk": label.policy_risk,
@@ -49,6 +59,8 @@ def normalize_video_label_payload(payload, *, partial=False):
 
         if field == "label_confidence":
             normalized[field] = _normalize_confidence(value)
+        elif field in VIDEO_LABEL_SCORE_FIELDS:
+            normalized[field] = _normalize_score(field, value)
         elif field in CONTROLLED_VIDEO_LABEL_FIELDS:
             normalized[field] = _normalize_controlled_value(field, value, partial)
         else:
@@ -154,3 +166,15 @@ def _normalize_confidence(value):
     if confidence < 0 or confidence > 1:
         raise LabelValidationError("label_confidence must be between 0 and 1.")
     return confidence
+
+
+def _normalize_score(field, value):
+    if value in ("", None):
+        return None
+    try:
+        score = int(value)
+    except (TypeError, ValueError) as exc:
+        raise LabelValidationError(f"{field} must be an integer.") from exc
+    if score < 1 or score > 5:
+        raise LabelValidationError(f"{field} must be between 1 and 5.")
+    return score
