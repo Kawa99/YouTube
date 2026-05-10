@@ -571,6 +571,18 @@
         });
     }
 
+    function activateInitialTabFromQuery() {
+        const requestedView = new URLSearchParams(window.location.search).get("view");
+        if (!["videos", "channels", "history"].includes(requestedView)) return;
+
+        document.querySelectorAll("#dataTabs .tab-button").forEach((tab) => {
+            setTabActiveState(tab, tab.dataset.target === requestedView);
+        });
+        document.querySelectorAll("#dataTabsContent .tab-pane").forEach((pane) => {
+            pane.classList.toggle("hidden", pane.id !== requestedView);
+        });
+    }
+
     function setupAutoRefresh() {
         const autoRefreshCheckbox = document.getElementById("auto-refresh");
 
@@ -627,6 +639,7 @@
         setupSorting();
         setupPagination();
         setupTabRefresh();
+        activateInitialTabFromQuery();
         setupAutoRefresh();
         setupManualRefresh();
         fetchData();

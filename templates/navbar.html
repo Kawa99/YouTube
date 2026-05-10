@@ -1,41 +1,47 @@
 <header class="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
     <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 lg:px-8">
-        <a href="{{ url_for('index') }}" class="group inline-flex items-center gap-2.5 rounded-md" aria-label="Baroo home" title="Baroo">
+        <a href="{{ url_for('dashboard') }}" class="group inline-flex items-center gap-2.5 rounded-md" aria-label="Baroo home" title="Baroo">
             <img src="{{ url_for('static', filename='icons/acorn-svgrepo-com.svg') }}" alt="" class="h-8 w-8 shrink-0" aria-hidden="true">
             <span class="font-sans text-lg font-semibold tracking-tight text-slate-800 transition-colors group-hover:text-slate-900 dark:text-slate-100 dark:group-hover:text-white">Baroo</span>
             <span class="sr-only">Baroo</span>
         </a>
 
-        <nav class="hidden items-center gap-6 md:flex" aria-label="Primary navigation">
+        <nav class="hidden items-center gap-5 md:flex" aria-label="Primary navigation">
             <a
-                href="{{ url_for('index') }}"
-                class="text-sm font-medium transition-colors {% if request.endpoint == 'index' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+                href="{{ url_for('dashboard') }}"
+                class="text-sm font-medium transition-colors {% if request.endpoint == 'dashboard' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
             >
-                Single Video
+                Dashboard
             </a>
             <a
-                href="{{ url_for('channel_scraper') }}"
-                class="text-sm font-medium transition-colors {% if request.endpoint == 'channel_scraper' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+                href="{{ url_for('collect_workspace') }}"
+                class="text-sm font-medium transition-colors {% if request.endpoint in ['collect_workspace', 'index', 'channel_scraper', 'process_channel', 'get_channel_job_status'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
             >
-                Channel Scraper
+                Collect
             </a>
             <a
-                href="{{ url_for('data_viewer') }}"
-                class="text-sm font-medium transition-colors {% if request.endpoint == 'data_viewer' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+                href="{{ url_for('data_viewer', view='channels') }}"
+                class="text-sm font-medium transition-colors {% if request.endpoint in ['data_viewer', 'channel_detail'] and request.args.get('view') == 'channels' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
             >
-                Data Viewer
+                Channels
             </a>
             <a
-                href="{{ url_for('market_analysis') }}"
-                class="text-sm font-medium transition-colors {% if request.endpoint in ['market_analysis', 'compute_derived_metrics_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+                href="{{ url_for('data_viewer', view='videos') }}"
+                class="text-sm font-medium transition-colors {% if request.endpoint in ['data_viewer', 'video_detail', 'refresh_video_detail'] and request.args.get('view', 'videos') == 'videos' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
             >
-                Analysis
+                Videos
+            </a>
+            <a
+                href="{{ url_for('labeling_queue') }}"
+                class="text-sm font-medium transition-colors {% if request.endpoint in ['labeling_queue', 'save_video_label_route', 'bulk_label_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            >
+                Labeling
             </a>
             <a
                 href="{{ url_for('packaging_lab') }}"
                 class="text-sm font-medium transition-colors {% if request.endpoint in ['packaging_lab', 'create_packaging_experiment_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
             >
-                Packaging
+                Packaging Lab
             </a>
             <a
                 href="{{ url_for('theses_workspace') }}"
@@ -53,13 +59,19 @@
                 href="{{ url_for('owned_analytics_workspace') }}"
                 class="text-sm font-medium transition-colors {% if request.endpoint in ['owned_analytics_workspace', 'save_owned_credential_route', 'revoke_owned_credential_route', 'save_owned_analytics_route', 'save_retention_diagnostic_route', 'create_experiment_route', 'save_experiment_checkpoint_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
             >
-                Owned
+                Experiments
             </a>
             <a
-                href="{{ url_for('labeling_queue') }}"
-                class="text-sm font-medium transition-colors {% if request.endpoint in ['labeling_queue', 'save_video_label_route', 'bulk_label_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+                href="{{ url_for('exports_workspace') }}"
+                class="text-sm font-medium transition-colors {% if request.endpoint in ['exports_workspace', 'export_data_route', 'research_zip_export_route', 'research_jsonl_export_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
             >
-                Labeling
+                Exports
+            </a>
+            <a
+                href="{{ url_for('settings_workspace') }}"
+                class="text-sm font-medium transition-colors {% if request.endpoint == 'settings_workspace' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            >
+                Settings
             </a>
         </nav>
 
@@ -116,34 +128,40 @@
 
     <nav class="mx-auto flex w-full max-w-7xl items-center gap-5 overflow-x-auto px-4 pb-3 md:hidden lg:px-8" aria-label="Mobile navigation">
         <a
-            href="{{ url_for('index') }}"
-            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint == 'index' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            href="{{ url_for('dashboard') }}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint == 'dashboard' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
-            Single Video
+            Dashboard
         </a>
         <a
-            href="{{ url_for('channel_scraper') }}"
-            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint == 'channel_scraper' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            href="{{ url_for('collect_workspace') }}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['collect_workspace', 'index', 'channel_scraper', 'process_channel', 'get_channel_job_status'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
-            Channel Scraper
+            Collect
         </a>
         <a
-            href="{{ url_for('data_viewer') }}"
-            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint == 'data_viewer' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            href="{{ url_for('data_viewer', view='channels') }}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['data_viewer', 'channel_detail'] and request.args.get('view') == 'channels' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
-            Data Viewer
+            Channels
         </a>
         <a
-            href="{{ url_for('market_analysis') }}"
-            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['market_analysis', 'compute_derived_metrics_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            href="{{ url_for('data_viewer', view='videos') }}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['data_viewer', 'video_detail', 'refresh_video_detail'] and request.args.get('view', 'videos') == 'videos' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
-            Analysis
+            Videos
+        </a>
+        <a
+            href="{{ url_for('labeling_queue') }}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['labeling_queue', 'save_video_label_route', 'bulk_label_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+        >
+            Labeling
         </a>
         <a
             href="{{ url_for('packaging_lab') }}"
             class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['packaging_lab', 'create_packaging_experiment_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
-            Packaging
+            Packaging Lab
         </a>
         <a
             href="{{ url_for('theses_workspace') }}"
@@ -161,13 +179,19 @@
             href="{{ url_for('owned_analytics_workspace') }}"
             class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['owned_analytics_workspace', 'save_owned_credential_route', 'revoke_owned_credential_route', 'save_owned_analytics_route', 'save_retention_diagnostic_route', 'create_experiment_route', 'save_experiment_checkpoint_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
-            Owned
+            Experiments
         </a>
         <a
-            href="{{ url_for('labeling_queue') }}"
-            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['labeling_queue', 'save_video_label_route', 'bulk_label_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            href="{{ url_for('exports_workspace') }}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['exports_workspace', 'export_data_route', 'research_zip_export_route', 'research_jsonl_export_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
-            Labeling
+            Exports
+        </a>
+        <a
+            href="{{ url_for('settings_workspace') }}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint == 'settings_workspace' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+        >
+            Settings
         </a>
     </nav>
 </header>

@@ -530,6 +530,65 @@ def test_research_jsonl_export_filters_outliers(client):
     assert derived_rows[0]["youtube_video_id"] == "jsonl_outlier"
 
 
+def test_research_operations_pages_render_task_navigation(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@dashboard_channel", subscribers=1000)
+        db.session.add(channel)
+        db.session.flush()
+        video = Video(
+            youtube_video_id="dashboard_video",
+            title="Dashboard Outlier",
+            views=1000,
+            channel_id=channel.id,
+        )
+        thesis = ContentThesis(
+            thesis_id="DASH001",
+            title="Dashboard thesis",
+            status="research",
+        )
+        db.session.add_all([video, thesis])
+        db.session.flush()
+        db.session.add_all(
+            [
+                VideoLabel(video_id=video.id, niche="education"),
+                VideoDerivedMetric(
+                    video_id=video.id,
+                    snapshot_at=datetime(2026, 1, 1, 0, 0, 0),
+                    relative_performance=5,
+                    outlier_flag=True,
+                    algorithm_version="test-v1",
+                ),
+                CollectionRun(
+                    run_type="channel_uploads",
+                    status="completed",
+                    input_type="channel_id",
+                    input_value="UC_DASH",
+                    quota_estimate=4,
+                    items_saved=1,
+                ),
+            ]
+        )
+        db.session.commit()
+
+    dashboard_response = client.get("/dashboard")
+    assert dashboard_response.status_code == 200
+    dashboard_body = dashboard_response.get_data(as_text=True)
+    assert "Research Operations" in dashboard_body
+    assert "Dashboard Outlier" in dashboard_body
+    assert "Dashboard thesis" in dashboard_body
+
+    for path, marker in (
+        ("/collect", "Queue channel"),
+        ("/exports", "Filtered Research ZIP"),
+        ("/settings", "YouTube API key"),
+        ("/data?view=channels", "Enterprise Data Viewer"),
+        ("/data?view=videos", "Enterprise Data Viewer"),
+    ):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert marker in response.get_data(as_text=True)
+
+
 def test_labeling_queue_displays_video_context(client):
     with client.application.app_context():
         channel = Channel(channel_username="@label_channel", subscribers=1500)

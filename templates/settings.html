@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - YouTube Tracker{% endblock %}
+
+{% block content %}
+<section class="space-y-8">
+    <header>
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Runtime</p>
+        <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">Settings</h1>
+    </header>
+
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <table class="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-800">
+            <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900">
+                <tr><th class="px-5 py-3">Setting</th><th class="px-5 py-3">Value</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                <tr><td class="px-5 py-3 font-medium">YouTube API key</td><td class="px-5 py-3">{{ "configured" if settings.youtube_api_key_configured else "missing" }}</td></tr>
+                <tr><td class="px-5 py-3 font-medium">Redis URL</td><td class="px-5 py-3 font-mono text-xs">{{ settings.redis_url }}</td></tr>
+                <tr><td class="px-5 py-3 font-medium">Database URL</td><td class="px-5 py-3">{{ "configured" if settings.database_url_configured else "default SQLite" }}</td></tr>
+                <tr><td class="px-5 py-3 font-medium">RQ queue</td><td class="px-5 py-3 font-mono text-xs">{{ settings.rq_queue_name }}</td></tr>
+                <tr><td class="px-5 py-3 font-medium">Google OAuth client</td><td class="px-5 py-3">{{ "configured" if settings.google_oauth_configured else "missing" }}</td></tr>
+                <tr><td class="px-5 py-3 font-medium">Owned analytics secret backend</td><td class="px-5 py-3 font-mono text-xs">{{ settings.owned_secret_backend }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

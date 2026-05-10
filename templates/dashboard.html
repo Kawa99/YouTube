@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - YouTube Tracker{% endblock %}
+
+{% block content %}
+<section class="space-y-8">
+    <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Research Operations</p>
+            <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">Dashboard</h1>
+        </div>
+        <p class="font-mono text-xs text-slate-500 dark:text-slate-400">Generated {{ dashboard.generated_at }}</p>
+    </header>
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Channels</p>
+            <p class="mt-3 font-mono text-4xl font-semibold">{{ dashboard.counts.channels }}</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Videos</p>
+            <p class="mt-3 font-mono text-4xl font-semibold">{{ dashboard.counts.videos }}</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Label coverage</p>
+            <p class="mt-3 font-mono text-4xl font-semibold">{{ dashboard.counts.label_coverage }}%</p>
+            <p class="mt-2 text-sm text-slate-500">{{ dashboard.counts.unlabeled_videos }} unlabeled</p>
+        </article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Quota logged</p>
+            <p class="mt-3 font-mono text-4xl font-semibold">{{ dashboard.counts.quota_total }}</p>
+        </article>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <h2 class="text-base font-semibold">Recent Collection Runs</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-800">
+                    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900">
+                        <tr><th class="px-5 py-3">Type</th><th class="px-5 py-3">Status</th><th class="px-5 py-3">Saved</th><th class="px-5 py-3">Started</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        {% for run in dashboard.recent_runs %}
+                            <tr><td class="px-5 py-3">{{ run.run_type }}</td><td class="px-5 py-3">{{ run.status }}</td><td class="px-5 py-3 font-mono">{{ run.items_saved }}</td><td class="px-5 py-3">{{ run.started_at }}</td></tr>
+                        {% else %}
+                            <tr><td colspan="4" class="px-5 py-6 text-slate-500">No collection runs yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <h2 class="text-base font-semibold">Failed or Partial Runs</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-800">
+                    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900">
+                        <tr><th class="px-5 py-3">Type</th><th class="px-5 py-3">Input</th><th class="px-5 py-3">Error</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        {% for run in dashboard.failed_runs %}
+                            <tr><td class="px-5 py-3">{{ run.run_type }}</td><td class="px-5 py-3">{{ run.input_value }}</td><td class="px-5 py-3">{{ run.error_summary }}</td></tr>
+                        {% else %}
+                            <tr><td colspan="3" class="px-5 py-6 text-slate-500">No failed runs logged.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <h2 class="text-base font-semibold">Top Outlier Videos</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-left text-sm dark:divide-slate-800">
+                    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900">
+                        <tr><th class="px-5 py-3">Video</th><th class="px-5 py-3">Niche</th><th class="px-5 py-3">Relative</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        {% for metric, video, channel, label in dashboard.top_outliers %}
+                            <tr><td class="px-5 py-3"><a class="font-medium text-rose-600 dark:text-rose-400" href="{{ url_for('video_detail', video_id=video.id) }}">{{ video.title or video.youtube_video_id }}</a></td><td class="px-5 py-3">{{ label.niche if label else "" }}</td><td class="px-5 py-3 font-mono">{{ "%.2f"|format(metric.relative_performance or 0) }}x</td></tr>
+                        {% else %}
+                            <tr><td colspan="3" class="px-5 py-6 text-slate-500">No outlier metrics yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <h2 class="text-base font-semibold">Candidate Theses</h2>
+            </div>
+            <div class="divide-y divide-slate-100 dark:divide-slate-800">
+                {% for thesis in dashboard.candidate_theses %}
+                    <a href="{{ url_for('theses_workspace', thesis_id=thesis.id) }}" class="block px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-900">
+                        <span class="font-medium text-slate-950 dark:text-white">{{ thesis.title }}</span>
+                        <span class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-300">{{ thesis.status }}</span>
+                    </a>
+                {% else %}
+                    <p class="px-5 py-6 text-sm text-slate-500">No candidate theses yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</section>
+{% endblock %}

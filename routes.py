@@ -40,6 +40,7 @@ from owned_analytics import (
     save_retention_diagnostic,
 )
 from packaging_lab import packaging_lab_summary, save_packaging_experiment
+from research_dashboard import research_dashboard_summary
 from rights import (
     RightsValidationError,
     create_asset,
@@ -144,6 +145,37 @@ def _safe_percentage_rate(numerator, denominator):
 
 def register_routes(app, limiter):
     """Register application routes."""
+
+    @app.route("/dashboard", methods=["GET"])
+    def dashboard():
+        return render_template("dashboard.html", dashboard=research_dashboard_summary())
+
+    @app.route("/collect", methods=["GET"])
+    def collect_workspace():
+        return render_template("collect.html")
+
+    @app.route("/exports", methods=["GET"])
+    def exports_workspace():
+        return render_template("exports.html")
+
+    @app.route("/settings", methods=["GET"])
+    def settings_workspace():
+        return render_template(
+            "settings.html",
+            settings={
+                "youtube_api_key_configured": bool(YOUTUBE_API_KEY),
+                "redis_url": os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
+                "database_url_configured": bool(os.environ.get("DATABASE_URL")),
+                "rq_queue_name": os.environ.get("RQ_QUEUE_NAME", "channel-scrape"),
+                "google_oauth_configured": bool(
+                    os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+                    and os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+                ),
+                "owned_secret_backend": os.environ.get(
+                    "OWNED_ANALYTICS_TOKEN_SECRET_BACKEND", "external"
+                ),
+            },
+        )
 
     @app.route("/", methods=["GET", "POST"])
     @limiter.limit("60 per minute")

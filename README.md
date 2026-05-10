@@ -35,6 +35,7 @@ The `research-engine` branch is evolving this tracker into a market-research and
 - `docs/phase-9-monetization-mapping.md`
 - `docs/phase-10-asset-rights-compliance.md`
 - `docs/phase-11-owned-analytics.md`
+- `docs/phase-12-ui-ux-restructure.md`
 
 ## 1. Prerequisites
 
