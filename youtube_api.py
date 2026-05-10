@@ -1,15 +1,23 @@
 import os
 import re
-import secrets
-import time
 import logging
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Type
 from urllib.parse import ParseResult, parse_qs, urlparse
 
-import isodate
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+from services.youtube.client import YouTubeClient, create_retry_session
+from services.youtube.errors import YouTubeAPIError
+from services.youtube.parsers import (
+    best_thumbnail_url,
+    parse_duration as parse_youtube_duration,
+    parse_video_item,
+)
+from services.youtube.quota import (
+    DEFAULT_DAILY_QUOTA_BUDGET,
+    estimate_channel_batch_cost,
+    estimate_channel_uploads_cost,
+    estimate_search_cost,
+    estimate_video_batch_cost,
+)
 from youtube_transcript_api import YouTubeTranscriptApi, _errors as transcript_errors
 
 logger = logging.getLogger(__name__)
@@ -19,6 +27,13 @@ YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3"
 REQUEST_TIMEOUT = (3.05, 15)
 API_MAX_RETRIES = int(os.environ.get("API_MAX_RETRIES", "5"))
 API_BACKOFF_BASE_SECONDS = float(os.environ.get("API_BACKOFF_BASE_SECONDS", "0.5"))
+TRANSCRIPTS_ENABLED = os.environ.get("TRANSCRIPTS_ENABLED", "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+TRANSCRIPT_FETCH_MODE = os.environ.get("TRANSCRIPT_FETCH_MODE", "manual").lower()
 TRANSCRIPT_UNAVAILABLE_MESSAGE = "Transcript unavailable or disabled by the uploader."
 YOUTUBE_VIDEO_HOSTS = {
     "youtube.com",
@@ -59,20 +74,16 @@ RETRIABLE_TRANSCRIPT_EXCEPTIONS = (
     _transcript_error("YouTubeRequestFailed"),
 )
 
-# Create a resilient session for outbound HTTP calls.
-session = requests.Session()
-retries = Retry(
-    total=API_MAX_RETRIES,
-    connect=API_MAX_RETRIES,
-    read=API_MAX_RETRIES,
-    status=API_MAX_RETRIES,
-    backoff_factor=API_BACKOFF_BASE_SECONDS,
-    status_forcelist=[429, 500, 502, 503, 504],
-    allowed_methods=frozenset({"GET"}),
-    raise_on_status=False,
+# Public for legacy tests; the actual request policy lives in services/youtube/client.py.
+session = create_retry_session(API_MAX_RETRIES, API_BACKOFF_BASE_SECONDS)
+client = YouTubeClient(
+    api_key=YOUTUBE_API_KEY or "missing-api-key",
+    session=session,
+    max_retries=API_MAX_RETRIES,
+    backoff_base_seconds=API_BACKOFF_BASE_SECONDS,
+    timeout=REQUEST_TIMEOUT,
+    daily_quota_budget=DEFAULT_DAILY_QUOTA_BUDGET,
 )
-session.mount("http://", HTTPAdapter(max_retries=retries))
-session.mount("https://", HTTPAdapter(max_retries=retries))
 
 
 def _sleep_with_backoff(
@@ -80,9 +91,8 @@ def _sleep_with_backoff(
     base_delay: float = API_BACKOFF_BASE_SECONDS,
     max_delay: float = 8.0,
 ) -> None:
-    delay = min(max_delay, base_delay * (2**attempt))
-    jitter = (secrets.randbelow(1000) / 1000) * (delay * 0.2 if delay > 0 else 0)
-    time.sleep(delay + jitter)
+    client.backoff_base_seconds = base_delay
+    client._sleep_with_backoff(attempt, max_delay=max_delay)
 
 
 def request_json_with_retry(
@@ -92,20 +102,23 @@ def request_json_with_retry(
 ) -> Dict[str, Any]:
     """GET JSON with a retry-enabled session."""
     params = params or {}
-
     try:
         response = session.get(url, params=params, timeout=timeout)
         if response.status_code >= 400:
+            logger.error("YouTube request failed with HTTP %s.", response.status_code)
             return {}
         return response.json()
-    except (requests.RequestException, ValueError):
+    except Exception as exc:
+        logger.exception("YouTube request failed: %s", exc)
         return {}
 
 
 def youtube_api_get(endpoint: str, params: Mapping[str, Any]) -> Dict[str, Any]:
-    payload = dict(params)
-    payload["key"] = YOUTUBE_API_KEY
-    return request_json_with_retry(f"{YOUTUBE_API_BASE_URL}/{endpoint}", params=payload)
+    try:
+        return client.get(endpoint, params)
+    except YouTubeAPIError as exc:
+        logger.exception("YouTube API %s request failed: %s", endpoint, exc)
+        return {}
 
 
 def _parse_input_url(raw_url: Optional[str]) -> Optional[ParseResult]:
@@ -295,21 +308,69 @@ def get_channel_videos_from_search(channel_id: str, max_results: int = 50) -> Li
 
 def get_channel_videos(channel_id: str, max_results: int = 50) -> List[str]:
     """Get up to max_results recent video IDs from a channel uploads playlist."""
+    result = get_channel_videos_with_metadata(channel_id, max_results)
+    return result["video_ids"]
+
+
+def get_channel_videos_with_metadata(
+    channel_id: str, max_results: int = 50, mode: str = "uploads_playlist"
+) -> Dict[str, Any]:
+    """Collect channel video IDs and preserve sampling metadata for run records."""
     videos = []
     next_page_token = None
+    page_tokens_used = []
+    quota_estimate = estimate_channel_uploads_cost(max_results)
+
+    if mode == "search":
+        videos = get_channel_videos_from_search(channel_id, max_results)
+        return {
+            "video_ids": videos,
+            "mode": "search",
+            "quota_estimate": estimate_search_cost()
+            + estimate_video_batch_cost(len(videos))
+            + estimate_channel_batch_cost(len(videos)),
+            "sampling_metadata": {
+                "channelId": channel_id,
+                "order": "date",
+                "maxResults": max_results,
+                "collectedVia": "search",
+            },
+        }
 
     channel_response = youtube_api_get(
         "channels", {"part": "contentDetails", "id": channel_id}
     )
     items = channel_response.get("items", [])
     if not items:
-        return videos
+        return {
+            "video_ids": videos,
+            "mode": mode,
+            "quota_estimate": quota_estimate,
+            "sampling_metadata": {
+                "channelId": channel_id,
+                "maxResults": max_results,
+                "collectedVia": "uploads_playlist",
+            },
+        }
 
     uploads_playlist_id = (
         items[0].get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
     )
     if not uploads_playlist_id:
-        return get_channel_videos_from_search(channel_id, max_results)
+        fallback_videos = get_channel_videos_from_search(channel_id, max_results)
+        return {
+            "video_ids": fallback_videos,
+            "mode": "search_fallback",
+            "quota_estimate": quota_estimate
+            + estimate_video_batch_cost(len(fallback_videos))
+            + estimate_channel_batch_cost(len(fallback_videos)),
+            "sampling_metadata": {
+                "channelId": channel_id,
+                "order": "date",
+                "maxResults": max_results,
+                "collectedVia": "search_fallback",
+            },
+        }
 
     while len(videos) < max_results:
         playlist_params = {
@@ -319,6 +380,7 @@ def get_channel_videos(channel_id: str, max_results: int = 50) -> List[str]:
         }
         if next_page_token:
             playlist_params["pageToken"] = next_page_token
+            page_tokens_used.append(next_page_token)
 
         playlist_response = youtube_api_get("playlistItems", playlist_params)
         items = playlist_response.get("items", [])
@@ -337,28 +399,147 @@ def get_channel_videos(channel_id: str, max_results: int = 50) -> List[str]:
             break
 
     if not videos:
-        return get_channel_videos_from_search(channel_id, max_results)
+        fallback_videos = get_channel_videos_from_search(channel_id, max_results)
+        return {
+            "video_ids": fallback_videos,
+            "mode": "search_fallback",
+            "quota_estimate": quota_estimate
+            + estimate_video_batch_cost(len(fallback_videos))
+            + estimate_channel_batch_cost(len(fallback_videos)),
+            "sampling_metadata": {
+                "channelId": channel_id,
+                "order": "date",
+                "maxResults": max_results,
+                "collectedVia": "search_fallback",
+            },
+        }
 
-    return videos
+    return {
+        "video_ids": videos,
+        "mode": "uploads_playlist",
+        "quota_estimate": quota_estimate
+        + estimate_video_batch_cost(len(videos))
+        + estimate_channel_batch_cost(len(videos)),
+        "sampling_metadata": {
+            "channelId": channel_id,
+            "playlistId": uploads_playlist_id,
+            "maxResults": max_results,
+            "pageTokensUsed": page_tokens_used,
+            "collectedVia": "uploads_playlist",
+        },
+    }
+
+
+def keyword_search_videos(
+    query: str,
+    *,
+    max_results: int = 50,
+    order: str = "relevance",
+    published_after: Optional[str] = None,
+    published_before: Optional[str] = None,
+    region_code: Optional[str] = None,
+    relevance_language: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Collect video IDs from keyword search with explicit sampling metadata."""
+    videos = []
+    next_page_token = None
+    page_tokens_used = []
+    pages = 0
+
+    while len(videos) < max_results:
+        params = {
+            "part": "id",
+            "type": "video",
+            "q": query,
+            "order": order,
+            "maxResults": min(50, max_results - len(videos)),
+        }
+        if published_after:
+            params["publishedAfter"] = published_after
+        if published_before:
+            params["publishedBefore"] = published_before
+        if region_code:
+            params["regionCode"] = region_code
+        if relevance_language:
+            params["relevanceLanguage"] = relevance_language
+        if next_page_token:
+            params["pageToken"] = next_page_token
+            page_tokens_used.append(next_page_token)
+
+        response = youtube_api_get("search", params)
+        pages += 1
+        for item in response.get("items", []):
+            item_id = item.get("id")
+            video_id = item_id.get("videoId") if isinstance(item_id, dict) else None
+            if video_id:
+                videos.append(video_id)
+                if len(videos) >= max_results:
+                    break
+
+        next_page_token = response.get("nextPageToken")
+        if not next_page_token:
+            break
+
+    return {
+        "video_ids": videos,
+        "mode": "keyword_search",
+        "quota_estimate": (pages * 100)
+        + estimate_video_batch_cost(len(videos))
+        + estimate_channel_batch_cost(len(videos)),
+        "sampling_metadata": {
+            "query": query,
+            "order": order,
+            "publishedAfter": published_after,
+            "publishedBefore": published_before,
+            "regionCode": region_code,
+            "relevanceLanguage": relevance_language,
+            "maxResults": max_results,
+            "pageTokensUsed": page_tokens_used,
+        },
+    }
+
+
+def manual_video_url_collection(video_urls: List[str]) -> Dict[str, Any]:
+    """Normalize a manual URL list into a collection payload."""
+    video_ids = []
+    invalid_urls = []
+    for raw_url in video_urls:
+        video_id = extract_video_id(raw_url)
+        if video_id:
+            video_ids.append(video_id)
+        else:
+            invalid_urls.append(raw_url)
+
+    deduped_ids = list(dict.fromkeys(video_ids))
+    return {
+        "video_ids": deduped_ids,
+        "mode": "manual_video_url_list",
+        "quota_estimate": estimate_video_batch_cost(len(deduped_ids)),
+        "sampling_metadata": {
+            "inputCount": len(video_urls),
+            "validVideoCount": len(deduped_ids),
+            "invalidUrls": invalid_urls,
+        },
+    }
 
 
 def parse_duration(duration: str) -> str:
     """Converts YouTube ISO 8601 duration format to HH:MM:SS."""
-    try:
-        parsed_duration = isodate.parse_duration(duration)
-        return str(parsed_duration)
-    except Exception as e:
-        logger.exception("An error occurred: %s", str(e))
-        return "Unknown"
+    return parse_youtube_duration(duration)
 
 
 def _best_thumbnail_url(snippet: Mapping[str, Any]) -> str:
-    thumbnails = snippet.get("thumbnails", {}) or {}
-    for quality in ("maxres", "standard", "high", "medium", "default"):
-        candidate = thumbnails.get(quality, {}).get("url")
-        if candidate:
-            return str(candidate)
-    return ""
+    return best_thumbnail_url(snippet)
+
+
+def should_fetch_transcripts(include_transcripts: Optional[bool] = None) -> bool:
+    if include_transcripts is not None:
+        return bool(include_transcripts)
+    if TRANSCRIPT_FETCH_MODE == "always":
+        return True
+    if TRANSCRIPT_FETCH_MODE == "never":
+        return False
+    return TRANSCRIPTS_ENABLED
 
 
 def _should_retry_transcript_exception(exc: Exception) -> bool:
@@ -402,52 +583,92 @@ def get_transcript(video_id: str) -> str:
     return TRANSCRIPT_UNAVAILABLE_MESSAGE
 
 
-def get_video_data(video_id: str) -> Optional[Dict[str, Any]]:
-    """Fetch video details including channel @username and subscribers."""
-    response = youtube_api_get(
-        "videos",
-        {"part": "snippet,statistics,contentDetails", "id": video_id},
-    )
+def get_channels_data(channel_ids: List[str]) -> Dict[str, Mapping[str, Any]]:
+    """Fetch channel details in batches keyed by canonical channel ID."""
+    channel_map = {}
+    unique_channel_ids = [
+        channel_id for channel_id in dict.fromkeys(channel_ids) if channel_id
+    ]
 
-    items = response.get("items", [])
-    if not items:
-        return None
-
-    data = items[0]
-    snippet = data.get("snippet", {})
-    statistics = data.get("statistics", {})
-    content_details = data.get("contentDetails", {})
-    channel_id = snippet.get("channelId")
-
-    channel_username = f"@{channel_id}" if channel_id else "@unknown"
-    subscribers = "0"
-
-    if channel_id:
-        channel_response = youtube_api_get(
+    for batch_start in range(0, len(unique_channel_ids), 50):
+        batch = unique_channel_ids[batch_start : batch_start + 50]
+        response = youtube_api_get(
             "channels",
-            {"part": "snippet,statistics", "id": channel_id},
+            {
+                "part": "snippet,statistics,contentDetails",
+                "id": ",".join(batch),
+            },
         )
-        channel_items = channel_response.get("items", [])
-        if channel_items:
-            channel_snippet = channel_items[0].get("snippet", {})
-            channel_stats = channel_items[0].get("statistics", {})
-            channel_username = channel_snippet.get("customUrl", f"@{channel_id}")
-            subscribers = channel_stats.get("subscriberCount", "0")
+        for index, item in enumerate(response.get("items", [])):
+            channel_id = item.get("id") or (
+                batch[index] if index < len(batch) else None
+            )
+            if channel_id:
+                item.setdefault("id", channel_id)
+                channel_map[channel_id] = item
 
-    published = snippet.get("publishedAt", "")
-    posted = published.split("T")[0] if published else ""
+    return channel_map
 
-    return {
-        "youtube_video_id": video_id,
-        "title": snippet.get("title", ""),
-        "description": snippet.get("description", ""),
-        "thumbnail_url": _best_thumbnail_url(snippet),
-        "views": statistics.get("viewCount", 0),
-        "likes": statistics.get("likeCount", 0),
-        "comments": statistics.get("commentCount", 0),
-        "posted": posted,
-        "channel_username": channel_username,
-        "subscribers": subscribers,
-        "video_length": parse_duration(content_details.get("duration", "")),
-        "transcript": get_transcript(video_id),
-    }
+
+def get_videos_data(
+    video_ids: List[str], include_transcripts: Optional[bool] = None
+) -> Dict[str, Dict[str, Any]]:
+    """Fetch video metadata in videos.list batches and map parsed rows by video ID."""
+    video_map = {}
+    ordered_ids = [video_id for video_id in dict.fromkeys(video_ids) if video_id]
+    video_items = []
+
+    for batch_start in range(0, len(ordered_ids), 50):
+        batch = ordered_ids[batch_start : batch_start + 50]
+        response = youtube_api_get(
+            "videos",
+            {
+                "part": "snippet,statistics,contentDetails",
+                "id": ",".join(batch),
+            },
+        )
+        for index, item in enumerate(response.get("items", [])):
+            item.setdefault("id", batch[index] if index < len(batch) else "")
+            video_items.append(item)
+
+    channel_ids = [
+        item.get("snippet", {}).get("channelId")
+        for item in video_items
+        if item.get("snippet", {}).get("channelId")
+    ]
+    channel_map = get_channels_data(channel_ids)
+    fetch_transcripts = should_fetch_transcripts(include_transcripts)
+
+    for item in video_items:
+        video_id = item.get("id")
+        if not video_id:
+            continue
+
+        transcript = ""
+        transcript_status = "skipped"
+        if fetch_transcripts:
+            transcript = get_transcript(video_id)
+            transcript_status = (
+                "unavailable"
+                if transcript == TRANSCRIPT_UNAVAILABLE_MESSAGE
+                else "available"
+            )
+
+        channel_id = item.get("snippet", {}).get("channelId")
+        video_map[video_id] = parse_video_item(
+            item,
+            channel_map.get(channel_id),
+            transcript=transcript,
+            transcript_status=transcript_status,
+        )
+
+    return video_map
+
+
+def get_video_data(
+    video_id: str, include_transcript: Optional[bool] = True
+) -> Optional[Dict[str, Any]]:
+    """Fetch one video while preserving the historical single-video interface."""
+    return get_videos_data([video_id], include_transcripts=include_transcript).get(
+        video_id
+    )

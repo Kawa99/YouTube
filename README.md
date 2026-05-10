@@ -26,6 +26,7 @@ The `research-engine` branch is evolving this tracker into a market-research and
 - `docs/adr/`
 - `docs/phase-0-baseline.md`
 - `docs/phase-2-research-schema.md`
+- `docs/phase-3-collection-engine.md`
 
 ## 1. Prerequisites
 
