@@ -17,6 +17,15 @@ This webapp does three core things:
   - `worker` (RQ worker process)
   - `redis` (Redis 7)
 
+## Research-engine documentation
+
+The `research-engine` branch is evolving this tracker into a market-research and launch-validation tool for faceless long-form YouTube channels. Start with:
+
+- `docs/research-engine-prd.md`
+- `docs/research-schema-map.md`
+- `docs/adr/`
+- `docs/phase-0-baseline.md`
+
 ## 1. Prerequisites
 
 - Docker + Docker Compose plugin (`docker compose`)
