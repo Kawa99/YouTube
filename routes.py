@@ -2,7 +2,13 @@ import os
 import logging
 
 from crud import save_video
-from export import build_xlsx_export_file, stream_all_tables_csv
+from export import (
+    build_research_zip_file,
+    build_xlsx_export_file,
+    normalize_export_filters,
+    stream_all_tables_csv,
+    stream_research_jsonl,
+)
 from flask import (
     Response,
     after_this_request,
@@ -552,3 +558,34 @@ def register_routes(app, limiter):
             )
 
         return "Invalid format! Please choose 'csv' or 'xlsx'.", 400
+
+    @app.route("/export/research.zip", methods=["GET"])
+    def research_zip_export_route():
+        file_path = build_research_zip_file(normalize_export_filters(request.args))
+
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+            return response
+
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name="youtube-research-export.zip",
+            mimetype="application/zip",
+        )
+
+    @app.route("/export/research.jsonl", methods=["GET"])
+    def research_jsonl_export_route():
+        return Response(
+            stream_with_context(
+                stream_research_jsonl(normalize_export_filters(request.args))
+            ),
+            mimetype="application/x-ndjson",
+            headers={
+                "Content-Disposition": "attachment; filename=youtube-research-export.jsonl"
+            },
+        )

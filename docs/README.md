@@ -7,6 +7,7 @@ This directory describes the research-engine evolution of the YouTube tracker.
 - `phase-0-baseline.md` records the verified baseline before research-engine feature work.
 - `phase-2-research-schema.md` documents the normalized schema and compatibility path.
 - `phase-3-collection-engine.md` documents batched collection, quota visibility, and collection-run behavior.
+- `phase-4-research-exports.md` documents schema-aligned ZIP/JSONL research exports.
 - `research-engine-prd.md` defines the product requirements for market research and launch validation.
 - `research-schema-map.md` maps the research repository's markdown schemas to app entities and future tables.
 - `adr/` records architecture decisions that should guide implementation.

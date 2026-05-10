@@ -1,4 +1,6 @@
 import io
+import json
+import zipfile
 from datetime import datetime
 
 import pytest
@@ -6,7 +8,19 @@ from openpyxl import load_workbook
 
 import routes
 from app import create_app
-from models import Channel, ChannelHistory, Video, VideoHistory, db
+from models import (
+    Channel,
+    ChannelHistory,
+    ChannelLabel,
+    ChannelSnapshot,
+    CollectionRun,
+    Video,
+    VideoDerivedMetric,
+    VideoHistory,
+    VideoLabel,
+    VideoSnapshot,
+    db,
+)
 
 
 @pytest.fixture
@@ -204,8 +218,13 @@ def test_export_csv_success(client):
     body = response.get_data(as_text=True)
     assert "=== VIDEOS ===" in body
     assert "=== CHANNELS ===" in body
-    assert "=== CHANNEL_VIDEOS ===" in body
-    assert "=== CHANNEL_HISTORY ===" in body
+    assert "=== VIDEO_SNAPSHOTS ===" in body
+    assert "=== CHANNEL_SNAPSHOTS ===" in body
+    assert "=== VIDEO_METADATA_CHANGES ===" in body
+    assert "=== VIDEO_LABELS ===" in body
+    assert "=== CHANNEL_LABELS ===" in body
+    assert "=== COLLECTION_RUNS ===" in body
+    assert "=== VIDEO_DERIVED_METRICS ===" in body
 
 
 def test_export_xlsx_success(client):
@@ -222,11 +241,214 @@ def test_export_xlsx_success(client):
         assert set(workbook.sheetnames) == {
             "videos",
             "channels",
+            "channel_snapshots",
+            "video_snapshots",
+            "video_metadata_changes",
+            "video_labels",
+            "channel_labels",
+            "collection_runs",
+            "video_derived_metrics",
             "channel_videos",
             "channel_history",
+            "video_history",
+            "video_metadata_history",
         }
     finally:
         workbook.close()
+
+
+def test_research_zip_export_contains_schema_files_and_filters(client):
+    with client.application.app_context():
+        channel = Channel(
+            channel_username="@finance_channel",
+            subscribers=1000,
+            youtube_channel_id="UC_FINANCE",
+            channel_name="Finance Channel",
+            subscriber_count=1000,
+        )
+        other_channel = Channel(
+            channel_username="@gaming_channel",
+            subscribers=500,
+            youtube_channel_id="UC_GAMING",
+            channel_name="Gaming Channel",
+            subscriber_count=500,
+        )
+        db.session.add_all([channel, other_channel])
+        db.session.flush()
+
+        video = Video(
+            youtube_video_id="finance_video",
+            youtube_channel_id="UC_FINANCE",
+            title="Finance Outlier",
+            views=10000,
+            likes=500,
+            comments=100,
+            duration_seconds=600,
+            channel_id=channel.id,
+            published_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        other_video = Video(
+            youtube_video_id="gaming_video",
+            youtube_channel_id="UC_GAMING",
+            title="Gaming Baseline",
+            views=100,
+            likes=5,
+            comments=1,
+            duration_seconds=600,
+            channel_id=other_channel.id,
+            published_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        db.session.add_all([video, other_video])
+        db.session.flush()
+
+        run = CollectionRun(
+            run_type="channel_uploads",
+            status="completed",
+            input_type="channel_id",
+            input_value="UC_FINANCE",
+            requested_limit=50,
+            quota_estimate=4,
+            items_found=1,
+            items_saved=1,
+            items_failed=0,
+        )
+        db.session.add(run)
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                VideoLabel(
+                    video_id=video.id,
+                    niche="finance",
+                    format="explainer",
+                    faceless_status="faceless",
+                    review_status="reviewed",
+                ),
+                VideoLabel(
+                    video_id=other_video.id,
+                    niche="gaming",
+                    format="commentary",
+                    faceless_status="faceless",
+                    review_status="reviewed",
+                ),
+                ChannelLabel(
+                    channel_id=channel.id,
+                    primary_niche="finance",
+                    primary_format="explainer",
+                    faceless_status="faceless",
+                ),
+                ChannelSnapshot(
+                    channel_id=channel.id,
+                    subscriber_count=1000,
+                    view_count=50000,
+                    video_count=12,
+                    collection_run_id=run.id,
+                ),
+                VideoSnapshot(
+                    video_id=video.id,
+                    view_count=10000,
+                    like_count=500,
+                    comment_count=100,
+                    subscriber_count_at_snapshot=1000,
+                    collection_run_id=run.id,
+                ),
+                VideoDerivedMetric(
+                    video_id=video.id,
+                    snapshot_at=datetime(2026, 1, 2, 0, 0, 0),
+                    age_days=1,
+                    views_per_day=10000,
+                    views_per_subscriber=10,
+                    channel_recent_median_views=1000,
+                    relative_performance=10,
+                    duration_bucket="8-15m",
+                    outlier_flag=True,
+                    algorithm_version="test-v1",
+                ),
+            ]
+        )
+        db.session.commit()
+
+    response = client.get("/export/research.zip?niche=finance")
+
+    assert response.status_code == 200
+    assert response.mimetype == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(response.data)) as archive:
+        assert set(archive.namelist()) == {
+            "channels.csv",
+            "videos.csv",
+            "manual_labels.csv",
+            "snapshots.csv",
+            "derived_metrics.csv",
+            "collection_runs.csv",
+            "data_dictionary.md",
+        }
+        videos_csv = archive.read("videos.csv").decode()
+        assert "youtube_video_id" in videos_csv
+        assert "finance_video" in videos_csv
+        assert "gaming_video" not in videos_csv
+
+        labels_csv = archive.read("manual_labels.csv").decode()
+        assert "entity_type" in labels_csv
+        assert "finance" in labels_csv
+
+        dictionary = archive.read("data_dictionary.md").decode()
+        assert "Research Export Data Dictionary" in dictionary
+        assert "outlier_flag" in dictionary
+
+
+def test_research_jsonl_export_filters_outliers(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@jsonl_channel", subscribers=100)
+        db.session.add(channel)
+        db.session.flush()
+
+        outlier = Video(
+            youtube_video_id="jsonl_outlier",
+            title="Outlier",
+            views=1000,
+            channel_id=channel.id,
+        )
+        normal = Video(
+            youtube_video_id="jsonl_normal",
+            title="Normal",
+            views=100,
+            channel_id=channel.id,
+        )
+        db.session.add_all([outlier, normal])
+        db.session.flush()
+
+        db.session.add_all(
+            [
+                VideoDerivedMetric(
+                    video_id=outlier.id,
+                    snapshot_at=datetime(2026, 1, 1, 0, 0, 0),
+                    relative_performance=5,
+                    outlier_flag=True,
+                    algorithm_version="test-v1",
+                ),
+                VideoDerivedMetric(
+                    video_id=normal.id,
+                    snapshot_at=datetime(2026, 1, 1, 0, 0, 0),
+                    relative_performance=1,
+                    outlier_flag=False,
+                    algorithm_version="test-v1",
+                ),
+            ]
+        )
+        db.session.commit()
+
+    response = client.get("/export/research.jsonl?outlier_flag=true")
+
+    assert response.status_code == 200
+    assert response.mimetype == "application/x-ndjson"
+    rows = [
+        json.loads(line)
+        for line in response.get_data(as_text=True).splitlines()
+        if line.strip()
+    ]
+    derived_rows = [row for row in rows if row["dataset"] == "derived_metrics"]
+    assert len(derived_rows) == 1
+    assert derived_rows[0]["youtube_video_id"] == "jsonl_outlier"
 
 
 def test_video_detail_route_success(client):
