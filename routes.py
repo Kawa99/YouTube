@@ -37,7 +37,10 @@ from sqlalchemy import case, func
 from tasks import RedisError, enqueue_channel_job, get_channel_job
 from theses import (
     ThesisValidationError,
+    add_affiliate_product_evidence,
+    add_monetization_map,
     add_red_team_review,
+    add_sponsor_evidence,
     add_thesis_evidence,
     add_thesis_score,
     add_thesis_topic,
@@ -375,6 +378,36 @@ def register_routes(app, limiter):
             flash(str(error), "warning")
         else:
             flash("Thesis score saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/monetization", methods=["POST"])
+    def add_monetization_map_route(thesis_id):
+        try:
+            add_monetization_map(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Monetization map saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/sponsor-evidence", methods=["POST"])
+    def add_sponsor_evidence_route(thesis_id):
+        try:
+            add_sponsor_evidence(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Sponsor evidence saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/affiliate-evidence", methods=["POST"])
+    def add_affiliate_product_evidence_route(thesis_id):
+        try:
+            add_affiliate_product_evidence(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Affiliate/product evidence saved.", "success")
         return redirect(url_for("theses_workspace", thesis_id=thesis_id))
 
     @app.route("/theses/<int:thesis_id>/red-team", methods=["POST"])

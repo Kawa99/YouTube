@@ -127,6 +127,19 @@
                         <p class="mt-1 font-mono text-xl font-semibold">{{ thesis.evidence|length }}</p>
                     </div>
                 </div>
+                <div class="mt-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Monetization</p>
+                            {% if workspace.monetization_summary.has_map %}
+                            <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">Mapped · blended base {{ "%.2f"|format(workspace.monetization_summary.blended_base_rpm or 0) }} RPM equivalent</p>
+                            {% else %}
+                            <p class="mt-1 text-sm font-semibold text-amber-700 dark:text-amber-300">Required before launch status</p>
+                            {% endif %}
+                        </div>
+                        <p class="font-mono text-sm">{{ thesis.monetization_maps|length }} maps · {{ thesis.sponsor_evidence|length }} sponsors · {{ thesis.affiliate_evidence|length }} products</p>
+                    </div>
+                </div>
                 <dl class="mt-5 grid gap-3 text-sm md:grid-cols-2">
                     <div><dt class="font-semibold text-slate-900 dark:text-slate-100">Target viewer</dt><dd class="mt-1 text-slate-600 dark:text-slate-300">{{ thesis.target_viewer or '' }}</dd></div>
                     <div><dt class="font-semibold text-slate-900 dark:text-slate-100">Format</dt><dd class="mt-1 text-slate-600 dark:text-slate-300">{{ thesis.format or '' }}</dd></div>
@@ -187,6 +200,107 @@
                         <li class="text-slate-500">No topics yet.</li>
                         {% endfor %}
                     </ul>
+                </section>
+            </div>
+
+            <div class="grid gap-6 xl:grid-cols-3">
+                <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700 xl:col-span-3">
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Monetization Scenario</h3>
+                    <form method="post" action="{{ url_for('add_monetization_map_route', thesis_id=thesis.id) }}" class="mt-3 grid gap-3">
+                        <div class="grid gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                            {% for path in workspace.revenue_paths %}
+                            <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm dark:border-slate-700">
+                                <input type="checkbox" name="revenue_paths" value="{{ path }}" class="h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                                <span>{{ path.replace('_', ' ') }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        <div class="grid gap-3 md:grid-cols-2">
+                            <select name="primary_revenue_path" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{{ select_options(workspace.revenue_paths, 'watch_page_ads') }}</select>
+                            <select name="secondary_revenue_path" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                                <option value="">No secondary path</option>
+                                {{ select_options(workspace.revenue_paths) }}
+                            </select>
+                        </div>
+                        <div class="grid gap-3 md:grid-cols-3">
+                            <input name="conservative_ad_rpm" type="number" step="0.01" placeholder="conservative ad RPM" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="base_ad_rpm" type="number" step="0.01" placeholder="base ad RPM" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="upside_ad_rpm" type="number" step="0.01" placeholder="upside ad RPM" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="sponsor_rpm_equivalent" type="number" step="0.01" placeholder="sponsor RPM equivalent" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="affiliate_rpm_equivalent" type="number" step="0.01" placeholder="affiliate RPM equivalent" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="membership_rpm_equivalent" type="number" step="0.01" placeholder="membership RPM equivalent" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="product_rpm_equivalent" type="number" step="0.01" placeholder="product RPM equivalent" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="break_even_view_count" type="number" step="1" placeholder="break-even views" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="meaningful_income_view_count" type="number" step="1" placeholder="meaningful-income views" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        </div>
+                        <textarea name="assumptions" rows="2" placeholder="Visible assumptions by revenue path" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <textarea name="main_monetization_risk" rows="2" placeholder="Main monetization risk" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Save Monetization Map</button>
+                    </form>
+                    <div class="mt-4 overflow-x-auto">
+                        <table class="min-w-full text-left text-sm">
+                            <thead class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400"><tr><th class="py-2">Paths</th><th>Ad RPM</th><th>Sponsor</th><th>Affiliate</th><th>Break-even</th></tr></thead>
+                            <tbody>
+                                {% for item in thesis.monetization_maps %}
+                                <tr class="border-t border-slate-200 dark:border-slate-800"><td class="py-2">{{ item.revenue_paths|join(', ') }}</td><td>{{ item.conservative_ad_rpm or '' }} / {{ item.base_ad_rpm or '' }} / {{ item.upside_ad_rpm or '' }}</td><td>{{ item.sponsor_rpm_equivalent or '' }}</td><td>{{ item.affiliate_rpm_equivalent or '' }}</td><td>{{ item.break_even_view_count or '' }}</td></tr>
+                                {% else %}
+                                <tr><td colspan="5" class="py-3 text-slate-500">No monetization map yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Sponsor Evidence</h3>
+                    <form method="post" action="{{ url_for('add_sponsor_evidence_route', thesis_id=thesis.id) }}" class="mt-3 grid gap-3">
+                        <input name="sponsor_category" required placeholder="Sponsor category" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="observed_sponsor" placeholder="Observed sponsor" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="competitor_channel_id" placeholder="competitor channel_id" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="video_url" placeholder="video URL" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="date_observed" type="date" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="niche_fit" placeholder="niche fit" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <textarea name="brand_safety_notes" rows="2" placeholder="Brand-safety notes" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Add Sponsor</button>
+                    </form>
+                </section>
+
+                <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Affiliate/Product Evidence</h3>
+                    <form method="post" action="{{ url_for('add_affiliate_product_evidence_route', thesis_id=thesis.id) }}" class="mt-3 grid gap-3">
+                        <input name="product_category" required placeholder="Product category" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="program_source" placeholder="Program/source" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="estimated_fit" placeholder="Estimated fit" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="audience_intent" placeholder="Audience intent" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <textarea name="compliance_disclosure_concerns" rows="2" placeholder="Compliance/disclosure concerns" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Add Product</button>
+                    </form>
+                </section>
+
+                <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Observed Paths</h3>
+                    <div class="mt-3 space-y-3 text-sm">
+                        <div>
+                            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Sponsors</p>
+                            <ul class="mt-1 space-y-1">
+                                {% for evidence in thesis.sponsor_evidence %}
+                                <li>{{ evidence.sponsor_category }} · {{ evidence.observed_sponsor or 'unknown sponsor' }}</li>
+                                {% else %}
+                                <li class="text-slate-500">No sponsor evidence.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div>
+                            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Products</p>
+                            <ul class="mt-1 space-y-1">
+                                {% for evidence in thesis.affiliate_evidence %}
+                                <li>{{ evidence.product_category }} · {{ evidence.program_source or 'unknown source' }}</li>
+                                {% else %}
+                                <li class="text-slate-500">No product evidence.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
                 </section>
             </div>
 

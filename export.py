@@ -28,6 +28,9 @@ CORE_EXPORT_TABLES = (
     "thesis_topics",
     "thesis_scores",
     "red_team_reviews",
+    "thesis_monetization_maps",
+    "sponsor_evidence",
+    "affiliate_product_evidence",
     # Compatibility tables kept for the current UI and old exports.
     "channel_videos",
     "channel_history",
@@ -53,6 +56,9 @@ TABLE_SELECT_QUERIES = {
     "thesis_topics": "SELECT * FROM thesis_topics",
     "thesis_scores": "SELECT * FROM thesis_scores",
     "red_team_reviews": "SELECT * FROM red_team_reviews",
+    "thesis_monetization_maps": "SELECT * FROM thesis_monetization_maps",
+    "sponsor_evidence": "SELECT * FROM sponsor_evidence",
+    "affiliate_product_evidence": "SELECT * FROM affiliate_product_evidence",
     "channel_videos": "SELECT * FROM channel_videos",
     "channel_history": "SELECT * FROM channel_history",
     "video_history": "SELECT * FROM video_history",
@@ -70,6 +76,9 @@ RESEARCH_ZIP_FILES = (
     "thesis_topics.csv",
     "thesis_scores.csv",
     "red_team_reviews.csv",
+    "thesis_monetization_maps.csv",
+    "sponsor_evidence.csv",
+    "affiliate_product_evidence.csv",
     "collection_runs.csv",
     "data_dictionary.md",
 )
@@ -297,6 +306,52 @@ RESEARCH_HEADERS = {
         "decision_rationale",
         "reviewed_at",
     ],
+    "thesis_monetization_maps": [
+        "id",
+        "thesis_id",
+        "thesis_code",
+        "revenue_paths",
+        "primary_revenue_path",
+        "secondary_revenue_path",
+        "conservative_ad_rpm",
+        "base_ad_rpm",
+        "upside_ad_rpm",
+        "sponsor_rpm_equivalent",
+        "affiliate_rpm_equivalent",
+        "membership_rpm_equivalent",
+        "product_rpm_equivalent",
+        "break_even_view_count",
+        "meaningful_income_view_count",
+        "assumptions",
+        "main_monetization_risk",
+        "created_at",
+        "updated_at",
+    ],
+    "sponsor_evidence": [
+        "id",
+        "thesis_id",
+        "thesis_code",
+        "sponsor_category",
+        "observed_sponsor",
+        "competitor_channel_id",
+        "competitor_channel_username",
+        "video_url",
+        "date_observed",
+        "niche_fit",
+        "brand_safety_notes",
+        "created_at",
+    ],
+    "affiliate_product_evidence": [
+        "id",
+        "thesis_id",
+        "thesis_code",
+        "product_category",
+        "program_source",
+        "estimated_fit",
+        "audience_intent",
+        "compliance_disclosure_concerns",
+        "created_at",
+    ],
 }
 
 
@@ -512,6 +567,9 @@ def stream_research_jsonl(filters=None):
         "thesis_topics",
         "thesis_scores",
         "red_team_reviews",
+        "thesis_monetization_maps",
+        "sponsor_evidence",
+        "affiliate_product_evidence",
         "collection_runs",
     ):
         for row in iter_research_rows(dataset, filters):
@@ -962,6 +1020,71 @@ def _research_query(dataset, filters):
             """
         return _compose_query(base_query, [], " ORDER BY ct.thesis_id, rtr.id"), params
 
+    if dataset == "thesis_monetization_maps":
+        base_query = """
+            SELECT
+                tmm.id,
+                tmm.thesis_id,
+                ct.thesis_id AS thesis_code,
+                tmm.revenue_paths,
+                tmm.primary_revenue_path,
+                tmm.secondary_revenue_path,
+                tmm.conservative_ad_rpm,
+                tmm.base_ad_rpm,
+                tmm.upside_ad_rpm,
+                tmm.sponsor_rpm_equivalent,
+                tmm.affiliate_rpm_equivalent,
+                tmm.membership_rpm_equivalent,
+                tmm.product_rpm_equivalent,
+                tmm.break_even_view_count,
+                tmm.meaningful_income_view_count,
+                tmm.assumptions,
+                tmm.main_monetization_risk,
+                tmm.created_at,
+                tmm.updated_at
+            FROM thesis_monetization_maps tmm
+            JOIN content_theses ct ON ct.id = tmm.thesis_id
+            """
+        return _compose_query(base_query, [], " ORDER BY ct.thesis_id, tmm.id"), params
+
+    if dataset == "sponsor_evidence":
+        base_query = """
+            SELECT
+                se.id,
+                se.thesis_id,
+                ct.thesis_id AS thesis_code,
+                se.sponsor_category,
+                se.observed_sponsor,
+                se.competitor_channel_id,
+                c.channel_username AS competitor_channel_username,
+                se.video_url,
+                se.date_observed,
+                se.niche_fit,
+                se.brand_safety_notes,
+                se.created_at
+            FROM sponsor_evidence se
+            JOIN content_theses ct ON ct.id = se.thesis_id
+            LEFT JOIN channels c ON c.id = se.competitor_channel_id
+            """
+        return _compose_query(base_query, [], " ORDER BY ct.thesis_id, se.id"), params
+
+    if dataset == "affiliate_product_evidence":
+        base_query = """
+            SELECT
+                ape.id,
+                ape.thesis_id,
+                ct.thesis_id AS thesis_code,
+                ape.product_category,
+                ape.program_source,
+                ape.estimated_fit,
+                ape.audience_intent,
+                ape.compliance_disclosure_concerns,
+                ape.created_at
+            FROM affiliate_product_evidence ape
+            JOIN content_theses ct ON ct.id = ape.thesis_id
+            """
+        return _compose_query(base_query, [], " ORDER BY ct.thesis_id, ape.id"), params
+
     raise ValueError(f"Unsupported research dataset: {dataset}")
 
 
@@ -1183,6 +1306,8 @@ def _infer_dictionary_type(field):
         "weight",
         "score",
         "weighted_score",
+        "break_even_view_count",
+        "meaningful_income_view_count",
     }:
         return "integer"
     if field.endswith("_at") or field in {"published_at", "snapshot_at"}:
@@ -1197,6 +1322,13 @@ def _infer_dictionary_type(field):
         "like_rate",
         "comment_rate",
         "engagement_rate",
+        "conservative_ad_rpm",
+        "base_ad_rpm",
+        "upside_ad_rpm",
+        "sponsor_rpm_equivalent",
+        "affiliate_rpm_equivalent",
+        "membership_rpm_equivalent",
+        "product_rpm_equivalent",
     }:
         return "float"
     if field in {"caption_available", "outlier_flag"}:
@@ -1219,6 +1351,9 @@ def _infer_source_table(dataset, field):
         "thesis_topics",
         "thesis_scores",
         "red_team_reviews",
+        "thesis_monetization_maps",
+        "sponsor_evidence",
+        "affiliate_product_evidence",
     }:
         return dataset
     if dataset == "channels" and field in {
@@ -1278,6 +1413,8 @@ def _allowed_labels(field):
         "status": "idea|research|pilot|reject|launch",
         "evidence_type": "outlier_video|competitor_channel|comment_theme|search_trend|sponsor_density|source_availability|forum_question|manual_note",
         "decision": "proceed_to_pilot|research_more|revise_thesis|reject",
+        "primary_revenue_path": "watch_page_ads|sponsors|affiliates|memberships|patreon|newsletter|digital_products|consulting_services|licensing",
+        "secondary_revenue_path": "watch_page_ads|sponsors|affiliates|memberships|patreon|newsletter|digital_products|consulting_services|licensing",
         "title_pattern": "mystery|reversal|consequence|transformation|hidden_system|timeline|comparison|specific_question|list_with_angle|strong_claim|other",
         "thumbnail_pattern": "single_object_high_contrast|before_after_contrast|map_timeline_diagram|recognizable_artifact_or_brand|human_face_substitute|text_free_curiosity|short_text_label|red_circle_arrow|split_screen_conflict|scale_contrast|other",
         "curiosity_type": "none|mystery|stakes|contradiction|transformation|comparison|hidden_system|specific_question|other",

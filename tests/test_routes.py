@@ -9,6 +9,7 @@ from openpyxl import load_workbook
 import routes
 from app import create_app
 from models import (
+    AffiliateProductEvidence,
     Channel,
     ChannelDerivedSummary,
     ChannelHistory,
@@ -18,7 +19,9 @@ from models import (
     ContentThesis,
     PackagingExperiment,
     RedTeamReview,
+    SponsorEvidence,
     ThesisEvidence,
+    ThesisMonetizationMap,
     ThesisScore,
     ThesisTopic,
     Video,
@@ -242,6 +245,9 @@ def test_export_csv_success(client):
     assert "=== THESIS_TOPICS ===" in body
     assert "=== THESIS_SCORES ===" in body
     assert "=== RED_TEAM_REVIEWS ===" in body
+    assert "=== THESIS_MONETIZATION_MAPS ===" in body
+    assert "=== SPONSOR_EVIDENCE ===" in body
+    assert "=== AFFILIATE_PRODUCT_EVIDENCE ===" in body
 
 
 def test_export_xlsx_success(client):
@@ -273,6 +279,9 @@ def test_export_xlsx_success(client):
             "thesis_topics",
             "thesis_scores",
             "red_team_reviews",
+            "thesis_monetization_maps",
+            "sponsor_evidence",
+            "affiliate_product_evidence",
             "channel_videos",
             "channel_history",
             "video_history",
@@ -409,6 +418,9 @@ def test_research_zip_export_contains_schema_files_and_filters(client):
             "thesis_topics.csv",
             "thesis_scores.csv",
             "red_team_reviews.csv",
+            "thesis_monetization_maps.csv",
+            "sponsor_evidence.csv",
+            "affiliate_product_evidence.csv",
             "collection_runs.csv",
             "data_dictionary.md",
         }
@@ -837,6 +849,16 @@ def test_thesis_workspace_creates_scores_evidence_topics_and_red_team_review(cli
         thesis = ContentThesis.query.one()
         thesis_id = thesis.id
 
+    blocked_launch = client.post(
+        f"/theses/{thesis_id}/status",
+        data={"status": "launch"},
+        follow_redirects=True,
+    )
+    assert blocked_launch.status_code == 200
+    assert "cannot move to launch without a monetization map" in (
+        blocked_launch.get_data(as_text=True)
+    )
+
     client.post(
         f"/theses/{thesis_id}/evidence",
         data={
@@ -872,6 +894,50 @@ def test_thesis_workspace_creates_scores_evidence_topics_and_red_team_review(cli
         },
         follow_redirects=True,
     )
+    client.post(
+        f"/theses/{thesis_id}/monetization",
+        data={
+            "revenue_paths": ["watch_page_ads", "sponsors", "affiliates"],
+            "primary_revenue_path": "watch_page_ads",
+            "secondary_revenue_path": "sponsors",
+            "conservative_ad_rpm": "2.5",
+            "base_ad_rpm": "5.0",
+            "upside_ad_rpm": "9.0",
+            "sponsor_rpm_equivalent": "4.5",
+            "affiliate_rpm_equivalent": "1.5",
+            "membership_rpm_equivalent": "0.5",
+            "product_rpm_equivalent": "0.75",
+            "break_even_view_count": "25000",
+            "meaningful_income_view_count": "250000",
+            "assumptions": "Ads, sponsors, and affiliates modeled separately.",
+            "main_monetization_risk": "Sponsor scale may arrive late.",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        f"/theses/{thesis_id}/sponsor-evidence",
+        data={
+            "sponsor_category": "SaaS",
+            "observed_sponsor": "ExampleSponsor",
+            "competitor_channel_id": str(channel_id),
+            "video_url": "https://youtube.com/watch?v=thesis_video",
+            "date_observed": "2026-01-07",
+            "niche_fit": "high",
+            "brand_safety_notes": "Advertiser-safe education framing.",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        f"/theses/{thesis_id}/affiliate-evidence",
+        data={
+            "product_category": "research tools",
+            "program_source": "Example affiliate program",
+            "estimated_fit": "medium",
+            "audience_intent": "learn and buy better tools",
+            "compliance_disclosure_concerns": "Needs clear disclosure.",
+        },
+        follow_redirects=True,
+    )
     red_team_response = client.post(
         f"/theses/{thesis_id}/red-team",
         data={
@@ -894,17 +960,26 @@ def test_thesis_workspace_creates_scores_evidence_topics_and_red_team_review(cli
 
     status_response = client.post(
         f"/theses/{thesis_id}/status",
-        data={"status": "pilot"},
+        data={"status": "launch"},
         follow_redirects=True,
     )
     assert status_response.status_code == 200
 
     with client.application.app_context():
         thesis = ContentThesis.query.one()
-        assert thesis.status == "pilot"
+        assert thesis.status == "launch"
         assert ThesisEvidence.query.one().confidence == 0.8
         assert ThesisTopic.query.one().status == "shortlisted"
         assert ThesisScore.query.one().weighted_score == 25
+        monetization_map = ThesisMonetizationMap.query.one()
+        assert monetization_map.revenue_paths == [
+            "watch_page_ads",
+            "sponsors",
+            "affiliates",
+        ]
+        assert monetization_map.base_ad_rpm == 5.0
+        assert SponsorEvidence.query.one().observed_sponsor == "ExampleSponsor"
+        assert AffiliateProductEvidence.query.one().product_category == "research tools"
         review = RedTeamReview.query.one()
         assert review.core_objections["better_channels"]["answer"] == (
             "Existing channels are broad."
@@ -919,6 +994,9 @@ def test_thesis_workspace_creates_scores_evidence_topics_and_red_team_review(cli
     ]
     assert any(row["dataset"] == "content_theses" for row in rows)
     assert any(row["dataset"] == "red_team_reviews" for row in rows)
+    assert any(row["dataset"] == "thesis_monetization_maps" for row in rows)
+    assert any(row["dataset"] == "sponsor_evidence" for row in rows)
+    assert any(row["dataset"] == "affiliate_product_evidence" for row in rows)
 
 
 def test_video_detail_route_success(client):

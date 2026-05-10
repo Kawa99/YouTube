@@ -32,6 +32,7 @@ The `research-engine` branch is evolving this tracker into a market-research and
 - `docs/phase-6-derived-metrics.md`
 - `docs/phase-7-packaging-lab.md`
 - `docs/phase-8-thesis-workflow.md`
+- `docs/phase-9-monetization-mapping.md`
 
 ## 1. Prerequisites
 

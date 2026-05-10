@@ -39,7 +39,7 @@
             </a>
             <a
                 href="{{ url_for('theses_workspace') }}"
-                class="text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('theses') or request.endpoint in ['create_thesis_route', 'update_thesis_status_route', 'add_thesis_evidence_route', 'add_thesis_topic_route', 'add_thesis_score_route', 'add_red_team_review_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+                class="text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('theses') or request.endpoint in ['create_thesis_route', 'update_thesis_status_route', 'add_thesis_evidence_route', 'add_thesis_topic_route', 'add_thesis_score_route', 'add_monetization_map_route', 'add_sponsor_evidence_route', 'add_affiliate_product_evidence_route', 'add_red_team_review_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
             >
                 Theses
             </a>
@@ -135,7 +135,7 @@
         </a>
         <a
             href="{{ url_for('theses_workspace') }}"
-            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('theses') or request.endpoint in ['create_thesis_route', 'update_thesis_status_route', 'add_thesis_evidence_route', 'add_thesis_topic_route', 'add_thesis_score_route', 'add_red_team_review_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint and request.endpoint.startswith('theses') or request.endpoint in ['create_thesis_route', 'update_thesis_status_route', 'add_thesis_evidence_route', 'add_thesis_topic_route', 'add_thesis_score_route', 'add_monetization_map_route', 'add_sponsor_evidence_route', 'add_affiliate_product_evidence_route', 'add_red_team_review_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
             Theses
         </a>

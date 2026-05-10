@@ -498,6 +498,24 @@ class ContentThesis(db.Model):
         lazy=True,
         cascade="all, delete-orphan",
     )
+    monetization_maps = db.relationship(
+        "ThesisMonetizationMap",
+        back_populates="thesis",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+    sponsor_evidence = db.relationship(
+        "SponsorEvidence",
+        back_populates="thesis",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+    affiliate_evidence = db.relationship(
+        "AffiliateProductEvidence",
+        back_populates="thesis",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
 
 
 class ThesisEvidence(db.Model):
@@ -577,3 +595,72 @@ class RedTeamReview(db.Model):
     reviewed_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     thesis = db.relationship("ContentThesis", back_populates="red_team_reviews")
+
+
+class ThesisMonetizationMap(db.Model):
+    __tablename__ = "thesis_monetization_maps"
+
+    id = db.Column(db.Integer, primary_key=True)
+    thesis_id = db.Column(
+        db.Integer, db.ForeignKey("content_theses.id"), nullable=False
+    )
+    revenue_paths = db.Column(db.JSON, nullable=False, default=list)
+    primary_revenue_path = db.Column(db.String)
+    secondary_revenue_path = db.Column(db.String)
+    conservative_ad_rpm = db.Column(db.Float)
+    base_ad_rpm = db.Column(db.Float)
+    upside_ad_rpm = db.Column(db.Float)
+    sponsor_rpm_equivalent = db.Column(db.Float)
+    affiliate_rpm_equivalent = db.Column(db.Float)
+    membership_rpm_equivalent = db.Column(db.Float)
+    product_rpm_equivalent = db.Column(db.Float)
+    break_even_view_count = db.Column(db.Integer)
+    meaningful_income_view_count = db.Column(db.Integer)
+    assumptions = db.Column(db.Text)
+    main_monetization_risk = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+    thesis = db.relationship("ContentThesis", back_populates="monetization_maps")
+
+
+class SponsorEvidence(db.Model):
+    __tablename__ = "sponsor_evidence"
+
+    id = db.Column(db.Integer, primary_key=True)
+    thesis_id = db.Column(
+        db.Integer, db.ForeignKey("content_theses.id"), nullable=False
+    )
+    sponsor_category = db.Column(db.String, nullable=False)
+    observed_sponsor = db.Column(db.String)
+    competitor_channel_id = db.Column(db.Integer, db.ForeignKey("channels.id"))
+    video_url = db.Column(db.String)
+    date_observed = db.Column(db.DateTime)
+    niche_fit = db.Column(db.String)
+    brand_safety_notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    thesis = db.relationship("ContentThesis", back_populates="sponsor_evidence")
+    competitor_channel = db.relationship("Channel")
+
+
+class AffiliateProductEvidence(db.Model):
+    __tablename__ = "affiliate_product_evidence"
+
+    id = db.Column(db.Integer, primary_key=True)
+    thesis_id = db.Column(
+        db.Integer, db.ForeignKey("content_theses.id"), nullable=False
+    )
+    product_category = db.Column(db.String, nullable=False)
+    program_source = db.Column(db.String)
+    estimated_fit = db.Column(db.String)
+    audience_intent = db.Column(db.String)
+    compliance_disclosure_concerns = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    thesis = db.relationship("ContentThesis", back_populates="affiliate_evidence")

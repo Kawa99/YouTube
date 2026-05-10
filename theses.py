@@ -1,9 +1,12 @@
 from datetime import UTC, datetime
 
 from models import (
+    AffiliateProductEvidence,
     ContentThesis,
     RedTeamReview,
+    SponsorEvidence,
     ThesisEvidence,
+    ThesisMonetizationMap,
     ThesisScore,
     ThesisTopic,
     db,
@@ -23,6 +26,17 @@ EVIDENCE_TYPES = (
 )
 RED_TEAM_DECISIONS = ("proceed_to_pilot", "research_more", "revise_thesis", "reject")
 DECISIONS_UNDER_REVIEW = ("launch", "pilot", "scale", "pivot")
+REVENUE_PATHS = (
+    "watch_page_ads",
+    "sponsors",
+    "affiliates",
+    "memberships",
+    "patreon",
+    "newsletter",
+    "digital_products",
+    "consulting_services",
+    "licensing",
+)
 NICHE_SCORE_FACTORS = (
     ("audience_demand", 5),
     ("rpm_potential", 5),
@@ -62,10 +76,12 @@ def thesis_dashboard(selected_id=None):
         "theses": theses,
         "selected": selected,
         "score_summary": score_summary(selected) if selected else None,
+        "monetization_summary": monetization_summary(selected) if selected else None,
         "statuses": THESIS_STATUSES,
         "topic_statuses": TOPIC_STATUSES,
         "evidence_types": EVIDENCE_TYPES,
         "score_factors": NICHE_SCORE_FACTORS,
+        "revenue_paths": REVENUE_PATHS,
         "red_team_decisions": RED_TEAM_DECISIONS,
         "decisions_under_review": DECISIONS_UNDER_REVIEW,
     }
@@ -75,6 +91,10 @@ def create_content_thesis(payload):
     thesis_id = _required(payload, "thesis_id").upper()
     title = _required(payload, "title")
     status = _choice(payload.get("status") or "idea", THESIS_STATUSES, "status")
+    if status == "launch":
+        raise ThesisValidationError(
+            "A thesis cannot be created as launch until a monetization map exists."
+        )
     if ContentThesis.query.filter_by(thesis_id=thesis_id).first():
         raise ThesisValidationError("Thesis ID already exists.")
 
@@ -99,10 +119,96 @@ def create_content_thesis(payload):
 
 def update_thesis_status(thesis_id, status):
     thesis = _get_thesis(thesis_id)
-    thesis.status = _choice(status, THESIS_STATUSES, "status")
+    status = _choice(status, THESIS_STATUSES, "status")
+    if status == "launch" and not has_launch_ready_monetization(thesis):
+        raise ThesisValidationError(
+            "A thesis cannot move to launch without a monetization map."
+        )
+    thesis.status = status
     thesis.updated_at = utc_now()
     db.session.commit()
     return thesis
+
+
+def add_monetization_map(thesis_id, payload):
+    thesis = _get_thesis(thesis_id)
+    revenue_paths = [
+        path for path in payload.getlist("revenue_paths") if path in REVENUE_PATHS
+    ]
+    if not revenue_paths:
+        raise ThesisValidationError("At least one revenue path is required.")
+
+    monetization_map = ThesisMonetizationMap(
+        thesis_id=thesis.id,
+        revenue_paths=revenue_paths,
+        primary_revenue_path=_choice(
+            payload.get("primary_revenue_path"),
+            REVENUE_PATHS,
+            "primary_revenue_path",
+        ),
+        secondary_revenue_path=_optional_choice(
+            payload.get("secondary_revenue_path"),
+            REVENUE_PATHS,
+            "secondary_revenue_path",
+        ),
+        conservative_ad_rpm=_optional_float(payload.get("conservative_ad_rpm")),
+        base_ad_rpm=_optional_float(payload.get("base_ad_rpm")),
+        upside_ad_rpm=_optional_float(payload.get("upside_ad_rpm")),
+        sponsor_rpm_equivalent=_optional_float(payload.get("sponsor_rpm_equivalent")),
+        affiliate_rpm_equivalent=_optional_float(
+            payload.get("affiliate_rpm_equivalent")
+        ),
+        membership_rpm_equivalent=_optional_float(
+            payload.get("membership_rpm_equivalent")
+        ),
+        product_rpm_equivalent=_optional_float(payload.get("product_rpm_equivalent")),
+        break_even_view_count=_optional_int(payload.get("break_even_view_count")),
+        meaningful_income_view_count=_optional_int(
+            payload.get("meaningful_income_view_count")
+        ),
+        assumptions=_blank_to_none(payload.get("assumptions")),
+        main_monetization_risk=_blank_to_none(payload.get("main_monetization_risk")),
+    )
+    db.session.add(monetization_map)
+    _touch(thesis)
+    db.session.commit()
+    return monetization_map
+
+
+def add_sponsor_evidence(thesis_id, payload):
+    thesis = _get_thesis(thesis_id)
+    evidence = SponsorEvidence(
+        thesis_id=thesis.id,
+        sponsor_category=_required(payload, "sponsor_category"),
+        observed_sponsor=_blank_to_none(payload.get("observed_sponsor")),
+        competitor_channel_id=_optional_int(payload.get("competitor_channel_id")),
+        video_url=_blank_to_none(payload.get("video_url")),
+        date_observed=_optional_date(payload.get("date_observed")),
+        niche_fit=_blank_to_none(payload.get("niche_fit")),
+        brand_safety_notes=_blank_to_none(payload.get("brand_safety_notes")),
+    )
+    db.session.add(evidence)
+    _touch(thesis)
+    db.session.commit()
+    return evidence
+
+
+def add_affiliate_product_evidence(thesis_id, payload):
+    thesis = _get_thesis(thesis_id)
+    evidence = AffiliateProductEvidence(
+        thesis_id=thesis.id,
+        product_category=_required(payload, "product_category"),
+        program_source=_blank_to_none(payload.get("program_source")),
+        estimated_fit=_blank_to_none(payload.get("estimated_fit")),
+        audience_intent=_blank_to_none(payload.get("audience_intent")),
+        compliance_disclosure_concerns=_blank_to_none(
+            payload.get("compliance_disclosure_concerns")
+        ),
+    )
+    db.session.add(evidence)
+    _touch(thesis)
+    db.session.commit()
+    return evidence
 
 
 def add_thesis_evidence(thesis_id, payload):
@@ -217,6 +323,38 @@ def score_summary(thesis):
     }
 
 
+def monetization_summary(thesis):
+    if not thesis or not thesis.monetization_maps:
+        return {"has_map": False, "latest": None, "blended_base_rpm": None}
+    latest = sorted(
+        thesis.monetization_maps,
+        key=lambda item: item.updated_at or item.created_at or utc_now(),
+    )[-1]
+    blended_base_rpm = sum(
+        value or 0
+        for value in (
+            latest.base_ad_rpm,
+            latest.sponsor_rpm_equivalent,
+            latest.affiliate_rpm_equivalent,
+            latest.membership_rpm_equivalent,
+            latest.product_rpm_equivalent,
+        )
+    )
+    return {
+        "has_map": True,
+        "latest": latest,
+        "blended_base_rpm": round(blended_base_rpm, 2),
+    }
+
+
+def has_launch_ready_monetization(thesis):
+    summary = monetization_summary(thesis)
+    latest = summary["latest"]
+    if not latest:
+        return False
+    return bool(latest.revenue_paths and latest.primary_revenue_path)
+
+
 def _get_thesis(thesis_id):
     thesis = db.session.get(ContentThesis, thesis_id)
     if not thesis:
@@ -240,6 +378,13 @@ def _choice(value, allowed, field):
     if value not in allowed:
         raise ThesisValidationError(f"{field} must be one of: {', '.join(allowed)}")
     return value
+
+
+def _optional_choice(value, allowed, field):
+    value = _blank_to_none(value)
+    if value is None:
+        return None
+    return _choice(value, allowed, field)
 
 
 def _score(value):
@@ -272,6 +417,24 @@ def _optional_int(value):
     except (TypeError, ValueError) as exc:
         raise ThesisValidationError("IDs must be integers.") from exc
     return parsed
+
+
+def _optional_float(value):
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise ThesisValidationError("RPM and scenario values must be numbers.") from exc
+
+
+def _optional_date(value):
+    if value in (None, ""):
+        return None
+    try:
+        return datetime.fromisoformat(str(value)).replace(tzinfo=None)
+    except ValueError as exc:
+        raise ThesisValidationError("date_observed must be YYYY-MM-DD.") from exc
 
 
 def _blank_to_none(value):
