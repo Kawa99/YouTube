@@ -18,8 +18,13 @@ from models import (
     ChannelSnapshot,
     CollectionRun,
     ContentThesis,
+    Experiment,
+    ExperimentCheckpoint,
+    OwnedAnalyticsCredential,
+    OwnedVideoAnalytics,
     PackagingExperiment,
     RedTeamReview,
+    RetentionDiagnostic,
     SponsorEvidence,
     ThesisEvidence,
     ThesisMonetizationMap,
@@ -256,6 +261,11 @@ def test_export_csv_success(client):
     assert "=== VIDEO_ASSETS ===" in body
     assert "=== VIDEO_RIGHTS_CHECKLISTS ===" in body
     assert "=== VIDEO_DISCLOSURES ===" in body
+    assert "=== OWNED_ANALYTICS_CREDENTIALS ===" in body
+    assert "=== OWNED_VIDEO_ANALYTICS ===" in body
+    assert "=== RETENTION_DIAGNOSTICS ===" in body
+    assert "=== EXPERIMENTS ===" in body
+    assert "=== EXPERIMENT_CHECKPOINTS ===" in body
 
 
 def test_export_xlsx_success(client):
@@ -294,6 +304,11 @@ def test_export_xlsx_success(client):
             "video_assets",
             "video_rights_checklists",
             "video_disclosures",
+            "owned_analytics_credentials",
+            "owned_video_analytics",
+            "retention_diagnostics",
+            "experiments",
+            "experiment_checkpoints",
             "channel_videos",
             "channel_history",
             "video_history",
@@ -437,6 +452,11 @@ def test_research_zip_export_contains_schema_files_and_filters(client):
             "video_assets.csv",
             "video_rights_checklists.csv",
             "video_disclosures.csv",
+            "owned_analytics_credentials.csv",
+            "owned_video_analytics.csv",
+            "retention_diagnostics.csv",
+            "experiments.csv",
+            "experiment_checkpoints.csv",
             "collection_runs.csv",
             "data_dictionary.md",
         }
@@ -452,6 +472,7 @@ def test_research_zip_export_contains_schema_files_and_filters(client):
         dictionary = archive.read("data_dictionary.md").decode()
         assert "Research Export Data Dictionary" in dictionary
         assert "outlier_flag" in dictionary
+        assert "owned_video_analytics.csv" in dictionary
 
 
 def test_research_jsonl_export_filters_outliers(client):
@@ -1156,6 +1177,151 @@ def test_rights_workspace_blocks_unclear_assets_and_exports_records(client):
     ]
     assert any(row["dataset"] == "assets" for row in rows)
     assert any(row["dataset"] == "video_rights_checklists" for row in rows)
+
+
+def test_owned_analytics_workspace_records_private_metrics_and_experiments(client):
+    with client.application.app_context():
+        channel = Channel(
+            channel_username="@owned_channel",
+            youtube_channel_id="UC_OWNED",
+            subscribers=100,
+        )
+        db.session.add(channel)
+        db.session.flush()
+        video = Video(
+            youtube_video_id="owned_video",
+            title="Owned pilot",
+            channel_id=channel.id,
+        )
+        db.session.add(video)
+        db.session.commit()
+        channel_id = channel.id
+        video_id = video.id
+
+    page = client.get(f"/owned?video_id={video_id}")
+    assert page.status_code == 200
+    assert "Owned Analytics" in page.get_data(as_text=True)
+    assert "Competitor rows stay limited to public YouTube data." in page.get_data(
+        as_text=True
+    )
+
+    credential_response = client.post(
+        "/owned/credentials",
+        data={
+            "channel_id": str(channel_id),
+            "google_account_email": "owner@example.com",
+            "token_secret_ref": "secret-manager://youtube/owned-channel",
+            "notes": "Authorized test channel.",
+        },
+        follow_redirects=True,
+    )
+    assert credential_response.status_code == 200
+
+    with client.application.app_context():
+        credential = OwnedAnalyticsCredential.query.one()
+        assert credential.status == "configured"
+        assert credential.token_secret_ref == "secret-manager://youtube/owned-channel"
+        credential_id = credential.id
+
+    revoke_response = client.post(
+        f"/owned/credentials/{credential_id}/revoke",
+        follow_redirects=True,
+    )
+    assert revoke_response.status_code == 200
+
+    client.post(
+        "/owned/analytics",
+        data={
+            "video_id": str(video_id),
+            "date": "2026-05-11",
+            "views": "1000",
+            "impressions": "25000",
+            "impression_ctr": "4.0",
+            "average_view_duration_seconds": "360",
+            "average_view_percentage": "52",
+            "watch_time_minutes": "6000",
+            "subscribers_gained": "25",
+            "estimated_revenue": "12.50",
+            "traffic_source_type": "browse",
+            "source": "manual",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        "/owned/retention",
+        data={
+            "video_id": str(video_id),
+            "report_date": "2026-05-11",
+            "ctr": "4.0",
+            "average_view_duration_seconds": "360",
+            "average_view_percentage": "52",
+            "impressions": "25000",
+            "dominant_traffic_source": "browse",
+            "retention_pattern": "high_ctr_low_retention",
+            "likely_cause": "Opening promise is too broad.",
+            "evidence": "Drop before first proof point.",
+            "next_change": "Rewrite first 30 seconds.",
+        },
+        follow_redirects=True,
+    )
+    experiment_response = client.post(
+        "/owned/experiments",
+        data={
+            "video_id": str(video_id),
+            "hypothesis": "Sharper title improves qualified CTR.",
+            "variable_tested": "title",
+            "title": "Why This System Breaks",
+            "thumbnail_variant": "variant-a",
+            "publish_date": "2026-05-11",
+            "success_metric": "7d APV over 50",
+            "production_hours": "8",
+            "production_cost": "25",
+            "decision": "pending",
+            "notes": "Pilot test.",
+        },
+        follow_redirects=True,
+    )
+    assert experiment_response.status_code == 200
+
+    with client.application.app_context():
+        experiment = Experiment.query.one()
+        experiment_id = experiment.id
+
+    client.post(
+        f"/owned/experiments/{experiment_id}/checkpoints",
+        data={
+            "checkpoint": "24h",
+            "views": "1000",
+            "impressions": "25000",
+            "impression_ctr": "4.0",
+            "average_view_duration_seconds": "360",
+            "average_view_percentage": "52",
+            "watch_time_minutes": "6000",
+            "subscribers_gained": "25",
+            "main_traffic_source": "browse",
+            "notes": "Healthy first checkpoint.",
+        },
+        follow_redirects=True,
+    )
+
+    with client.application.app_context():
+        assert OwnedAnalyticsCredential.query.one().status == "revoked"
+        assert OwnedVideoAnalytics.query.one().estimated_revenue == 12.50
+        assert RetentionDiagnostic.query.one().retention_pattern == (
+            "high_ctr_low_retention"
+        )
+        assert ExperimentCheckpoint.query.one().checkpoint == "24h"
+
+    export_response = client.get("/export/research.jsonl")
+    rows = [
+        json.loads(line)
+        for line in export_response.get_data(as_text=True).splitlines()
+        if line.strip()
+    ]
+    assert any(row["dataset"] == "owned_video_analytics" for row in rows)
+    assert any(row["dataset"] == "retention_diagnostics" for row in rows)
+    assert any(row["dataset"] == "experiments" for row in rows)
+    assert any(row["dataset"] == "experiment_checkpoints" for row in rows)
 
 
 def test_video_detail_route_success(client):

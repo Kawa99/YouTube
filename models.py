@@ -745,3 +745,109 @@ class VideoDisclosure(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     video = db.relationship("Video")
+
+
+class OwnedAnalyticsCredential(db.Model):
+    __tablename__ = "owned_analytics_credentials"
+
+    id = db.Column(db.Integer, primary_key=True)
+    channel_id = db.Column(db.Integer, db.ForeignKey("channels.id"))
+    google_account_email = db.Column(db.String)
+    scopes = db.Column(db.JSON, nullable=False, default=list)
+    token_secret_ref = db.Column(db.String)
+    status = db.Column(db.String, nullable=False, default="configured")
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    revoked_at = db.Column(db.DateTime)
+    notes = db.Column(db.Text)
+
+    channel = db.relationship("Channel")
+
+
+class OwnedVideoAnalytics(db.Model):
+    __tablename__ = "owned_video_analytics"
+
+    id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    views = db.Column(db.Integer)
+    impressions = db.Column(db.Integer)
+    impression_ctr = db.Column(db.Float)
+    average_view_duration_seconds = db.Column(db.Float)
+    average_view_percentage = db.Column(db.Float)
+    watch_time_minutes = db.Column(db.Float)
+    subscribers_gained = db.Column(db.Integer)
+    estimated_revenue = db.Column(db.Float)
+    traffic_source_type = db.Column(db.String)
+    source = db.Column(db.String, nullable=False, default="manual")
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    video = db.relationship("Video")
+
+
+class RetentionDiagnostic(db.Model):
+    __tablename__ = "retention_diagnostics"
+
+    id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
+    report_date = db.Column(db.Date, nullable=False)
+    ctr = db.Column(db.Float)
+    average_view_duration_seconds = db.Column(db.Float)
+    average_view_percentage = db.Column(db.Float)
+    impressions = db.Column(db.Integer)
+    dominant_traffic_source = db.Column(db.String)
+    retention_pattern = db.Column(db.String)
+    likely_cause = db.Column(db.Text)
+    evidence = db.Column(db.Text)
+    next_change = db.Column(db.Text)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    video = db.relationship("Video")
+
+
+class Experiment(db.Model):
+    __tablename__ = "experiments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"))
+    hypothesis = db.Column(db.Text, nullable=False)
+    variable_tested = db.Column(db.String, nullable=False)
+    title = db.Column(db.String)
+    thumbnail_variant = db.Column(db.String)
+    publish_date = db.Column(db.Date)
+    success_metric = db.Column(db.String)
+    production_hours = db.Column(db.Float)
+    production_cost = db.Column(db.Float)
+    decision = db.Column(db.String, nullable=False, default="pending")
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    video = db.relationship("Video")
+    checkpoints = db.relationship(
+        "ExperimentCheckpoint",
+        back_populates="experiment",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+
+
+class ExperimentCheckpoint(db.Model):
+    __tablename__ = "experiment_checkpoints"
+
+    id = db.Column(db.Integer, primary_key=True)
+    experiment_id = db.Column(
+        db.Integer, db.ForeignKey("experiments.id"), nullable=False
+    )
+    checkpoint = db.Column(db.String, nullable=False)
+    views = db.Column(db.Integer)
+    impressions = db.Column(db.Integer)
+    impression_ctr = db.Column(db.Float)
+    average_view_duration_seconds = db.Column(db.Float)
+    average_view_percentage = db.Column(db.Float)
+    watch_time_minutes = db.Column(db.Float)
+    subscribers_gained = db.Column(db.Integer)
+    main_traffic_source = db.Column(db.String)
+    notes = db.Column(db.Text)
+    recorded_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    experiment = db.relationship("Experiment", back_populates="checkpoints")

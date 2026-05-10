@@ -35,6 +35,11 @@ CORE_EXPORT_TABLES = (
     "video_assets",
     "video_rights_checklists",
     "video_disclosures",
+    "owned_analytics_credentials",
+    "owned_video_analytics",
+    "retention_diagnostics",
+    "experiments",
+    "experiment_checkpoints",
     # Compatibility tables kept for the current UI and old exports.
     "channel_videos",
     "channel_history",
@@ -67,6 +72,11 @@ TABLE_SELECT_QUERIES = {
     "video_assets": "SELECT * FROM video_assets",
     "video_rights_checklists": "SELECT * FROM video_rights_checklists",
     "video_disclosures": "SELECT * FROM video_disclosures",
+    "owned_analytics_credentials": "SELECT * FROM owned_analytics_credentials",
+    "owned_video_analytics": "SELECT * FROM owned_video_analytics",
+    "retention_diagnostics": "SELECT * FROM retention_diagnostics",
+    "experiments": "SELECT * FROM experiments",
+    "experiment_checkpoints": "SELECT * FROM experiment_checkpoints",
     "channel_videos": "SELECT * FROM channel_videos",
     "channel_history": "SELECT * FROM channel_history",
     "video_history": "SELECT * FROM video_history",
@@ -91,6 +101,11 @@ RESEARCH_ZIP_FILES = (
     "video_assets.csv",
     "video_rights_checklists.csv",
     "video_disclosures.csv",
+    "owned_analytics_credentials.csv",
+    "owned_video_analytics.csv",
+    "retention_diagnostics.csv",
+    "experiments.csv",
+    "experiment_checkpoints.csv",
     "collection_runs.csv",
     "data_dictionary.md",
 )
@@ -420,6 +435,89 @@ RESEARCH_HEADERS = {
         "disclosure_notes",
         "created_at",
     ],
+    "owned_analytics_credentials": [
+        "id",
+        "channel_id",
+        "youtube_channel_id",
+        "channel_username",
+        "google_account_email",
+        "scopes",
+        "token_secret_ref",
+        "status",
+        "created_at",
+        "revoked_at",
+        "notes",
+    ],
+    "owned_video_analytics": [
+        "id",
+        "video_id",
+        "youtube_video_id",
+        "title",
+        "date",
+        "views",
+        "impressions",
+        "impression_ctr",
+        "average_view_duration_seconds",
+        "average_view_percentage",
+        "watch_time_minutes",
+        "subscribers_gained",
+        "estimated_revenue",
+        "traffic_source_type",
+        "source",
+        "created_at",
+    ],
+    "retention_diagnostics": [
+        "id",
+        "video_id",
+        "youtube_video_id",
+        "title",
+        "report_date",
+        "ctr",
+        "average_view_duration_seconds",
+        "average_view_percentage",
+        "impressions",
+        "dominant_traffic_source",
+        "retention_pattern",
+        "likely_cause",
+        "evidence",
+        "next_change",
+        "notes",
+        "created_at",
+    ],
+    "experiments": [
+        "id",
+        "video_id",
+        "youtube_video_id",
+        "title",
+        "hypothesis",
+        "variable_tested",
+        "experiment_title",
+        "thumbnail_variant",
+        "publish_date",
+        "success_metric",
+        "production_hours",
+        "production_cost",
+        "decision",
+        "notes",
+        "created_at",
+    ],
+    "experiment_checkpoints": [
+        "id",
+        "experiment_id",
+        "video_id",
+        "youtube_video_id",
+        "checkpoint",
+        "views",
+        "impressions",
+        "impression_ctr",
+        "average_view_duration_seconds",
+        "average_view_percentage",
+        "watch_time_minutes",
+        "subscribers_gained",
+        "main_traffic_source",
+        "notes",
+        "recorded_at",
+    ],
 }
 
 
@@ -513,6 +611,42 @@ DATA_DICTIONARY_ROWS = [
         "collection_runs",
         "raw",
         "",
+    ),
+    (
+        "owned_analytics_credentials.csv",
+        "token_secret_ref",
+        "string",
+        "Reference to an external secret-manager token; raw OAuth tokens are never exported.",
+        "owned_analytics_credentials",
+        "auth_metadata",
+        "",
+    ),
+    (
+        "owned_video_analytics.csv",
+        "impression_ctr",
+        "float",
+        "Owned-channel YouTube Studio CTR only; never competitor private data.",
+        "owned_video_analytics",
+        "owned_private",
+        "",
+    ),
+    (
+        "retention_diagnostics.csv",
+        "retention_pattern",
+        "string",
+        "Human-coded retention pattern from the owned-channel diagnostics protocol.",
+        "retention_diagnostics",
+        "owned_private",
+        "early_cliff|slow_bleed|mid_video_drop|spike_replay|high_ctr_low_retention|low_ctr_high_retention|low_impressions_good_response|good_search_weak_browse|unknown",
+    ),
+    (
+        "experiment_checkpoints.csv",
+        "checkpoint",
+        "string",
+        "Pilot review window for owned experiments.",
+        "experiment_checkpoints",
+        "owned_private",
+        "24h|7d|30d",
     ),
 ]
 
@@ -642,6 +776,11 @@ def stream_research_jsonl(filters=None):
         "video_assets",
         "video_rights_checklists",
         "video_disclosures",
+        "owned_analytics_credentials",
+        "owned_video_analytics",
+        "retention_diagnostics",
+        "experiments",
+        "experiment_checkpoints",
         "collection_runs",
     ):
         for row in iter_research_rows(dataset, filters):
@@ -1237,6 +1376,123 @@ def _research_query(dataset, filters):
             """
         return _compose_query(base_query, [], " ORDER BY v.id, vd.id"), params
 
+    if dataset == "owned_analytics_credentials":
+        base_query = """
+            SELECT
+                oac.id,
+                oac.channel_id,
+                c.youtube_channel_id,
+                c.channel_username,
+                oac.google_account_email,
+                oac.scopes,
+                oac.token_secret_ref,
+                oac.status,
+                oac.created_at,
+                oac.revoked_at,
+                oac.notes
+            FROM owned_analytics_credentials oac
+            LEFT JOIN channels c ON c.id = oac.channel_id
+            """
+        return (
+            _compose_query(base_query, [], " ORDER BY oac.created_at, oac.id"),
+            params,
+        )
+
+    if dataset == "owned_video_analytics":
+        base_query = """
+            SELECT
+                ova.id,
+                ova.video_id,
+                v.youtube_video_id,
+                v.title,
+                ova.date,
+                ova.views,
+                ova.impressions,
+                ova.impression_ctr,
+                ova.average_view_duration_seconds,
+                ova.average_view_percentage,
+                ova.watch_time_minutes,
+                ova.subscribers_gained,
+                ova.estimated_revenue,
+                ova.traffic_source_type,
+                ova.source,
+                ova.created_at
+            FROM owned_video_analytics ova
+            JOIN videos v ON v.id = ova.video_id
+            """
+        return _compose_query(base_query, [], " ORDER BY ova.date, ova.id"), params
+
+    if dataset == "retention_diagnostics":
+        base_query = """
+            SELECT
+                rd.id,
+                rd.video_id,
+                v.youtube_video_id,
+                v.title,
+                rd.report_date,
+                rd.ctr,
+                rd.average_view_duration_seconds,
+                rd.average_view_percentage,
+                rd.impressions,
+                rd.dominant_traffic_source,
+                rd.retention_pattern,
+                rd.likely_cause,
+                rd.evidence,
+                rd.next_change,
+                rd.notes,
+                rd.created_at
+            FROM retention_diagnostics rd
+            JOIN videos v ON v.id = rd.video_id
+            """
+        return _compose_query(base_query, [], " ORDER BY rd.report_date, rd.id"), params
+
+    if dataset == "experiments":
+        base_query = """
+            SELECT
+                e.id,
+                e.video_id,
+                v.youtube_video_id,
+                v.title,
+                e.hypothesis,
+                e.variable_tested,
+                e.title AS experiment_title,
+                e.thumbnail_variant,
+                e.publish_date,
+                e.success_metric,
+                e.production_hours,
+                e.production_cost,
+                e.decision,
+                e.notes,
+                e.created_at
+            FROM experiments e
+            LEFT JOIN videos v ON v.id = e.video_id
+            """
+        return _compose_query(base_query, [], " ORDER BY e.created_at, e.id"), params
+
+    if dataset == "experiment_checkpoints":
+        base_query = """
+            SELECT
+                ec.id,
+                ec.experiment_id,
+                e.video_id,
+                v.youtube_video_id,
+                ec.checkpoint,
+                ec.views,
+                ec.impressions,
+                ec.impression_ctr,
+                ec.average_view_duration_seconds,
+                ec.average_view_percentage,
+                ec.watch_time_minutes,
+                ec.subscribers_gained,
+                ec.main_traffic_source,
+                ec.notes,
+                ec.recorded_at
+            FROM experiment_checkpoints ec
+            JOIN experiments e ON e.id = ec.experiment_id
+            LEFT JOIN videos v ON v.id = e.video_id
+            """
+        return _compose_query(base_query, [], " ORDER BY ec.recorded_at, ec.id"), params
+
     raise ValueError(f"Unsupported research dataset: {dataset}")
 
 
@@ -1460,9 +1716,11 @@ def _infer_dictionary_type(field):
         "weighted_score",
         "break_even_view_count",
         "meaningful_income_view_count",
+        "impressions",
+        "subscribers_gained",
     }:
         return "integer"
-    if field.endswith("_at") or field in {"published_at", "snapshot_at"}:
+    if field.endswith("_at") or field in {"published_at", "snapshot_at", "date"}:
         return "datetime"
     if field in {
         "label_confidence",
@@ -1481,6 +1739,14 @@ def _infer_dictionary_type(field):
         "affiliate_rpm_equivalent",
         "membership_rpm_equivalent",
         "product_rpm_equivalent",
+        "impression_ctr",
+        "ctr",
+        "average_view_duration_seconds",
+        "average_view_percentage",
+        "watch_time_minutes",
+        "estimated_revenue",
+        "production_hours",
+        "production_cost",
     }:
         return "float"
     if field in {
@@ -1521,6 +1787,11 @@ def _infer_source_table(dataset, field):
         "video_assets",
         "video_rights_checklists",
         "video_disclosures",
+        "owned_analytics_credentials",
+        "owned_video_analytics",
+        "retention_diagnostics",
+        "experiments",
+        "experiment_checkpoints",
     }:
         return dataset
     if dataset == "channels" and field in {
@@ -1566,6 +1837,11 @@ def _infer_layer(dataset):
         "snapshots": "raw",
         "derived_metrics": "derived",
         "collection_runs": "raw",
+        "owned_analytics_credentials": "auth_metadata",
+        "owned_video_analytics": "owned_private",
+        "retention_diagnostics": "owned_private",
+        "experiments": "owned_private",
+        "experiment_checkpoints": "owned_private",
     }.get(dataset, "normalized")
 
 
@@ -1587,7 +1863,9 @@ def _allowed_labels(field):
         "performance_tier": "breakout|outlier|normal|underperformer|unknown",
         "status": "idea|research|pilot|reject|launch",
         "evidence_type": "outlier_video|competitor_channel|comment_theme|search_trend|sponsor_density|source_availability|forum_question|manual_note",
-        "decision": "proceed_to_pilot|research_more|revise_thesis|reject",
+        "decision": "pending|continue|pivot|stop|scale|proceed_to_pilot|research_more|revise_thesis|reject",
+        "checkpoint": "24h|7d|30d",
+        "retention_pattern": "early_cliff|slow_bleed|mid_video_drop|spike_replay|high_ctr_low_retention|low_ctr_high_retention|low_impressions_good_response|good_search_weak_browse|unknown",
         "primary_revenue_path": "watch_page_ads|sponsors|affiliates|memberships|patreon|newsletter|digital_products|consulting_services|licensing",
         "secondary_revenue_path": "watch_page_ads|sponsors|affiliates|memberships|patreon|newsletter|digital_products|consulting_services|licensing",
         "title_pattern": "mystery|reversal|consequence|transformation|hidden_system|timeline|comparison|specific_question|list_with_angle|strong_claim|other",

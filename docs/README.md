@@ -14,6 +14,7 @@ This directory describes the research-engine evolution of the YouTube tracker.
 - `phase-8-thesis-workflow.md` documents the content thesis, evidence, topic backlog, scorecard, and red-team workflow.
 - `phase-9-monetization-mapping.md` documents explicit revenue paths, sponsor evidence, affiliate/product evidence, and launch gating.
 - `phase-10-asset-rights-compliance.md` documents the asset ledger, rights checklist, disclosures, and upload-readiness gate.
+- `phase-11-owned-analytics.md` documents owned-channel OAuth metadata, private Studio metrics, retention diagnostics, and 24h/7d/30d experiment checkpoints.
 - `research-engine-prd.md` defines the product requirements for market research and launch validation.
 - `research-schema-map.md` maps the research repository's markdown schemas to app entities and future tables.
 - `adr/` records architecture decisions that should guide implementation.

@@ -29,6 +29,16 @@ from labeling import (
     save_video_label,
 )
 from metrics import compute_derived_metrics, market_analysis_summary
+from owned_analytics import (
+    OwnedAnalyticsValidationError,
+    create_experiment,
+    owned_dashboard,
+    revoke_credential,
+    save_credential,
+    save_experiment_checkpoint,
+    save_owned_analytics,
+    save_retention_diagnostic,
+)
 from packaging_lab import packaging_lab_summary, save_packaging_experiment
 from rights import (
     RightsValidationError,
@@ -477,6 +487,80 @@ def register_routes(app, limiter):
         else:
             flash("Disclosure record saved.", "success")
         return redirect(url_for("rights_workspace", video_id=video_id))
+
+    @app.route("/owned", methods=["GET"])
+    def owned_analytics_workspace():
+        selected_video_id = request.args.get("video_id", type=int)
+        return render_template(
+            "owned_analytics.html", workspace=owned_dashboard(selected_video_id)
+        )
+
+    @app.route("/owned/credentials", methods=["POST"])
+    def save_owned_credential_route():
+        try:
+            save_credential(request.form)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Owned analytics credential reference saved.", "success")
+        return redirect(url_for("owned_analytics_workspace"))
+
+    @app.route("/owned/credentials/<int:credential_id>/revoke", methods=["POST"])
+    def revoke_owned_credential_route(credential_id):
+        try:
+            revoke_credential(credential_id)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Owned analytics credential revoked.", "success")
+        return redirect(url_for("owned_analytics_workspace"))
+
+    @app.route("/owned/analytics", methods=["POST"])
+    def save_owned_analytics_route():
+        video_id = request.form.get("video_id")
+        try:
+            save_owned_analytics(request.form)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Owned analytics row saved.", "success")
+        return redirect(url_for("owned_analytics_workspace", video_id=video_id))
+
+    @app.route("/owned/retention", methods=["POST"])
+    def save_retention_diagnostic_route():
+        video_id = request.form.get("video_id")
+        try:
+            save_retention_diagnostic(request.form)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Retention diagnostic saved.", "success")
+        return redirect(url_for("owned_analytics_workspace", video_id=video_id))
+
+    @app.route("/owned/experiments", methods=["POST"])
+    def create_experiment_route():
+        try:
+            experiment = create_experiment(request.form)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("owned_analytics_workspace"))
+
+        flash("Experiment saved.", "success")
+        return redirect(
+            url_for("owned_analytics_workspace", video_id=experiment.video_id)
+        )
+
+    @app.route("/owned/experiments/<int:experiment_id>/checkpoints", methods=["POST"])
+    def save_experiment_checkpoint_route(experiment_id):
+        try:
+            checkpoint = save_experiment_checkpoint(experiment_id, request.form)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("owned_analytics_workspace"))
+
+        video_id = checkpoint.experiment.video_id
+        flash("Experiment checkpoint saved.", "success")
+        return redirect(url_for("owned_analytics_workspace", video_id=video_id))
 
     @app.route("/labeling", methods=["GET"])
     def labeling_queue():

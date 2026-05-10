@@ -50,6 +50,12 @@
                 Rights
             </a>
             <a
+                href="{{ url_for('owned_analytics_workspace') }}"
+                class="text-sm font-medium transition-colors {% if request.endpoint in ['owned_analytics_workspace', 'save_owned_credential_route', 'revoke_owned_credential_route', 'save_owned_analytics_route', 'save_retention_diagnostic_route', 'create_experiment_route', 'save_experiment_checkpoint_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            >
+                Owned
+            </a>
+            <a
                 href="{{ url_for('labeling_queue') }}"
                 class="text-sm font-medium transition-colors {% if request.endpoint in ['labeling_queue', 'save_video_label_route', 'bulk_label_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
             >
@@ -150,6 +156,12 @@
             class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['rights_workspace', 'create_asset_route', 'link_asset_to_video_route', 'save_rights_checklist_route', 'save_video_disclosure_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
             Rights
+        </a>
+        <a
+            href="{{ url_for('owned_analytics_workspace') }}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['owned_analytics_workspace', 'save_owned_credential_route', 'revoke_owned_credential_route', 'save_owned_analytics_route', 'save_retention_diagnostic_route', 'create_experiment_route', 'save_experiment_checkpoint_route'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+        >
+            Owned
         </a>
         <a
             href="{{ url_for('labeling_queue') }}"
