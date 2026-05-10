@@ -35,6 +35,16 @@ from pydantic import ValidationError
 from schemas import VideoCreateSchema
 from sqlalchemy import case, func
 from tasks import RedisError, enqueue_channel_job, get_channel_job
+from theses import (
+    ThesisValidationError,
+    add_red_team_review,
+    add_thesis_evidence,
+    add_thesis_score,
+    add_thesis_topic,
+    create_content_thesis,
+    thesis_dashboard,
+    update_thesis_status,
+)
 from youtube_api import (
     YOUTUBE_API_KEY,
     extract_video_id,
@@ -309,6 +319,73 @@ def register_routes(app, limiter):
 
         flash(f"Packaging experiment #{experiment.id} saved.", "success")
         return redirect(url_for("packaging_lab"))
+
+    @app.route("/theses", methods=["GET"])
+    def theses_workspace():
+        selected_id = request.args.get("thesis_id", type=int)
+        return render_template("theses.html", workspace=thesis_dashboard(selected_id))
+
+    @app.route("/theses", methods=["POST"])
+    def create_thesis_route():
+        try:
+            thesis = create_content_thesis(request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("theses_workspace"))
+
+        flash(f"Thesis {thesis.thesis_id} created.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis.id))
+
+    @app.route("/theses/<int:thesis_id>/status", methods=["POST"])
+    def update_thesis_status_route(thesis_id):
+        try:
+            thesis = update_thesis_status(thesis_id, request.form.get("status"))
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+        flash(f"Thesis {thesis.thesis_id} moved to {thesis.status}.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis.id))
+
+    @app.route("/theses/<int:thesis_id>/evidence", methods=["POST"])
+    def add_thesis_evidence_route(thesis_id):
+        try:
+            add_thesis_evidence(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Thesis evidence saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/topics", methods=["POST"])
+    def add_thesis_topic_route(thesis_id):
+        try:
+            add_thesis_topic(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Thesis topic saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/scores", methods=["POST"])
+    def add_thesis_score_route(thesis_id):
+        try:
+            add_thesis_score(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Thesis score saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/red-team", methods=["POST"])
+    def add_red_team_review_route(thesis_id):
+        try:
+            add_red_team_review(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Red-team review saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
 
     @app.route("/labeling", methods=["GET"])
     def labeling_queue():

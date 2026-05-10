@@ -15,7 +15,12 @@ from models import (
     ChannelLabel,
     ChannelSnapshot,
     CollectionRun,
+    ContentThesis,
     PackagingExperiment,
+    RedTeamReview,
+    ThesisEvidence,
+    ThesisScore,
+    ThesisTopic,
     Video,
     VideoDerivedMetric,
     VideoHistory,
@@ -232,6 +237,11 @@ def test_export_csv_success(client):
     assert "=== VIDEO_DERIVED_METRICS ===" in body
     assert "=== CHANNEL_DERIVED_SUMMARIES ===" in body
     assert "=== PACKAGING_EXPERIMENTS ===" in body
+    assert "=== CONTENT_THESES ===" in body
+    assert "=== THESIS_EVIDENCE ===" in body
+    assert "=== THESIS_TOPICS ===" in body
+    assert "=== THESIS_SCORES ===" in body
+    assert "=== RED_TEAM_REVIEWS ===" in body
 
 
 def test_export_xlsx_success(client):
@@ -258,6 +268,11 @@ def test_export_xlsx_success(client):
             "video_derived_metrics",
             "channel_derived_summaries",
             "packaging_experiments",
+            "content_theses",
+            "thesis_evidence",
+            "thesis_topics",
+            "thesis_scores",
+            "red_team_reviews",
             "channel_videos",
             "channel_history",
             "video_history",
@@ -389,6 +404,11 @@ def test_research_zip_export_contains_schema_files_and_filters(client):
             "manual_labels.csv",
             "snapshots.csv",
             "derived_metrics.csv",
+            "content_theses.csv",
+            "thesis_evidence.csv",
+            "thesis_topics.csv",
+            "thesis_scores.csv",
+            "red_team_reviews.csv",
             "collection_runs.csv",
             "data_dictionary.md",
         }
@@ -775,6 +795,130 @@ def test_packaging_lab_displays_patterns_changes_and_saves_experiment(client):
         assert experiment.thumbnail_concepts == ["Object on white", "Diagram cue"]
         assert experiment.final_thumbnail_concept == "Object on white"
         assert experiment.status == "selected"
+
+
+def test_thesis_workspace_creates_scores_evidence_topics_and_red_team_review(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@thesis_channel", subscribers=1000)
+        db.session.add(channel)
+        db.session.flush()
+        video = Video(
+            youtube_video_id="thesis_video",
+            title="Thesis evidence video",
+            channel_id=channel.id,
+        )
+        db.session.add(video)
+        db.session.commit()
+        channel_id = channel.id
+        video_id = video.id
+
+    create_response = client.post(
+        "/theses",
+        data={
+            "thesis_id": "T001",
+            "title": "Hidden systems explainers",
+            "target_viewer": "Curious adult learners",
+            "viewer_promise": "Understand overlooked systems.",
+            "format": "explainer",
+            "topic_universe": "Forgotten infrastructure and companies.",
+            "production_edge": "Primary-source research.",
+            "packaging_edge": "Specific question titles.",
+            "monetization_path": "Ads and software sponsors.",
+            "policy_risk_argument": "Original scripts and commentary.",
+            "status": "research",
+            "notes": "Promising candidate.",
+        },
+        follow_redirects=True,
+    )
+    assert create_response.status_code == 200
+    assert "Hidden systems explainers" in create_response.get_data(as_text=True)
+
+    with client.application.app_context():
+        thesis = ContentThesis.query.one()
+        thesis_id = thesis.id
+
+    client.post(
+        f"/theses/{thesis_id}/evidence",
+        data={
+            "evidence_type": "outlier_video",
+            "channel_id": str(channel_id),
+            "video_id": str(video_id),
+            "source_url": "https://youtube.com/watch?v=thesis_video",
+            "note": "Breakout competitor proof.",
+            "confidence": "0.8",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        f"/theses/{thesis_id}/topics",
+        data={
+            "topic": "Why old payment rails still exist",
+            "title_angle": "Why does this still exist?",
+            "demand_evidence": "Repeated outliers.",
+            "source_availability": "high",
+            "production_complexity": "medium",
+            "packaging_potential": "high",
+            "status": "shortlisted",
+        },
+        follow_redirects=True,
+    )
+    client.post(
+        f"/theses/{thesis_id}/scores",
+        data={
+            "factor": "audience_demand",
+            "score": "5",
+            "evidence": "Multiple outliers.",
+            "confidence": "0.9",
+        },
+        follow_redirects=True,
+    )
+    red_team_response = client.post(
+        f"/theses/{thesis_id}/red-team",
+        data={
+            "reviewer": "reviewer-a",
+            "decision_under_review": "pilot",
+            "decision": "proceed_to_pilot",
+            "better_channels_answer": "Existing channels are broad.",
+            "weak_monetization_answer": "Sponsor categories are visible.",
+            "failure_premortem": "The channel failed from weak packaging.",
+            "early_warning_signs": "Low CTR.",
+            "preventive_actions": "Pre-test thumbnails.",
+            "kill_criteria": "Three pilots under baseline.",
+            "competitor_challenges": "Competitor A | better archives",
+            "decision_rationale": "Evidence supports a small pilot.",
+        },
+        follow_redirects=True,
+    )
+    assert red_team_response.status_code == 200
+    assert "proceed to pilot" in red_team_response.get_data(as_text=True)
+
+    status_response = client.post(
+        f"/theses/{thesis_id}/status",
+        data={"status": "pilot"},
+        follow_redirects=True,
+    )
+    assert status_response.status_code == 200
+
+    with client.application.app_context():
+        thesis = ContentThesis.query.one()
+        assert thesis.status == "pilot"
+        assert ThesisEvidence.query.one().confidence == 0.8
+        assert ThesisTopic.query.one().status == "shortlisted"
+        assert ThesisScore.query.one().weighted_score == 25
+        review = RedTeamReview.query.one()
+        assert review.core_objections["better_channels"]["answer"] == (
+            "Existing channels are broad."
+        )
+
+    export_response = client.get("/export/research.jsonl")
+    assert export_response.status_code == 200
+    rows = [
+        json.loads(line)
+        for line in export_response.get_data(as_text=True).splitlines()
+        if line.strip()
+    ]
+    assert any(row["dataset"] == "content_theses" for row in rows)
+    assert any(row["dataset"] == "red_team_reviews" for row in rows)
 
 
 def test_video_detail_route_success(client):

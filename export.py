@@ -23,6 +23,11 @@ CORE_EXPORT_TABLES = (
     "video_derived_metrics",
     "channel_derived_summaries",
     "packaging_experiments",
+    "content_theses",
+    "thesis_evidence",
+    "thesis_topics",
+    "thesis_scores",
+    "red_team_reviews",
     # Compatibility tables kept for the current UI and old exports.
     "channel_videos",
     "channel_history",
@@ -43,6 +48,11 @@ TABLE_SELECT_QUERIES = {
     "video_derived_metrics": "SELECT * FROM video_derived_metrics",
     "channel_derived_summaries": "SELECT * FROM channel_derived_summaries",
     "packaging_experiments": "SELECT * FROM packaging_experiments",
+    "content_theses": "SELECT * FROM content_theses",
+    "thesis_evidence": "SELECT * FROM thesis_evidence",
+    "thesis_topics": "SELECT * FROM thesis_topics",
+    "thesis_scores": "SELECT * FROM thesis_scores",
+    "red_team_reviews": "SELECT * FROM red_team_reviews",
     "channel_videos": "SELECT * FROM channel_videos",
     "channel_history": "SELECT * FROM channel_history",
     "video_history": "SELECT * FROM video_history",
@@ -55,6 +65,11 @@ RESEARCH_ZIP_FILES = (
     "manual_labels.csv",
     "snapshots.csv",
     "derived_metrics.csv",
+    "content_theses.csv",
+    "thesis_evidence.csv",
+    "thesis_topics.csv",
+    "thesis_scores.csv",
+    "red_team_reviews.csv",
     "collection_runs.csv",
     "data_dictionary.md",
 )
@@ -209,6 +224,78 @@ RESEARCH_HEADERS = {
         "items_failed",
         "error_summary",
         "created_by",
+    ],
+    "content_theses": [
+        "id",
+        "thesis_id",
+        "title",
+        "target_viewer",
+        "viewer_promise",
+        "format",
+        "topic_universe",
+        "production_edge",
+        "packaging_edge",
+        "monetization_path",
+        "policy_risk_argument",
+        "status",
+        "notes",
+        "created_at",
+        "updated_at",
+    ],
+    "thesis_evidence": [
+        "id",
+        "thesis_id",
+        "thesis_code",
+        "evidence_type",
+        "channel_id",
+        "channel_username",
+        "video_id",
+        "youtube_video_id",
+        "source_url",
+        "note",
+        "confidence",
+        "created_at",
+    ],
+    "thesis_topics": [
+        "id",
+        "thesis_id",
+        "thesis_code",
+        "topic",
+        "title_angle",
+        "demand_evidence",
+        "source_availability",
+        "production_complexity",
+        "packaging_potential",
+        "status",
+        "created_at",
+    ],
+    "thesis_scores": [
+        "id",
+        "thesis_id",
+        "thesis_code",
+        "factor",
+        "weight",
+        "score",
+        "weighted_score",
+        "evidence",
+        "confidence",
+        "created_at",
+    ],
+    "red_team_reviews": [
+        "id",
+        "thesis_id",
+        "thesis_code",
+        "reviewer",
+        "decision_under_review",
+        "core_objections",
+        "competitor_challenges",
+        "failure_premortem",
+        "early_warning_signs",
+        "preventive_actions",
+        "kill_criteria",
+        "decision",
+        "decision_rationale",
+        "reviewed_at",
     ],
 }
 
@@ -420,6 +507,11 @@ def stream_research_jsonl(filters=None):
         "manual_labels",
         "snapshots",
         "derived_metrics",
+        "content_theses",
+        "thesis_evidence",
+        "thesis_topics",
+        "thesis_scores",
+        "red_team_reviews",
         "collection_runs",
     ):
         for row in iter_research_rows(dataset, filters):
@@ -767,6 +859,109 @@ def _research_query(dataset, filters):
             """
         return _compose_query(base_query, clauses, " ORDER BY started_at, id"), params
 
+    if dataset == "content_theses":
+        base_query = """
+            SELECT
+                id,
+                thesis_id,
+                title,
+                target_viewer,
+                viewer_promise,
+                format,
+                topic_universe,
+                production_edge,
+                packaging_edge,
+                monetization_path,
+                policy_risk_argument,
+                status,
+                notes,
+                created_at,
+                updated_at
+            FROM content_theses
+            """
+        return _compose_query(base_query, [], " ORDER BY thesis_id"), params
+
+    if dataset == "thesis_evidence":
+        base_query = """
+            SELECT
+                te.id,
+                te.thesis_id,
+                ct.thesis_id AS thesis_code,
+                te.evidence_type,
+                te.channel_id,
+                c.channel_username,
+                te.video_id,
+                v.youtube_video_id,
+                te.source_url,
+                te.note,
+                te.confidence,
+                te.created_at
+            FROM thesis_evidence te
+            JOIN content_theses ct ON ct.id = te.thesis_id
+            LEFT JOIN channels c ON c.id = te.channel_id
+            LEFT JOIN videos v ON v.id = te.video_id
+            """
+        return _compose_query(base_query, [], " ORDER BY ct.thesis_id, te.id"), params
+
+    if dataset == "thesis_topics":
+        base_query = """
+            SELECT
+                tt.id,
+                tt.thesis_id,
+                ct.thesis_id AS thesis_code,
+                tt.topic,
+                tt.title_angle,
+                tt.demand_evidence,
+                tt.source_availability,
+                tt.production_complexity,
+                tt.packaging_potential,
+                tt.status,
+                tt.created_at
+            FROM thesis_topics tt
+            JOIN content_theses ct ON ct.id = tt.thesis_id
+            """
+        return _compose_query(base_query, [], " ORDER BY ct.thesis_id, tt.id"), params
+
+    if dataset == "thesis_scores":
+        base_query = """
+            SELECT
+                ts.id,
+                ts.thesis_id,
+                ct.thesis_id AS thesis_code,
+                ts.factor,
+                ts.weight,
+                ts.score,
+                ts.weighted_score,
+                ts.evidence,
+                ts.confidence,
+                ts.created_at
+            FROM thesis_scores ts
+            JOIN content_theses ct ON ct.id = ts.thesis_id
+            """
+        return _compose_query(base_query, [], " ORDER BY ct.thesis_id, ts.id"), params
+
+    if dataset == "red_team_reviews":
+        base_query = """
+            SELECT
+                rtr.id,
+                rtr.thesis_id,
+                ct.thesis_id AS thesis_code,
+                rtr.reviewer,
+                rtr.decision_under_review,
+                rtr.core_objections,
+                rtr.competitor_challenges,
+                rtr.failure_premortem,
+                rtr.early_warning_signs,
+                rtr.preventive_actions,
+                rtr.kill_criteria,
+                rtr.decision,
+                rtr.decision_rationale,
+                rtr.reviewed_at
+            FROM red_team_reviews rtr
+            JOIN content_theses ct ON ct.id = rtr.thesis_id
+            """
+        return _compose_query(base_query, [], " ORDER BY ct.thesis_id, rtr.id"), params
+
     raise ValueError(f"Unsupported research dataset: {dataset}")
 
 
@@ -985,6 +1180,9 @@ def _infer_dictionary_type(field):
         "honesty_score",
         "visual_readability_score",
         "differentiation_score",
+        "weight",
+        "score",
+        "weighted_score",
     }:
         return "integer"
     if field.endswith("_at") or field in {"published_at", "snapshot_at"}:
@@ -1015,6 +1213,14 @@ def _infer_source_table(dataset, field):
         return "video_derived_metrics"
     if dataset == "collection_runs":
         return "collection_runs"
+    if dataset in {
+        "content_theses",
+        "thesis_evidence",
+        "thesis_topics",
+        "thesis_scores",
+        "red_team_reviews",
+    }:
+        return dataset
     if dataset == "channels" and field in {
         "primary_niche",
         "primary_format",
@@ -1069,6 +1275,9 @@ def _allowed_labels(field):
         "outlier_flag": "true|false",
         "caption_available": "true|false",
         "performance_tier": "breakout|outlier|normal|underperformer|unknown",
+        "status": "idea|research|pilot|reject|launch",
+        "evidence_type": "outlier_video|competitor_channel|comment_theme|search_trend|sponsor_density|source_availability|forum_question|manual_note",
+        "decision": "proceed_to_pilot|research_more|revise_thesis|reject",
         "title_pattern": "mystery|reversal|consequence|transformation|hidden_system|timeline|comparison|specific_question|list_with_angle|strong_claim|other",
         "thumbnail_pattern": "single_object_high_contrast|before_after_contrast|map_timeline_diagram|recognizable_artifact_or_brand|human_face_substitute|text_free_curiosity|short_text_label|red_circle_arrow|split_screen_conflict|scale_contrast|other",
         "curiosity_type": "none|mystery|stakes|contradiction|transformation|comparison|hidden_system|specific_question|other",

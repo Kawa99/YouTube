@@ -448,3 +448,132 @@ class PackagingExperiment(db.Model):
         default=utc_now,
         onupdate=utc_now,
     )
+
+
+class ContentThesis(db.Model):
+    __tablename__ = "content_theses"
+
+    id = db.Column(db.Integer, primary_key=True)
+    thesis_id = db.Column(db.String, nullable=False, unique=True, index=True)
+    title = db.Column(db.String, nullable=False)
+    target_viewer = db.Column(db.Text)
+    viewer_promise = db.Column(db.Text)
+    format = db.Column(db.String)
+    topic_universe = db.Column(db.Text)
+    production_edge = db.Column(db.Text)
+    packaging_edge = db.Column(db.Text)
+    monetization_path = db.Column(db.Text)
+    policy_risk_argument = db.Column(db.Text)
+    status = db.Column(db.String, nullable=False, default="idea")
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+    evidence = db.relationship(
+        "ThesisEvidence",
+        back_populates="thesis",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+    topics = db.relationship(
+        "ThesisTopic",
+        back_populates="thesis",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+    scores = db.relationship(
+        "ThesisScore",
+        back_populates="thesis",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+    red_team_reviews = db.relationship(
+        "RedTeamReview",
+        back_populates="thesis",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+
+
+class ThesisEvidence(db.Model):
+    __tablename__ = "thesis_evidence"
+
+    id = db.Column(db.Integer, primary_key=True)
+    thesis_id = db.Column(
+        db.Integer, db.ForeignKey("content_theses.id"), nullable=False
+    )
+    evidence_type = db.Column(db.String, nullable=False)
+    channel_id = db.Column(db.Integer, db.ForeignKey("channels.id"))
+    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"))
+    source_url = db.Column(db.String)
+    note = db.Column(db.Text)
+    confidence = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    thesis = db.relationship("ContentThesis", back_populates="evidence")
+    channel = db.relationship("Channel")
+    video = db.relationship("Video")
+
+
+class ThesisTopic(db.Model):
+    __tablename__ = "thesis_topics"
+
+    id = db.Column(db.Integer, primary_key=True)
+    thesis_id = db.Column(
+        db.Integer, db.ForeignKey("content_theses.id"), nullable=False
+    )
+    topic = db.Column(db.String, nullable=False)
+    title_angle = db.Column(db.String)
+    demand_evidence = db.Column(db.Text)
+    source_availability = db.Column(db.String)
+    production_complexity = db.Column(db.String)
+    packaging_potential = db.Column(db.String)
+    status = db.Column(db.String, nullable=False, default="backlog")
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    thesis = db.relationship("ContentThesis", back_populates="topics")
+
+
+class ThesisScore(db.Model):
+    __tablename__ = "thesis_scores"
+
+    id = db.Column(db.Integer, primary_key=True)
+    thesis_id = db.Column(
+        db.Integer, db.ForeignKey("content_theses.id"), nullable=False
+    )
+    factor = db.Column(db.String, nullable=False)
+    weight = db.Column(db.Integer, nullable=False)
+    score = db.Column(db.Integer, nullable=False)
+    weighted_score = db.Column(db.Integer, nullable=False)
+    evidence = db.Column(db.Text)
+    confidence = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    thesis = db.relationship("ContentThesis", back_populates="scores")
+
+
+class RedTeamReview(db.Model):
+    __tablename__ = "red_team_reviews"
+
+    id = db.Column(db.Integer, primary_key=True)
+    thesis_id = db.Column(
+        db.Integer, db.ForeignKey("content_theses.id"), nullable=False
+    )
+    reviewer = db.Column(db.String)
+    decision_under_review = db.Column(db.String, nullable=False)
+    core_objections = db.Column(db.JSON, nullable=False, default=dict)
+    competitor_challenges = db.Column(db.JSON, nullable=False, default=list)
+    failure_premortem = db.Column(db.Text)
+    early_warning_signs = db.Column(db.Text)
+    preventive_actions = db.Column(db.Text)
+    kill_criteria = db.Column(db.Text)
+    decision = db.Column(db.String, nullable=False)
+    decision_rationale = db.Column(db.Text)
+    reviewed_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    thesis = db.relationship("ContentThesis", back_populates="red_team_reviews")

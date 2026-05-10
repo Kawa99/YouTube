@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+
+{% block title %}Content Theses - YouTube Tracker{% endblock %}
+
+{% macro select_options(options, selected='') %}
+    {% for option in options %}
+    <option value="{{ option }}" {% if selected == option %}selected{% endif %}>{{ option.replace('_', ' ') }}</option>
+    {% endfor %}
+{% endmacro %}
+
+{% block content %}
+<section class="space-y-8">
+    <header class="space-y-2">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Launch Strategy</p>
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Content Thesis Workflow</h1>
+        <p class="max-w-3xl text-sm text-slate-600 dark:text-slate-300">Move from raw channel research to scored, evidenced, red-teamed launch theses.</p>
+    </header>
+
+    <div class="grid gap-6 xl:grid-cols-[minmax(280px,0.65fr)_minmax(0,1.35fr)]">
+        <aside class="space-y-4">
+            <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Create Thesis</h2>
+                <form method="post" action="{{ url_for('create_thesis_route') }}" class="mt-4 space-y-3">
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                        <label class="space-y-1.5">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Thesis ID</span>
+                            <input name="thesis_id" required placeholder="T001" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                        </label>
+                        <label class="space-y-1.5">
+                            <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</span>
+                            <select name="status" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                                {{ select_options(workspace.statuses, 'idea') }}
+                            </select>
+                        </label>
+                    </div>
+                    <label class="block space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Title</span>
+                        <input name="title" required class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                    <label class="block space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Target Viewer</span>
+                        <textarea name="target_viewer" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                    </label>
+                    <label class="block space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Viewer Promise</span>
+                        <textarea name="viewer_promise" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                    </label>
+                    <label class="block space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Format</span>
+                        <input name="format" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    </label>
+                    <label class="block space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Topic Universe</span>
+                        <textarea name="topic_universe" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                    </label>
+                    <label class="block space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Production Edge</span>
+                        <textarea name="production_edge" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                    </label>
+                    <label class="block space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Packaging Edge</span>
+                        <textarea name="packaging_edge" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                    </label>
+                    <label class="block space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Monetization Path</span>
+                        <textarea name="monetization_path" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                    </label>
+                    <label class="block space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Policy Risk Argument</span>
+                        <textarea name="policy_risk_argument" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                    </label>
+                    <label class="block space-y-1.5">
+                        <span class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Notes</span>
+                        <textarea name="notes" rows="2" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"></textarea>
+                    </label>
+                    <button type="submit" class="w-full rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700">Create</button>
+                </form>
+            </section>
+
+            <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Theses</h2>
+                <div class="mt-3 space-y-2">
+                    {% for thesis in workspace.theses %}
+                    <a href="{{ url_for('theses_workspace', thesis_id=thesis.id) }}" class="block rounded-lg border border-slate-200 p-3 text-sm transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800 {% if workspace.selected and thesis.id == workspace.selected.id %}bg-rose-50 dark:bg-rose-950/30{% endif %}">
+                        <span class="block font-semibold text-slate-900 dark:text-slate-100">{{ thesis.thesis_id }} · {{ thesis.title }}</span>
+                        <span class="mt-1 block text-xs text-slate-500 dark:text-slate-400">{{ thesis.status }} · {{ thesis.format or 'unassigned format' }}</span>
+                    </a>
+                    {% else %}
+                    <p class="text-sm text-slate-500 dark:text-slate-400">No theses yet.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </aside>
+
+        <main class="space-y-6">
+            {% if workspace.selected %}
+            {% set thesis = workspace.selected %}
+            <section class="rounded-lg border border-slate-200 p-5 dark:border-slate-700">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <p class="font-mono text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{{ thesis.thesis_id }}</p>
+                        <h2 class="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{{ thesis.title }}</h2>
+                        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{{ thesis.viewer_promise or 'No viewer promise recorded.' }}</p>
+                    </div>
+                    <form method="post" action="{{ url_for('update_thesis_status_route', thesis_id=thesis.id) }}" class="flex gap-2">
+                        <select name="status" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                            {{ select_options(workspace.statuses, thesis.status) }}
+                        </select>
+                        <button type="submit" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Move</button>
+                    </form>
+                </div>
+                <div class="mt-5 grid gap-3 md:grid-cols-4">
+                    <div class="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                        <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Score</p>
+                        <p class="mt-1 font-mono text-xl font-semibold">{{ workspace.score_summary.weighted_score }}/{{ workspace.score_summary.max_score }}</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                        <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Percent</p>
+                        <p class="mt-1 font-mono text-xl font-semibold">{{ "%.1f"|format(workspace.score_summary.score_percent) }}%</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                        <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Band</p>
+                        <p class="mt-1 text-sm font-semibold">{{ workspace.score_summary.band.replace('_', ' ') }}</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                        <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Evidence</p>
+                        <p class="mt-1 font-mono text-xl font-semibold">{{ thesis.evidence|length }}</p>
+                    </div>
+                </div>
+                <dl class="mt-5 grid gap-3 text-sm md:grid-cols-2">
+                    <div><dt class="font-semibold text-slate-900 dark:text-slate-100">Target viewer</dt><dd class="mt-1 text-slate-600 dark:text-slate-300">{{ thesis.target_viewer or '' }}</dd></div>
+                    <div><dt class="font-semibold text-slate-900 dark:text-slate-100">Format</dt><dd class="mt-1 text-slate-600 dark:text-slate-300">{{ thesis.format or '' }}</dd></div>
+                    <div><dt class="font-semibold text-slate-900 dark:text-slate-100">Production edge</dt><dd class="mt-1 text-slate-600 dark:text-slate-300">{{ thesis.production_edge or '' }}</dd></div>
+                    <div><dt class="font-semibold text-slate-900 dark:text-slate-100">Packaging edge</dt><dd class="mt-1 text-slate-600 dark:text-slate-300">{{ thesis.packaging_edge or '' }}</dd></div>
+                    <div><dt class="font-semibold text-slate-900 dark:text-slate-100">Monetization path</dt><dd class="mt-1 text-slate-600 dark:text-slate-300">{{ thesis.monetization_path or '' }}</dd></div>
+                    <div><dt class="font-semibold text-slate-900 dark:text-slate-100">Policy risk argument</dt><dd class="mt-1 text-slate-600 dark:text-slate-300">{{ thesis.policy_risk_argument or '' }}</dd></div>
+                </dl>
+            </section>
+
+            <div class="grid gap-6 xl:grid-cols-2">
+                <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Evidence</h3>
+                    <form method="post" action="{{ url_for('add_thesis_evidence_route', thesis_id=thesis.id) }}" class="mt-3 grid gap-3">
+                        <select name="evidence_type" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{{ select_options(workspace.evidence_types) }}</select>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <input name="channel_id" placeholder="channel_id" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="video_id" placeholder="video_id" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        </div>
+                        <input name="source_url" placeholder="source URL" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <textarea name="note" rows="2" placeholder="Evidence note" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <input name="confidence" type="number" min="0" max="1" step="0.05" placeholder="confidence 0-1" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Add Evidence</button>
+                    </form>
+                    <ul class="mt-4 space-y-2 text-sm">
+                        {% for evidence in thesis.evidence %}
+                        <li class="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                            <span class="font-semibold">{{ evidence.evidence_type }}</span>
+                            <p class="mt-1 text-slate-600 dark:text-slate-300">{{ evidence.note or evidence.source_url or '' }}</p>
+                        </li>
+                        {% else %}
+                        <li class="text-slate-500">No evidence yet.</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+
+                <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Topic Backlog</h3>
+                    <form method="post" action="{{ url_for('add_thesis_topic_route', thesis_id=thesis.id) }}" class="mt-3 grid gap-3">
+                        <input name="topic" required placeholder="Topic" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="title_angle" placeholder="Title angle" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <textarea name="demand_evidence" rows="2" placeholder="Demand evidence" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <input name="source_availability" placeholder="sources" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="production_complexity" placeholder="complexity" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="packaging_potential" placeholder="packaging" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        </div>
+                        <select name="status" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{{ select_options(workspace.topic_statuses, 'backlog') }}</select>
+                        <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Add Topic</button>
+                    </form>
+                    <ul class="mt-4 space-y-2 text-sm">
+                        {% for topic in thesis.topics %}
+                        <li class="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                            <span class="font-semibold">{{ topic.topic }}</span>
+                            <p class="mt-1 text-slate-600 dark:text-slate-300">{{ topic.title_angle or topic.status }}</p>
+                        </li>
+                        {% else %}
+                        <li class="text-slate-500">No topics yet.</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            </div>
+
+            <div class="grid gap-6 xl:grid-cols-2">
+                <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Niche Scorecard</h3>
+                    <form method="post" action="{{ url_for('add_thesis_score_route', thesis_id=thesis.id) }}" class="mt-3 grid gap-3">
+                        <select name="factor" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            {% for factor, weight in workspace.score_factors %}
+                            <option value="{{ factor }}">{{ factor.replace('_', ' ') }} · weight {{ weight }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <input name="score" type="number" min="1" max="5" step="1" required placeholder="score 1-5" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <input name="confidence" type="number" min="0" max="1" step="0.05" placeholder="confidence 0-1" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        </div>
+                        <textarea name="evidence" rows="2" placeholder="Score evidence" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Add Score</button>
+                    </form>
+                    <div class="mt-4 overflow-x-auto">
+                        <table class="min-w-full text-left text-sm">
+                            <thead class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400"><tr><th class="py-2">Factor</th><th>Score</th><th>Weighted</th></tr></thead>
+                            <tbody>
+                                {% for score in thesis.scores %}
+                                <tr class="border-t border-slate-200 dark:border-slate-800"><td class="py-2">{{ score.factor.replace('_', ' ') }}</td><td>{{ score.score }}</td><td>{{ score.weighted_score }}</td></tr>
+                                {% else %}
+                                <tr><td colspan="3" class="py-3 text-slate-500">No scores yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Red-Team Review</h3>
+                    <form method="post" action="{{ url_for('add_red_team_review_route', thesis_id=thesis.id) }}" class="mt-3 grid gap-3">
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <input name="reviewer" placeholder="reviewer" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            <select name="decision_under_review" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{{ select_options(workspace.decisions_under_review, 'pilot') }}</select>
+                            <select name="decision" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{{ select_options(workspace.red_team_decisions, 'research_more') }}</select>
+                        </div>
+                        <textarea name="better_channels_answer" rows="2" placeholder="Why won't viewers just watch better existing channels?" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <textarea name="weak_monetization_answer" rows="2" placeholder="Monetization objection answer" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <textarea name="failure_premortem" rows="2" placeholder="Failure pre-mortem" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <textarea name="early_warning_signs" rows="2" placeholder="Early warning signs" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <textarea name="preventive_actions" rows="2" placeholder="Preventive actions" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <textarea name="kill_criteria" rows="2" placeholder="Kill criteria" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <textarea name="competitor_challenges" rows="2" placeholder="One competitor challenge per line" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <textarea name="decision_rationale" rows="2" placeholder="Decision rationale" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                        <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Save Review</button>
+                    </form>
+                    <ul class="mt-4 space-y-2 text-sm">
+                        {% for review in thesis.red_team_reviews %}
+                        <li class="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                            <span class="font-semibold">{{ review.decision.replace('_', ' ') }}</span>
+                            <p class="mt-1 text-slate-600 dark:text-slate-300">{{ review.decision_rationale or review.failure_premortem or '' }}</p>
+                        </li>
+                        {% else %}
+                        <li class="text-slate-500">No red-team reviews yet.</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            </div>
+            {% else %}
+            <div class="rounded-lg border border-dashed border-slate-300 p-10 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Create the first channel thesis to begin scoring and evidence review.</div>
+            {% endif %}
+        </main>
+    </div>
+</section>
+{% endblock %}
