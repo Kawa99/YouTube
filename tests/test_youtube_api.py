@@ -52,7 +52,9 @@ def test_get_video_data_parses_expected_dictionary():
                     "publishedAt": "2009-10-25T06:57:33Z",
                     "channelId": "UC38IQsAvIsxxjztdMZQtwHA",
                     "thumbnails": {
-                        "high": {"url": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg"}
+                        "high": {
+                            "url": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
+                        }
                     },
                 },
                 "statistics": {

@@ -94,7 +94,9 @@ def test_save_video_updates_existing_and_tracks_history(app_and_db):
     assert video_history_rows[0].views == 1000
     assert video_history_rows[1].views == 2000
 
-    metadata_rows = VideoMetadataHistory.query.order_by(VideoMetadataHistory.id.asc()).all()
+    metadata_rows = VideoMetadataHistory.query.order_by(
+        VideoMetadataHistory.id.asc()
+    ).all()
     assert len(metadata_rows) == 1
     assert metadata_rows[0].old_title == "My Setup 2025"
     assert metadata_rows[0].new_title == "Ultimate Desk Setup 2025!"

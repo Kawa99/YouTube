@@ -24,7 +24,11 @@ This webapp does three core things:
 
 ## 2. Configure environment
 
-Create or edit `.env` in the project root:
+Create `.env` from `.env.example`, then edit the values:
+
+```bash
+cp .env.example .env
+```
 
 ```env
 YOUTUBE_API_KEY=your_real_youtube_api_key

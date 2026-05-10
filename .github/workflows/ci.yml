@@ -45,3 +45,11 @@ jobs:
       run: |
         # Runs your tests and generates a test coverage report
         pytest tests/ -v
+
+    - name: Validate Alembic migrations
+      env:
+        FLASK_APP: app.py
+        DATABASE_URL: sqlite:////tmp/youtube_ci_migration.db
+      run: |
+        rm -f /tmp/youtube_ci_migration.db
+        flask db upgrade
