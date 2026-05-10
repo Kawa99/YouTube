@@ -9,6 +9,7 @@ This directory describes the research-engine evolution of the YouTube tracker.
 - `phase-3-collection-engine.md` documents batched collection, quota visibility, and collection-run behavior.
 - `phase-4-research-exports.md` documents schema-aligned ZIP/JSONL research exports.
 - `phase-5-manual-labeling.md` documents reviewer UI, vocabularies, bulk labeling, and audit trail behavior.
+- `phase-6-derived-metrics.md` documents derived metrics, outlier rules, and market analysis views.
 - `research-engine-prd.md` defines the product requirements for market research and launch validation.
 - `research-schema-map.md` maps the research repository's markdown schemas to app entities and future tables.
 - `adr/` records architecture decisions that should guide implementation.

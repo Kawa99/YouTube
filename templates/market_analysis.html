@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Market Analysis - YouTube Tracker{% endblock %}
+
+{% block content %}
+<section class="space-y-8">
+    <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Derived Analysis</p>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Market Opportunity View</h1>
+            <p class="max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+                These values are computed from stored snapshots and labels. Raw views, likes, comments, and subscriber counts remain unchanged.
+            </p>
+        </div>
+        <form method="post" action="{{ url_for('compute_derived_metrics_route') }}">
+            <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700">
+                Recompute Metrics
+            </button>
+        </form>
+    </header>
+
+    <div class="grid gap-4 md:grid-cols-4">
+        <article class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Algorithm</p>
+            <p class="mt-2 font-mono text-sm text-slate-900 dark:text-slate-100">{{ analysis.algorithm_version }}</p>
+        </article>
+        <article class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Breakout</p>
+            <p class="mt-2 font-mono text-xl font-semibold text-slate-900 dark:text-slate-100">{{ analysis.thresholds.breakout }}x</p>
+        </article>
+        <article class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Outlier</p>
+            <p class="mt-2 font-mono text-xl font-semibold text-slate-900 dark:text-slate-100">{{ analysis.thresholds.outlier }}x</p>
+        </article>
+        <article class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+            <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Underperformer</p>
+            <p class="mt-2 font-mono text-xl font-semibold text-slate-900 dark:text-slate-100">&lt; {{ analysis.thresholds.underperformer }}x</p>
+        </article>
+    </div>
+
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Top Outlier Videos</h2>
+        <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+            <table class="min-w-full text-left text-sm">
+                <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    <tr>
+                        <th class="px-4 py-3">Video</th>
+                        <th class="px-4 py-3">Channel</th>
+                        <th class="px-4 py-3">Niche</th>
+                        <th class="px-4 py-3">Format</th>
+                        <th class="px-4 py-3">Tier</th>
+                        <th class="px-4 py-3">Relative</th>
+                        <th class="px-4 py-3">Views/day</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                    {% for metric, video, channel, label in analysis.top_outliers %}
+                    <tr>
+                        <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{{ video.title or video.youtube_video_id }}</td>
+                        <td class="px-4 py-3">{{ channel.channel_username if channel else '' }}</td>
+                        <td class="px-4 py-3">{{ label.niche if label else '' }}</td>
+                        <td class="px-4 py-3">{{ label.format if label else '' }}</td>
+                        <td class="px-4 py-3">{{ metric.performance_tier or 'unknown' }}</td>
+                        <td class="px-4 py-3 font-mono">{{ "%.2f"|format(metric.relative_performance or 0) }}x</td>
+                        <td class="px-4 py-3 font-mono">{{ "%.0f"|format(metric.views_per_day or 0) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">No derived metrics yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+        <section class="space-y-3">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Strong Channels</h2>
+            <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        <tr>
+                            <th class="px-4 py-3">Channel</th>
+                            <th class="px-4 py-3">Median Views</th>
+                            <th class="px-4 py-3">Cadence</th>
+                            <th class="px-4 py-3">Avg Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        {% for summary, channel in analysis.strong_channels %}
+                        <tr>
+                            <td class="px-4 py-3 font-medium">{{ channel.channel_username }}</td>
+                            <td class="px-4 py-3 font-mono">{{ "%.0f"|format(summary.median_recent_views or 0) }}</td>
+                            <td class="px-4 py-3 font-mono">{{ "%.1f"|format(summary.upload_cadence_days or 0) }}d</td>
+                            <td class="px-4 py-3 font-mono">{{ "%.0f"|format(summary.average_duration_seconds or 0) }}s</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">No channel summaries yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="space-y-3">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Formats and Packaging Linked to Outliers</h2>
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Formats</h3>
+                    <ul class="mt-3 space-y-2 text-sm">
+                        {% for format, average_relative, count in analysis.format_rows %}
+                        <li class="flex justify-between gap-3"><span>{{ format }}</span><span class="font-mono">{{ "%.2f"|format(average_relative or 0) }}x / {{ count }}</span></li>
+                        {% else %}
+                        <li class="text-slate-500">No format labels yet.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100">Packaging</h3>
+                    <ul class="mt-3 space-y-2 text-sm">
+                        {% for pattern, average_relative, count in analysis.packaging_rows %}
+                        <li class="flex justify-between gap-3"><span>{{ pattern }}</span><span class="font-mono">{{ "%.2f"|format(average_relative or 0) }}x / {{ count }}</span></li>
+                        {% else %}
+                        <li class="text-slate-500">No packaging labels yet.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </div>
+</section>
+{% endblock %}

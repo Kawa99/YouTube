@@ -21,6 +21,7 @@ CORE_EXPORT_TABLES = (
     "channel_labels",
     "collection_runs",
     "video_derived_metrics",
+    "channel_derived_summaries",
     # Compatibility tables kept for the current UI and old exports.
     "channel_videos",
     "channel_history",
@@ -39,6 +40,7 @@ TABLE_SELECT_QUERIES = {
     "channel_labels": "SELECT * FROM channel_labels",
     "collection_runs": "SELECT * FROM collection_runs",
     "video_derived_metrics": "SELECT * FROM video_derived_metrics",
+    "channel_derived_summaries": "SELECT * FROM channel_derived_summaries",
     "channel_videos": "SELECT * FROM channel_videos",
     "channel_history": "SELECT * FROM channel_history",
     "video_history": "SELECT * FROM video_history",
@@ -161,7 +163,11 @@ RESEARCH_HEADERS = {
         "channel_recent_median_views",
         "relative_performance",
         "duration_bucket",
+        "performance_tier",
         "outlier_flag",
+        "like_rate",
+        "comment_rate",
+        "engagement_rate",
         "computed_at",
         "algorithm_version",
     ],
@@ -669,7 +675,11 @@ def _research_query(dataset, filters):
                 vdm.channel_recent_median_views,
                 vdm.relative_performance,
                 vdm.duration_bucket,
+                vdm.performance_tier,
                 vdm.outlier_flag,
+                vdm.like_rate,
+                vdm.comment_rate,
+                vdm.engagement_rate,
                 vdm.computed_at,
                 vdm.algorithm_version
             FROM video_derived_metrics vdm
@@ -928,6 +938,9 @@ def _infer_dictionary_type(field):
         "views_per_subscriber",
         "channel_recent_median_views",
         "relative_performance",
+        "like_rate",
+        "comment_rate",
+        "engagement_rate",
     }:
         return "float"
     if field in {"caption_available", "outlier_flag"}:
@@ -988,4 +1001,5 @@ def _allowed_labels(field):
         "review_status": "pending|reviewed|needs_review",
         "outlier_flag": "true|false",
         "caption_available": "true|false",
+        "performance_tier": "breakout|outlier|normal|underperformer|unknown",
     }.get(field, "")

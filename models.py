@@ -384,8 +384,31 @@ class VideoDerivedMetric(db.Model):
     channel_recent_median_views = db.Column(db.Float)
     relative_performance = db.Column(db.Float)
     duration_bucket = db.Column(db.String)
+    performance_tier = db.Column(db.String)
     outlier_flag = db.Column(db.Boolean, nullable=False, default=False)
+    like_rate = db.Column(db.Float)
+    comment_rate = db.Column(db.Float)
+    engagement_rate = db.Column(db.Float)
     computed_at = db.Column(db.DateTime, nullable=False, default=utc_now)
     algorithm_version = db.Column(db.String, nullable=False)
 
     video = db.relationship("Video", back_populates="derived_metrics")
+
+
+class ChannelDerivedSummary(db.Model):
+    __tablename__ = "channel_derived_summaries"
+
+    id = db.Column(db.Integer, primary_key=True)
+    channel_id = db.Column(db.Integer, db.ForeignKey("channels.id"), nullable=False)
+    snapshot_at = db.Column(db.DateTime, nullable=False)
+    median_recent_views = db.Column(db.Float)
+    upload_cadence_days = db.Column(db.Float)
+    average_duration_seconds = db.Column(db.Float)
+    top_outlier_topics = db.Column(db.JSON, nullable=False, default=list)
+    format_distribution = db.Column(db.JSON, nullable=False, default=dict)
+    packaging_pattern_distribution = db.Column(db.JSON, nullable=False, default=dict)
+    visible_monetization_signals = db.Column(db.JSON, nullable=False, default=list)
+    computed_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    algorithm_version = db.Column(db.String, nullable=False)
+
+    channel = db.relationship("Channel")

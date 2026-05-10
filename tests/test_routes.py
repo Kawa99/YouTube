@@ -10,6 +10,7 @@ import routes
 from app import create_app
 from models import (
     Channel,
+    ChannelDerivedSummary,
     ChannelHistory,
     ChannelLabel,
     ChannelSnapshot,
@@ -227,6 +228,7 @@ def test_export_csv_success(client):
     assert "=== CHANNEL_LABELS ===" in body
     assert "=== COLLECTION_RUNS ===" in body
     assert "=== VIDEO_DERIVED_METRICS ===" in body
+    assert "=== CHANNEL_DERIVED_SUMMARIES ===" in body
 
 
 def test_export_xlsx_success(client):
@@ -251,6 +253,7 @@ def test_export_xlsx_success(client):
             "channel_labels",
             "collection_runs",
             "video_derived_metrics",
+            "channel_derived_summaries",
             "channel_videos",
             "channel_history",
             "video_history",
@@ -587,6 +590,73 @@ def test_bulk_label_applies_controlled_value_to_selected_videos(client):
         assert len(labels) == 2
         assert {label.policy_risk for label in labels} == {"medium"}
         assert VideoLabelAudit.query.count() == 2
+
+
+def test_market_analysis_compute_route_creates_derived_metrics(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@analysis_channel", subscribers=1000)
+        db.session.add(channel)
+        db.session.flush()
+        baseline = Video(
+            youtube_video_id="analysis_baseline",
+            title="Baseline",
+            views=1000,
+            likes=20,
+            comments=5,
+            duration_seconds=600,
+            published_at=datetime(2026, 1, 1, 0, 0, 0),
+            channel_id=channel.id,
+        )
+        outlier = Video(
+            youtube_video_id="analysis_outlier",
+            title="Analysis Outlier",
+            views=3000,
+            likes=300,
+            comments=30,
+            duration_seconds=600,
+            published_at=datetime(2026, 1, 2, 0, 0, 0),
+            channel_id=channel.id,
+        )
+        db.session.add_all([baseline, outlier])
+        db.session.flush()
+        db.session.add_all(
+            [
+                VideoSnapshot(
+                    video_id=baseline.id,
+                    snapshot_at=datetime(2026, 1, 10, 0, 0, 0),
+                    view_count=1000,
+                    like_count=20,
+                    comment_count=5,
+                    subscriber_count_at_snapshot=1000,
+                ),
+                VideoSnapshot(
+                    video_id=outlier.id,
+                    snapshot_at=datetime(2026, 1, 10, 0, 0, 0),
+                    view_count=3000,
+                    like_count=300,
+                    comment_count=30,
+                    subscriber_count_at_snapshot=1000,
+                ),
+                VideoLabel(
+                    video_id=outlier.id,
+                    niche="education",
+                    format="explainer",
+                    packaging_pattern="how_to",
+                    review_status="reviewed",
+                ),
+            ]
+        )
+        db.session.commit()
+
+    response = client.post("/analysis/compute", follow_redirects=True)
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Market Opportunity View" in body
+    assert "Analysis Outlier" in body
+    with client.application.app_context():
+        assert VideoDerivedMetric.query.count() == 2
+        assert ChannelDerivedSummary.query.count() == 1
 
 
 def test_video_detail_route_success(client):

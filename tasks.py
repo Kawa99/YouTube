@@ -7,6 +7,7 @@ from flask import has_app_context
 from flask_socketio import SocketIO
 
 from crud import save_video
+from metrics import compute_derived_metrics
 from youtube_api import (
     get_channel_id_from_url,
     get_channel_videos_with_metadata,
@@ -177,6 +178,21 @@ def scrape_tracked_channels() -> Dict[str, int]:
 
     with _worker_app.app_context():
         return _scrape_tracked_channels_impl()
+
+
+def compute_derived_metrics_job() -> Dict[str, int]:
+    global _worker_app
+
+    if has_app_context():
+        return compute_derived_metrics()
+
+    if _worker_app is None:
+        from app import create_app
+
+        _worker_app = create_app()
+
+    with _worker_app.app_context():
+        return compute_derived_metrics()
 
 
 def _normalize_job_status(raw_status: Optional[str]) -> Optional[str]:

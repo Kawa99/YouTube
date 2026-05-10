@@ -28,6 +28,7 @@ from labeling import (
     next_unlabeled_video_id,
     save_video_label,
 )
+from metrics import compute_derived_metrics, market_analysis_summary
 from models import Channel, ChannelHistory, Video, VideoHistory, VideoLabel, db
 from pydantic import ValidationError
 from schemas import VideoCreateSchema
@@ -270,6 +271,23 @@ def register_routes(app, limiter):
     @app.route("/data")
     def data_viewer():
         return render_template("data_viewer.html")
+
+    @app.route("/analysis", methods=["GET"])
+    def market_analysis():
+        return render_template(
+            "market_analysis.html", analysis=market_analysis_summary()
+        )
+
+    @app.route("/analysis/compute", methods=["POST"])
+    def compute_derived_metrics_route():
+        summary = compute_derived_metrics()
+        flash(
+            "Derived metrics computed for "
+            f"{summary['videos_computed']} videos and "
+            f"{summary['channels_computed']} channels.",
+            "success",
+        )
+        return redirect(url_for("market_analysis"))
 
     @app.route("/labeling", methods=["GET"])
     def labeling_queue():
