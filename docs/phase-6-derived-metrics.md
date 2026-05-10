@@ -55,6 +55,7 @@ Initial classification:
 The job also computes channel-level summaries:
 
 - median recent views
+- median views per subscriber
 - upload cadence in days
 - average duration
 - top outlier topics
@@ -67,8 +68,10 @@ The job also computes channel-level summaries:
 `/analysis` shows derived analysis separately from raw data:
 
 - top outlier videos
-- strong channels by median recent views
+- strong channels by median views per subscriber
+- repeated outlier topic clusters
 - formats with high relative performance
 - packaging patterns linked to outliers
+- under-served candidate thesis clusters from repeated outlier label combinations
 
 `POST /analysis/compute` recomputes derived metrics.

@@ -80,6 +80,7 @@
                     <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                         <tr>
                             <th class="px-4 py-3">Channel</th>
+                            <th class="px-4 py-3">Views/Sub</th>
                             <th class="px-4 py-3">Median Views</th>
                             <th class="px-4 py-3">Cadence</th>
                             <th class="px-4 py-3">Avg Duration</th>
@@ -89,12 +90,13 @@
                         {% for summary, channel in analysis.strong_channels %}
                         <tr>
                             <td class="px-4 py-3 font-medium">{{ channel.channel_username }}</td>
+                            <td class="px-4 py-3 font-mono">{{ "%.2f"|format(summary.median_views_per_subscriber or 0) }}x</td>
                             <td class="px-4 py-3 font-mono">{{ "%.0f"|format(summary.median_recent_views or 0) }}</td>
                             <td class="px-4 py-3 font-mono">{{ "%.1f"|format(summary.upload_cadence_days or 0) }}d</td>
                             <td class="px-4 py-3 font-mono">{{ "%.0f"|format(summary.average_duration_seconds or 0) }}s</td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">No channel summaries yet.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No channel summaries yet.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -124,6 +126,68 @@
                         {% endfor %}
                     </ul>
                 </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+        <section class="space-y-3">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Repeated Outlier Topics</h2>
+            <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        <tr>
+                            <th class="px-4 py-3">Niche</th>
+                            <th class="px-4 py-3">Topic</th>
+                            <th class="px-4 py-3">Relative</th>
+                            <th class="px-4 py-3">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        {% for niche, topic_type, average_relative, count in analysis.repeated_topic_rows %}
+                        <tr>
+                            <td class="px-4 py-3">{{ niche }}</td>
+                            <td class="px-4 py-3">{{ topic_type }}</td>
+                            <td class="px-4 py-3 font-mono">{{ "%.2f"|format(average_relative or 0) }}x</td>
+                            <td class="px-4 py-3 font-mono">{{ count }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">No repeated outlier topics yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="space-y-3">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Under-served Candidate Theses</h2>
+            <div class="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        <tr>
+                            <th class="px-4 py-3">Niche</th>
+                            <th class="px-4 py-3">Format</th>
+                            <th class="px-4 py-3">Packaging</th>
+                            <th class="px-4 py-3">Relative</th>
+                            <th class="px-4 py-3">Views/Sub</th>
+                            <th class="px-4 py-3">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        {% for niche, format, packaging_pattern, topic_type, average_relative, average_views_per_subscriber, count in analysis.thesis_rows %}
+                        <tr>
+                            <td class="px-4 py-3">{{ niche }}</td>
+                            <td class="px-4 py-3">{{ format }}</td>
+                            <td class="px-4 py-3">{{ packaging_pattern or topic_type or '' }}</td>
+                            <td class="px-4 py-3 font-mono">{{ "%.2f"|format(average_relative or 0) }}x</td>
+                            <td class="px-4 py-3 font-mono">{{ "%.2f"|format(average_views_per_subscriber or 0) }}x</td>
+                            <td class="px-4 py-3 font-mono">{{ count }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">No candidate theses yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </section>
     </div>

@@ -29,6 +29,7 @@ def upgrade():
         sa.Column("channel_id", sa.Integer(), nullable=False),
         sa.Column("snapshot_at", sa.DateTime(), nullable=False),
         sa.Column("median_recent_views", sa.Float()),
+        sa.Column("median_views_per_subscriber", sa.Float()),
         sa.Column("upload_cadence_days", sa.Float()),
         sa.Column("average_duration_seconds", sa.Float()),
         sa.Column("top_outlier_topics", sa.JSON(), nullable=False),

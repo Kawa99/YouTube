@@ -402,6 +402,7 @@ class ChannelDerivedSummary(db.Model):
     channel_id = db.Column(db.Integer, db.ForeignKey("channels.id"), nullable=False)
     snapshot_at = db.Column(db.DateTime, nullable=False)
     median_recent_views = db.Column(db.Float)
+    median_views_per_subscriber = db.Column(db.Float)
     upload_cadence_days = db.Column(db.Float)
     average_duration_seconds = db.Column(db.Float)
     top_outlier_topics = db.Column(db.JSON, nullable=False, default=list)

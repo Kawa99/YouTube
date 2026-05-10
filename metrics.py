@@ -8,6 +8,7 @@ from sqlalchemy import func
 from models import (
     Channel,
     ChannelDerivedSummary,
+    ChannelSnapshot,
     Video,
     VideoDerivedMetric,
     VideoLabel,
@@ -115,6 +116,8 @@ def compute_channel_summary(channel, *, computed_at=None):
 
     labels = [video.labels[0] for video in videos if video.labels]
     view_counts = [safe_number(snapshot.view_count) for snapshot in snapshots]
+    median_recent_views = median(view_counts) if view_counts else None
+    subscriber_count = latest_channel_subscriber_count(channel)
     durations = [video.duration_seconds for video in videos if video.duration_seconds]
     published_dates = [video.published_at for video in videos if video.published_at]
     latest_snapshot_at = max(snapshot.snapshot_at for snapshot in snapshots)
@@ -122,7 +125,8 @@ def compute_channel_summary(channel, *, computed_at=None):
     return ChannelDerivedSummary(
         channel_id=channel.id,
         snapshot_at=latest_snapshot_at,
-        median_recent_views=median(view_counts) if view_counts else None,
+        median_recent_views=median_recent_views,
+        median_views_per_subscriber=safe_divide(median_recent_views, subscriber_count),
         upload_cadence_days=upload_cadence_days(published_dates),
         average_duration_seconds=(
             sum(durations) / len(durations) if durations else None
@@ -150,6 +154,17 @@ def latest_video_snapshot(video_id):
         .order_by(VideoSnapshot.snapshot_at.desc(), VideoSnapshot.id.desc())
         .first()
     )
+
+
+def latest_channel_subscriber_count(channel):
+    snapshot = (
+        ChannelSnapshot.query.filter_by(channel_id=channel.id)
+        .order_by(ChannelSnapshot.snapshot_at.desc(), ChannelSnapshot.id.desc())
+        .first()
+    )
+    if snapshot:
+        return safe_number(snapshot.subscriber_count)
+    return safe_number(channel.subscriber_count or channel.subscribers)
 
 
 def channel_recent_median_views(video, exclude_video_id=None):
@@ -269,7 +284,57 @@ def market_analysis_summary(limit=25):
     strong_channels = (
         db.session.query(ChannelDerivedSummary, Channel)
         .join(Channel, Channel.id == ChannelDerivedSummary.channel_id)
-        .order_by(ChannelDerivedSummary.median_recent_views.desc().nullslast())
+        .order_by(
+            ChannelDerivedSummary.median_views_per_subscriber.desc().nullslast(),
+            ChannelDerivedSummary.median_recent_views.desc().nullslast(),
+        )
+        .limit(limit)
+        .all()
+    )
+    repeated_topic_rows = (
+        db.session.query(
+            VideoLabel.niche,
+            VideoLabel.topic_type,
+            func.avg(VideoDerivedMetric.relative_performance),
+            func.count(VideoDerivedMetric.id),
+        )
+        .join(VideoDerivedMetric, VideoDerivedMetric.video_id == VideoLabel.video_id)
+        .filter(VideoDerivedMetric.outlier_flag.is_(True))
+        .filter(VideoLabel.niche.isnot(None))
+        .filter(VideoLabel.topic_type.isnot(None))
+        .group_by(VideoLabel.niche, VideoLabel.topic_type)
+        .order_by(
+            func.count(VideoDerivedMetric.id).desc(),
+            func.avg(VideoDerivedMetric.relative_performance).desc(),
+        )
+        .limit(limit)
+        .all()
+    )
+    thesis_rows = (
+        db.session.query(
+            VideoLabel.niche,
+            VideoLabel.format,
+            VideoLabel.packaging_pattern,
+            VideoLabel.topic_type,
+            func.avg(VideoDerivedMetric.relative_performance),
+            func.avg(VideoDerivedMetric.views_per_subscriber),
+            func.count(VideoDerivedMetric.id),
+        )
+        .join(VideoDerivedMetric, VideoDerivedMetric.video_id == VideoLabel.video_id)
+        .filter(VideoDerivedMetric.outlier_flag.is_(True))
+        .filter(VideoLabel.niche.isnot(None))
+        .filter(VideoLabel.format.isnot(None))
+        .group_by(
+            VideoLabel.niche,
+            VideoLabel.format,
+            VideoLabel.packaging_pattern,
+            VideoLabel.topic_type,
+        )
+        .order_by(
+            func.count(VideoDerivedMetric.id).desc(),
+            func.avg(VideoDerivedMetric.relative_performance).desc(),
+            func.avg(VideoDerivedMetric.views_per_subscriber).desc(),
+        )
         .limit(limit)
         .all()
     )
@@ -301,6 +366,8 @@ def market_analysis_summary(limit=25):
     return {
         "top_outliers": top_outliers,
         "strong_channels": strong_channels,
+        "repeated_topic_rows": repeated_topic_rows,
+        "thesis_rows": thesis_rows,
         "format_rows": format_rows,
         "packaging_rows": packaging_rows,
         "algorithm_version": DERIVED_METRICS_ALGORITHM_VERSION,

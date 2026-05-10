@@ -144,6 +144,7 @@ def test_compute_derived_metrics_creates_video_metrics_and_channel_summary():
 
         channel_summary = ChannelDerivedSummary.query.one()
         assert channel_summary.median_recent_views == 1000
+        assert channel_summary.median_views_per_subscriber == 1
         assert channel_summary.upload_cadence_days == 2
         assert channel_summary.format_distribution == {"explainer": 1}
         assert channel_summary.packaging_pattern_distribution == {"how_to": 1}

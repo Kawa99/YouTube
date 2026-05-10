@@ -641,6 +641,7 @@ def test_market_analysis_compute_route_creates_derived_metrics(client):
                     video_id=outlier.id,
                     niche="education",
                     format="explainer",
+                    topic_type="evergreen",
                     packaging_pattern="how_to",
                     review_status="reviewed",
                 ),
@@ -654,6 +655,9 @@ def test_market_analysis_compute_route_creates_derived_metrics(client):
     body = response.get_data(as_text=True)
     assert "Market Opportunity View" in body
     assert "Analysis Outlier" in body
+    assert "Repeated Outlier Topics" in body
+    assert "Under-served Candidate Theses" in body
+    assert "education" in body
     with client.application.app_context():
         assert VideoDerivedMetric.query.count() == 2
         assert ChannelDerivedSummary.query.count() == 1
