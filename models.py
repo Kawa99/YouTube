@@ -664,3 +664,84 @@ class AffiliateProductEvidence(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     thesis = db.relationship("ContentThesis", back_populates="affiliate_evidence")
+
+
+class Asset(db.Model):
+    __tablename__ = "assets"
+
+    id = db.Column(db.Integer, primary_key=True)
+    asset_id = db.Column(db.String, nullable=False, unique=True, index=True)
+    asset_type = db.Column(db.String, nullable=False)
+    source_url_path = db.Column(db.String, nullable=False)
+    creator_licensor = db.Column(db.String)
+    license_terms = db.Column(db.Text)
+    monetized_youtube_allowed = db.Column(db.String, nullable=False, default="unclear")
+    attribution_required = db.Column(db.Boolean, nullable=False, default=False)
+    proof_saved = db.Column(db.Boolean, nullable=False, default=False)
+    high_risk_flag = db.Column(db.Boolean, nullable=False, default=False)
+    high_risk_reason = db.Column(db.String)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+    video_links = db.relationship(
+        "VideoAsset",
+        back_populates="asset",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+
+
+class VideoAsset(db.Model):
+    __tablename__ = "video_assets"
+
+    id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey("assets.id"), nullable=False)
+    intended_use = db.Column(db.Text)
+    attribution_text = db.Column(db.Text)
+    rights_decision = db.Column(db.String, nullable=False, default="use")
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    video = db.relationship("Video")
+    asset = db.relationship("Asset", back_populates="video_links")
+
+
+class VideoRightsChecklist(db.Model):
+    __tablename__ = "video_rights_checklists"
+
+    id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
+    every_asset_has_row = db.Column(db.Boolean, nullable=False, default=False)
+    unclear_assets_blocked = db.Column(db.Boolean, nullable=False, default=False)
+    attribution_captured = db.Column(db.Boolean, nullable=False, default=False)
+    synthetic_altered_status = db.Column(db.String, nullable=False, default="none")
+    no_terms_prohibit_monetization = db.Column(
+        db.Boolean, nullable=False, default=False
+    )
+    ready_for_upload = db.Column(db.Boolean, nullable=False, default=False)
+    reviewer = db.Column(db.String)
+    reviewed_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    notes = db.Column(db.Text)
+
+    video = db.relationship("Video")
+
+
+class VideoDisclosure(db.Model):
+    __tablename__ = "video_disclosures"
+
+    id = db.Column(db.Integer, primary_key=True)
+    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
+    sponsor_disclosure = db.Column(db.Text)
+    affiliate_disclosure = db.Column(db.Text)
+    altered_synthetic_disclosure = db.Column(db.Text)
+    music_license_attribution = db.Column(db.Text)
+    disclosure_notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+
+    video = db.relationship("Video")

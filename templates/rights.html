@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Rights - YouTube Tracker{% endblock %}
+
+{% macro select_options(options, selected='') %}
+    {% for option in options %}
+    <option value="{{ option }}" {% if selected == option %}selected{% endif %}>{{ option.replace('_', ' ') }}</option>
+    {% endfor %}
+{% endmacro %}
+
+{% block content %}
+<section class="space-y-8">
+    <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Compliance</p>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Asset Rights Ledger</h1>
+            <p class="max-w-3xl text-sm text-slate-600 dark:text-slate-300">Track asset sources, proof, disclosures, and upload-readiness before a pilot video goes live.</p>
+        </div>
+        <form method="get" action="{{ url_for('rights_workspace') }}" class="flex gap-2">
+            <select name="video_id" class="w-72 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                {% for video in workspace.videos %}
+                <option value="{{ video.id }}" {% if workspace.selected_video and workspace.selected_video.id == video.id %}selected{% endif %}>{{ video.title or video.youtube_video_id }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Open</button>
+        </form>
+    </header>
+
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+        <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+            <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Create Asset</h2>
+            <form method="post" action="{{ url_for('create_asset_route') }}" class="mt-3 grid gap-3">
+                <input type="hidden" name="video_id" value="{{ workspace.selected_video.id if workspace.selected_video else '' }}">
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <input name="asset_id" required placeholder="A001" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <select name="asset_type" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{{ select_options(workspace.asset_types) }}</select>
+                </div>
+                <input name="source_url_path" required placeholder="Source URL/path" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <input name="creator_licensor" placeholder="Creator/licensor" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <textarea name="license_terms" rows="2" placeholder="License terms" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                <select name="monetized_youtube_allowed" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{{ select_options(workspace.rights_states, 'unclear') }}</select>
+                <div class="grid gap-2 sm:grid-cols-3">
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="attribution_required" class="h-4 w-4 rounded border-slate-300 text-rose-600"> Attribution</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="proof_saved" class="h-4 w-4 rounded border-slate-300 text-rose-600"> Proof saved</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="high_risk_flag" class="h-4 w-4 rounded border-slate-300 text-rose-600"> High risk</label>
+                </div>
+                <input name="high_risk_reason" placeholder="High-risk reason" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <textarea name="notes" rows="2" placeholder="Notes" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Save Asset</button>
+            </form>
+        </section>
+
+        <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+            <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">High-Risk Assets</h2>
+            <div class="mt-3 overflow-x-auto">
+                <table class="min-w-full text-left text-sm">
+                    <thead class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400"><tr><th class="py-2">Asset</th><th>Type</th><th>Allowed</th><th>Proof</th><th>Reason</th></tr></thead>
+                    <tbody>
+                        {% for asset in workspace.high_risk_assets %}
+                        <tr class="border-t border-slate-200 dark:border-slate-800"><td class="py-2 font-mono">{{ asset.asset_id }}</td><td>{{ asset.asset_type }}</td><td>{{ asset.monetized_youtube_allowed }}</td><td>{{ 'yes' if asset.proof_saved else 'no' }}</td><td>{{ asset.high_risk_reason or '' }}</td></tr>
+                        {% else %}
+                        <tr><td colspan="5" class="py-3 text-slate-500">No high-risk assets recorded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    {% if workspace.selected_video %}
+    {% set video = workspace.selected_video %}
+    <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Selected video</p>
+                <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">{{ video.title or video.youtube_video_id }}</h2>
+            </div>
+            <p class="font-mono text-sm">{{ workspace.video_assets|length }} linked assets · {{ workspace.checklists|length }} checklists · {{ workspace.disclosures|length }} disclosures</p>
+        </div>
+    </section>
+
+    <div class="grid gap-6 xl:grid-cols-2">
+        <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Link Asset to Video</h3>
+            <form method="post" action="{{ url_for('link_asset_to_video_route') }}" class="mt-3 grid gap-3">
+                <input type="hidden" name="video_id" value="{{ video.id }}">
+                <select name="asset_id" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    {% for asset in workspace.assets %}
+                    <option value="{{ asset.id }}">{{ asset.asset_id }} · {{ asset.asset_type }}</option>
+                    {% endfor %}
+                </select>
+                <textarea name="intended_use" rows="2" placeholder="Intended use" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                <textarea name="attribution_text" rows="2" placeholder="Attribution text" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                <select name="rights_decision" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{{ select_options(workspace.rights_decisions, 'use') }}</select>
+                <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Link Asset</button>
+            </form>
+            <ul class="mt-4 space-y-2 text-sm">
+                {% for link in workspace.video_assets %}
+                <li class="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                    <span class="font-mono font-semibold">{{ link.asset.asset_id }}</span>
+                    <span> · {{ link.asset.asset_type }} · {{ link.asset.monetized_youtube_allowed }}</span>
+                    {% if link.asset.high_risk_flag %}<span class="ml-2 text-amber-700 dark:text-amber-300">high risk</span>{% endif %}
+                    <p class="mt-1 text-slate-600 dark:text-slate-300">{{ link.intended_use or '' }}</p>
+                </li>
+                {% else %}
+                <li class="text-slate-500">No assets linked.</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Rights Checklist</h3>
+            <form method="post" action="{{ url_for('save_rights_checklist_route', video_id=video.id) }}" class="mt-3 grid gap-3">
+                <div class="grid gap-2 sm:grid-cols-2">
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="every_asset_has_row" class="h-4 w-4 rounded border-slate-300 text-rose-600"> Every asset has row</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="unclear_assets_blocked" class="h-4 w-4 rounded border-slate-300 text-rose-600"> Unclear assets blocked</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="attribution_captured" class="h-4 w-4 rounded border-slate-300 text-rose-600"> Attribution captured</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="no_terms_prohibit_monetization" class="h-4 w-4 rounded border-slate-300 text-rose-600"> Monetization allowed</label>
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="ready_for_upload" class="h-4 w-4 rounded border-slate-300 text-rose-600"> Ready for upload</label>
+                </div>
+                <select name="synthetic_altered_status" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">{{ select_options(workspace.synthetic_statuses, 'none') }}</select>
+                <input name="reviewer" placeholder="Reviewer" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <textarea name="notes" rows="2" placeholder="Checklist notes" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white">Save Checklist</button>
+            </form>
+            <ul class="mt-4 space-y-2 text-sm">
+                {% for checklist in workspace.checklists %}
+                <li class="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                    <span class="font-semibold">{{ 'ready' if checklist.ready_for_upload else 'not ready' }}</span>
+                    <span> · {{ checklist.synthetic_altered_status }} · {{ checklist.reviewer or 'unknown reviewer' }}</span>
+                </li>
+                {% else %}
+                <li class="text-slate-500">No checklist yet.</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+
+    <section class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+        <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Disclosures</h3>
+        <form method="post" action="{{ url_for('save_video_disclosure_route', video_id=video.id) }}" class="mt-3 grid gap-3 md:grid-cols-2">
+            <textarea name="sponsor_disclosure" rows="2" placeholder="Sponsor disclosure" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+            <textarea name="affiliate_disclosure" rows="2" placeholder="Affiliate disclosure" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+            <textarea name="altered_synthetic_disclosure" rows="2" placeholder="Altered/synthetic disclosure" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+            <textarea name="music_license_attribution" rows="2" placeholder="Music/license attribution" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+            <textarea name="disclosure_notes" rows="2" placeholder="Notes" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 md:col-span-2"></textarea>
+            <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white md:col-span-2">Save Disclosure</button>
+        </form>
+    </section>
+    {% else %}
+    <div class="rounded-lg border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">No videos available for rights review.</div>
+    {% endif %}
+</section>
+{% endblock %}

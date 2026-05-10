@@ -31,6 +31,10 @@ CORE_EXPORT_TABLES = (
     "thesis_monetization_maps",
     "sponsor_evidence",
     "affiliate_product_evidence",
+    "assets",
+    "video_assets",
+    "video_rights_checklists",
+    "video_disclosures",
     # Compatibility tables kept for the current UI and old exports.
     "channel_videos",
     "channel_history",
@@ -59,6 +63,10 @@ TABLE_SELECT_QUERIES = {
     "thesis_monetization_maps": "SELECT * FROM thesis_monetization_maps",
     "sponsor_evidence": "SELECT * FROM sponsor_evidence",
     "affiliate_product_evidence": "SELECT * FROM affiliate_product_evidence",
+    "assets": "SELECT * FROM assets",
+    "video_assets": "SELECT * FROM video_assets",
+    "video_rights_checklists": "SELECT * FROM video_rights_checklists",
+    "video_disclosures": "SELECT * FROM video_disclosures",
     "channel_videos": "SELECT * FROM channel_videos",
     "channel_history": "SELECT * FROM channel_history",
     "video_history": "SELECT * FROM video_history",
@@ -79,6 +87,10 @@ RESEARCH_ZIP_FILES = (
     "thesis_monetization_maps.csv",
     "sponsor_evidence.csv",
     "affiliate_product_evidence.csv",
+    "assets.csv",
+    "video_assets.csv",
+    "video_rights_checklists.csv",
+    "video_disclosures.csv",
     "collection_runs.csv",
     "data_dictionary.md",
 )
@@ -352,6 +364,62 @@ RESEARCH_HEADERS = {
         "compliance_disclosure_concerns",
         "created_at",
     ],
+    "assets": [
+        "id",
+        "asset_id",
+        "asset_type",
+        "source_url_path",
+        "creator_licensor",
+        "license_terms",
+        "monetized_youtube_allowed",
+        "attribution_required",
+        "proof_saved",
+        "high_risk_flag",
+        "high_risk_reason",
+        "notes",
+        "created_at",
+        "updated_at",
+    ],
+    "video_assets": [
+        "id",
+        "video_id",
+        "youtube_video_id",
+        "title",
+        "asset_row_id",
+        "asset_id",
+        "asset_type",
+        "intended_use",
+        "attribution_text",
+        "rights_decision",
+        "created_at",
+    ],
+    "video_rights_checklists": [
+        "id",
+        "video_id",
+        "youtube_video_id",
+        "title",
+        "every_asset_has_row",
+        "unclear_assets_blocked",
+        "attribution_captured",
+        "synthetic_altered_status",
+        "no_terms_prohibit_monetization",
+        "ready_for_upload",
+        "reviewer",
+        "reviewed_at",
+        "notes",
+    ],
+    "video_disclosures": [
+        "id",
+        "video_id",
+        "youtube_video_id",
+        "title",
+        "sponsor_disclosure",
+        "affiliate_disclosure",
+        "altered_synthetic_disclosure",
+        "music_license_attribution",
+        "disclosure_notes",
+        "created_at",
+    ],
 }
 
 
@@ -570,6 +638,10 @@ def stream_research_jsonl(filters=None):
         "thesis_monetization_maps",
         "sponsor_evidence",
         "affiliate_product_evidence",
+        "assets",
+        "video_assets",
+        "video_rights_checklists",
+        "video_disclosures",
         "collection_runs",
     ):
         for row in iter_research_rows(dataset, filters):
@@ -1085,6 +1157,86 @@ def _research_query(dataset, filters):
             """
         return _compose_query(base_query, [], " ORDER BY ct.thesis_id, ape.id"), params
 
+    if dataset == "assets":
+        base_query = """
+            SELECT
+                id,
+                asset_id,
+                asset_type,
+                source_url_path,
+                creator_licensor,
+                license_terms,
+                monetized_youtube_allowed,
+                attribution_required,
+                proof_saved,
+                high_risk_flag,
+                high_risk_reason,
+                notes,
+                created_at,
+                updated_at
+            FROM assets
+            """
+        return _compose_query(base_query, [], " ORDER BY asset_id"), params
+
+    if dataset == "video_assets":
+        base_query = """
+            SELECT
+                va.id,
+                va.video_id,
+                v.youtube_video_id,
+                v.title,
+                va.asset_id AS asset_row_id,
+                a.asset_id,
+                a.asset_type,
+                va.intended_use,
+                va.attribution_text,
+                va.rights_decision,
+                va.created_at
+            FROM video_assets va
+            JOIN videos v ON v.id = va.video_id
+            JOIN assets a ON a.id = va.asset_id
+            """
+        return _compose_query(base_query, [], " ORDER BY v.id, va.id"), params
+
+    if dataset == "video_rights_checklists":
+        base_query = """
+            SELECT
+                vrc.id,
+                vrc.video_id,
+                v.youtube_video_id,
+                v.title,
+                vrc.every_asset_has_row,
+                vrc.unclear_assets_blocked,
+                vrc.attribution_captured,
+                vrc.synthetic_altered_status,
+                vrc.no_terms_prohibit_monetization,
+                vrc.ready_for_upload,
+                vrc.reviewer,
+                vrc.reviewed_at,
+                vrc.notes
+            FROM video_rights_checklists vrc
+            JOIN videos v ON v.id = vrc.video_id
+            """
+        return _compose_query(base_query, [], " ORDER BY v.id, vrc.id"), params
+
+    if dataset == "video_disclosures":
+        base_query = """
+            SELECT
+                vd.id,
+                vd.video_id,
+                v.youtube_video_id,
+                v.title,
+                vd.sponsor_disclosure,
+                vd.affiliate_disclosure,
+                vd.altered_synthetic_disclosure,
+                vd.music_license_attribution,
+                vd.disclosure_notes,
+                vd.created_at
+            FROM video_disclosures vd
+            JOIN videos v ON v.id = vd.video_id
+            """
+        return _compose_query(base_query, [], " ORDER BY v.id, vd.id"), params
+
     raise ValueError(f"Unsupported research dataset: {dataset}")
 
 
@@ -1331,7 +1483,18 @@ def _infer_dictionary_type(field):
         "product_rpm_equivalent",
     }:
         return "float"
-    if field in {"caption_available", "outlier_flag"}:
+    if field in {
+        "caption_available",
+        "outlier_flag",
+        "attribution_required",
+        "proof_saved",
+        "high_risk_flag",
+        "every_asset_has_row",
+        "unclear_assets_blocked",
+        "attribution_captured",
+        "no_terms_prohibit_monetization",
+        "ready_for_upload",
+    }:
         return "boolean"
     return "string"
 
@@ -1354,6 +1517,10 @@ def _infer_source_table(dataset, field):
         "thesis_monetization_maps",
         "sponsor_evidence",
         "affiliate_product_evidence",
+        "assets",
+        "video_assets",
+        "video_rights_checklists",
+        "video_disclosures",
     }:
         return dataset
     if dataset == "channels" and field in {
@@ -1409,6 +1576,14 @@ def _allowed_labels(field):
         "review_status": "pending|reviewed|needs_review",
         "outlier_flag": "true|false",
         "caption_available": "true|false",
+        "attribution_required": "true|false",
+        "proof_saved": "true|false",
+        "high_risk_flag": "true|false",
+        "every_asset_has_row": "true|false",
+        "unclear_assets_blocked": "true|false",
+        "attribution_captured": "true|false",
+        "no_terms_prohibit_monetization": "true|false",
+        "ready_for_upload": "true|false",
         "performance_tier": "breakout|outlier|normal|underperformer|unknown",
         "status": "idea|research|pilot|reject|launch",
         "evidence_type": "outlier_video|competitor_channel|comment_theme|search_trend|sponsor_density|source_availability|forum_question|manual_note",

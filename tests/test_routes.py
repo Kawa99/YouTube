@@ -10,6 +10,7 @@ import routes
 from app import create_app
 from models import (
     AffiliateProductEvidence,
+    Asset,
     Channel,
     ChannelDerivedSummary,
     ChannelHistory,
@@ -25,11 +26,14 @@ from models import (
     ThesisScore,
     ThesisTopic,
     Video,
+    VideoAsset,
     VideoDerivedMetric,
+    VideoDisclosure,
     VideoHistory,
     VideoLabel,
     VideoLabelAudit,
     VideoMetadataChange,
+    VideoRightsChecklist,
     VideoSnapshot,
     db,
 )
@@ -248,6 +252,10 @@ def test_export_csv_success(client):
     assert "=== THESIS_MONETIZATION_MAPS ===" in body
     assert "=== SPONSOR_EVIDENCE ===" in body
     assert "=== AFFILIATE_PRODUCT_EVIDENCE ===" in body
+    assert "=== ASSETS ===" in body
+    assert "=== VIDEO_ASSETS ===" in body
+    assert "=== VIDEO_RIGHTS_CHECKLISTS ===" in body
+    assert "=== VIDEO_DISCLOSURES ===" in body
 
 
 def test_export_xlsx_success(client):
@@ -282,6 +290,10 @@ def test_export_xlsx_success(client):
             "thesis_monetization_maps",
             "sponsor_evidence",
             "affiliate_product_evidence",
+            "assets",
+            "video_assets",
+            "video_rights_checklists",
+            "video_disclosures",
             "channel_videos",
             "channel_history",
             "video_history",
@@ -421,6 +433,10 @@ def test_research_zip_export_contains_schema_files_and_filters(client):
             "thesis_monetization_maps.csv",
             "sponsor_evidence.csv",
             "affiliate_product_evidence.csv",
+            "assets.csv",
+            "video_assets.csv",
+            "video_rights_checklists.csv",
+            "video_disclosures.csv",
             "collection_runs.csv",
             "data_dictionary.md",
         }
@@ -997,6 +1013,149 @@ def test_thesis_workspace_creates_scores_evidence_topics_and_red_team_review(cli
     assert any(row["dataset"] == "thesis_monetization_maps" for row in rows)
     assert any(row["dataset"] == "sponsor_evidence" for row in rows)
     assert any(row["dataset"] == "affiliate_product_evidence" for row in rows)
+
+
+def test_rights_workspace_blocks_unclear_assets_and_exports_records(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@rights_channel", subscribers=100)
+        db.session.add(channel)
+        db.session.flush()
+        video = Video(
+            youtube_video_id="rights_video",
+            title="Rights candidate",
+            channel_id=channel.id,
+        )
+        safe_video = Video(
+            youtube_video_id="rights_video_safe",
+            title="Rights safe candidate",
+            channel_id=channel.id,
+        )
+        db.session.add_all([video, safe_video])
+        db.session.commit()
+        video_id = video.id
+        safe_video_id = safe_video.id
+
+    high_risk_response = client.post(
+        "/rights/assets",
+        data={
+            "video_id": str(video_id),
+            "asset_id": "A001",
+            "asset_type": "music",
+            "source_url_path": "https://example.com/free-music",
+            "creator_licensor": "Unknown",
+            "license_terms": "Unclear royalty-free page.",
+            "monetized_youtube_allowed": "unclear",
+            "high_risk_flag": "on",
+            "high_risk_reason": "Unknown royalty-free music.",
+        },
+        follow_redirects=True,
+    )
+    assert high_risk_response.status_code == 200
+    assert "A001" in high_risk_response.get_data(as_text=True)
+
+    with client.application.app_context():
+        risky_asset = Asset.query.filter_by(asset_id="A001").one()
+        assert risky_asset.high_risk_flag is True
+        risky_asset_id = risky_asset.id
+
+    client.post(
+        "/rights/video-assets",
+        data={
+            "video_id": str(video_id),
+            "asset_id": str(risky_asset_id),
+            "intended_use": "Background music.",
+            "rights_decision": "use",
+        },
+        follow_redirects=True,
+    )
+    blocked_ready = client.post(
+        f"/rights/{video_id}/checklists",
+        data={
+            "every_asset_has_row": "on",
+            "unclear_assets_blocked": "on",
+            "attribution_captured": "on",
+            "no_terms_prohibit_monetization": "on",
+            "ready_for_upload": "on",
+            "synthetic_altered_status": "none",
+            "reviewer": "rights-reviewer",
+        },
+        follow_redirects=True,
+    )
+    assert "Blocked or unproven assets prevent upload" in blocked_ready.get_data(
+        as_text=True
+    )
+
+    client.post(
+        "/rights/assets",
+        data={
+            "video_id": str(safe_video_id),
+            "asset_id": "A002",
+            "asset_type": "original_graphic",
+            "source_url_path": "/assets/diagram.png",
+            "creator_licensor": "internal",
+            "license_terms": "Owned original graphic.",
+            "monetized_youtube_allowed": "yes",
+            "proof_saved": "on",
+        },
+        follow_redirects=True,
+    )
+    with client.application.app_context():
+        safe_asset_id = Asset.query.filter_by(asset_id="A002").one().id
+
+    client.post(
+        "/rights/video-assets",
+        data={
+            "video_id": str(safe_video_id),
+            "asset_id": str(safe_asset_id),
+            "intended_use": "Main diagram.",
+            "rights_decision": "use",
+        },
+        follow_redirects=True,
+    )
+    ready_response = client.post(
+        f"/rights/{safe_video_id}/checklists",
+        data={
+            "every_asset_has_row": "on",
+            "unclear_assets_blocked": "on",
+            "attribution_captured": "on",
+            "no_terms_prohibit_monetization": "on",
+            "ready_for_upload": "on",
+            "synthetic_altered_status": "none",
+            "reviewer": "rights-reviewer",
+        },
+        follow_redirects=True,
+    )
+    assert ready_response.status_code == 200
+
+    disclosure_response = client.post(
+        f"/rights/{safe_video_id}/disclosures",
+        data={
+            "sponsor_disclosure": "No sponsor.",
+            "affiliate_disclosure": "Affiliate links disclosed.",
+            "altered_synthetic_disclosure": "No synthetic media.",
+            "music_license_attribution": "Original music only.",
+            "disclosure_notes": "Ready for audit.",
+        },
+        follow_redirects=True,
+    )
+    assert disclosure_response.status_code == 200
+
+    with client.application.app_context():
+        assert VideoAsset.query.count() == 2
+        assert VideoRightsChecklist.query.count() == 1
+        assert VideoRightsChecklist.query.one().ready_for_upload is True
+        assert VideoDisclosure.query.one().affiliate_disclosure == (
+            "Affiliate links disclosed."
+        )
+
+    export_response = client.get("/export/research.jsonl")
+    rows = [
+        json.loads(line)
+        for line in export_response.get_data(as_text=True).splitlines()
+        if line.strip()
+    ]
+    assert any(row["dataset"] == "assets" for row in rows)
+    assert any(row["dataset"] == "video_rights_checklists" for row in rows)
 
 
 def test_video_detail_route_success(client):

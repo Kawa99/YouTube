@@ -13,6 +13,7 @@ This directory describes the research-engine evolution of the YouTube tracker.
 - `phase-7-packaging-lab.md` documents systematic title and thumbnail packaging research.
 - `phase-8-thesis-workflow.md` documents the content thesis, evidence, topic backlog, scorecard, and red-team workflow.
 - `phase-9-monetization-mapping.md` documents explicit revenue paths, sponsor evidence, affiliate/product evidence, and launch gating.
+- `phase-10-asset-rights-compliance.md` documents the asset ledger, rights checklist, disclosures, and upload-readiness gate.
 - `research-engine-prd.md` defines the product requirements for market research and launch validation.
 - `research-schema-map.md` maps the research repository's markdown schemas to app entities and future tables.
 - `adr/` records architecture decisions that should guide implementation.

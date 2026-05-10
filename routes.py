@@ -30,6 +30,14 @@ from labeling import (
 )
 from metrics import compute_derived_metrics, market_analysis_summary
 from packaging_lab import packaging_lab_summary, save_packaging_experiment
+from rights import (
+    RightsValidationError,
+    create_asset,
+    link_asset_to_video,
+    rights_dashboard,
+    save_rights_checklist,
+    save_video_disclosure,
+)
 from models import Channel, ChannelHistory, Video, VideoHistory, VideoLabel, db
 from pydantic import ValidationError
 from schemas import VideoCreateSchema
@@ -419,6 +427,56 @@ def register_routes(app, limiter):
         else:
             flash("Red-team review saved.", "success")
         return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/rights", methods=["GET"])
+    def rights_workspace():
+        selected_video_id = request.args.get("video_id", type=int)
+        return render_template(
+            "rights.html", workspace=rights_dashboard(selected_video_id)
+        )
+
+    @app.route("/rights/assets", methods=["POST"])
+    def create_asset_route():
+        try:
+            create_asset(request.form)
+        except RightsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Asset saved.", "success")
+        return redirect(
+            url_for("rights_workspace", video_id=request.form.get("video_id"))
+        )
+
+    @app.route("/rights/video-assets", methods=["POST"])
+    def link_asset_to_video_route():
+        video_id = request.form.get("video_id")
+        try:
+            link_asset_to_video(request.form)
+        except RightsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Asset linked to video.", "success")
+        return redirect(url_for("rights_workspace", video_id=video_id))
+
+    @app.route("/rights/<int:video_id>/checklists", methods=["POST"])
+    def save_rights_checklist_route(video_id):
+        try:
+            save_rights_checklist(video_id, request.form)
+        except RightsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Rights checklist saved.", "success")
+        return redirect(url_for("rights_workspace", video_id=video_id))
+
+    @app.route("/rights/<int:video_id>/disclosures", methods=["POST"])
+    def save_video_disclosure_route(video_id):
+        try:
+            save_video_disclosure(video_id, request.form)
+        except RightsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Disclosure record saved.", "success")
+        return redirect(url_for("rights_workspace", video_id=video_id))
 
     @app.route("/labeling", methods=["GET"])
     def labeling_queue():
