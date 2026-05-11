@@ -1,27 +1,303 @@
-# YouTube Tracker (Flask + RQ + Redis)
+# Baroo YouTube Tracker
 
-This webapp does three core things:
+Baroo is a Flask, Redis, RQ, and Postgres/SQLite research engine for finding, validating, and tracking profitable long-form YouTube channel opportunities. It is built for faceless-channel research: collect public competitor data, label videos manually, compute outlier metrics, form content theses, map monetization paths, track owned-channel experiments, and export analysis-ready datasets.
 
-- Single-video scrape: fetches video metadata + transcript from a YouTube URL.
-- Channel scrape: queues a background job (RQ) to process many channel videos.
-- Data operations: browse stored data (`/data`) and export CSV/XLSX (`/export`).
+## What It Does
 
-## Stack and runtime
+- Collects public YouTube video and channel metadata through the YouTube Data API.
+- Stores normalized channels, videos, snapshots, raw collection metadata, labels, derived metrics, theses, monetization evidence, rights records, and owned-channel experiment data.
+- Separates public competitor data from private owned-channel analytics.
+- Provides task-oriented UI pages for collection, labeling, packaging analysis, thesis validation, rights checks, owned analytics, exports, operations, and settings.
+- Produces CSV, XLSX, ZIP, and JSONL exports for notebooks and the research repo.
 
-- Flask web app (`app.py`, `routes.py`)
-- Background worker (`worker.py`) running RQ jobs from `tasks.py`
-- Redis queue + job status store
-- SQLite database at `./data/videos.db`
-- Docker Compose services:
-  - `web` (Gunicorn in production-like mode)
-  - `worker` (RQ worker process)
-  - `redis` (Redis 7)
+## Main Workflows
 
-## Research-engine documentation
+Use these pages during normal research:
 
-The `research-engine` branch is evolving this tracker into a market-research and launch-validation tool for faceless long-form YouTube channels. Start with:
+- `/dashboard`: current research status, label coverage, failed jobs, top outliers, candidate theses.
+- `/collect`: single-video and channel collection entry point.
+- `/channel`: channel job queue/status page.
+- `/data?view=videos`: paginated stored videos.
+- `/data?view=channels`: paginated stored channels.
+- `/labeling`: manual review and controlled labels.
+- `/analysis`: recompute and review derived market metrics.
+- `/packaging`: title/thumbnail pattern research and packaging experiments.
+- `/theses`: content thesis, evidence, scorecard, monetization, and red-team workflow.
+- `/rights`: asset ledger, rights checklist, and disclosure records.
+- `/owned`: owned-channel analytics, retention diagnostics, and 24h/7d/30d experiment checkpoints.
+- `/exports`: full and filtered research exports.
+- `/operations`: Redis, DB, queue, worker, and recent failure visibility.
+- `/settings`: runtime configuration visibility.
+
+Legacy direct routes still work:
+
+- `/`: single-video scraper.
+- `/export?format=csv`: full operational CSV export.
+- `/export?format=xlsx`: full operational Excel export.
+- `/export/research.zip`: analysis-ready research ZIP.
+- `/export/research.jsonl`: streaming research JSONL.
+- `/healthz`: JSON health check.
+
+## Prerequisites
+
+- Docker and Docker Compose plugin.
+- A YouTube Data API v3 key.
+- Git.
+- Optional for local non-Docker work: Python matching the project environment and virtualenv support.
+
+## Configure Environment
+
+Create `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Required for collection:
+
+```env
+YOUTUBE_API_KEY=your_youtube_data_api_v3_key
+SECRET_KEY=change-this-in-real-environments
+```
+
+Useful runtime settings:
+
+```env
+RQ_QUEUE_NAME=channel-scrape
+CHANNEL_JOB_TIMEOUT_SECONDS=7200
+CHANNEL_JOB_RESULT_TTL_SECONDS=86400
+TRACKED_CHANNEL_MAX_VIDEOS=50
+VIDEO_SAVE_COMMIT_INTERVAL=50
+TRANSCRIPTS_ENABLED=false
+TRANSCRIPT_FETCH_MODE=manual
+YOUTUBE_DAILY_QUOTA_BUDGET=10000
+```
+
+Optional private-use authentication:
+
+```env
+ADMIN_PASSWORD=
+ADMIN_PASSWORD_HASH=
+```
+
+If either admin value is set, private pages require `/login`. Prefer `ADMIN_PASSWORD_HASH` for hosted use.
+
+Owned analytics metadata:
+
+```env
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+OWNED_ANALYTICS_TOKEN_SECRET_BACKEND=external
+```
+
+Raw OAuth tokens must live in an external secret backend; this app stores only `token_secret_ref`.
+
+## Run With Docker Compose
+
+Start the full stack:
+
+```bash
+docker compose up -d --build
+```
+
+Apply migrations if needed:
+
+```bash
+docker compose exec web flask --app app db upgrade
+```
+
+Open:
+
+- `http://localhost:5000/dashboard`
+- `http://localhost:5000/collect`
+- `http://localhost:5000/operations`
+
+Watch services:
+
+```bash
+docker compose ps
+docker compose logs -f web worker scheduler redis db
+```
+
+Stop without deleting data:
+
+```bash
+docker compose down
+```
+
+Do not run `docker compose down -v` unless you intentionally want to delete Docker volumes.
+
+## Development Loop
+
+For fast local iteration, use the dev override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Then:
+
+- Template and app edits reload in the web container.
+- Worker code changes need `docker compose restart worker`.
+- Dependency changes need a rebuild.
+
+Local non-Docker path:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+.venv/bin/pip install -r requirements.txt
+.venv/bin/flask --app app db upgrade
+.venv/bin/python worker.py
+.venv/bin/python app.py
+```
+
+Docker Compose is the preferred path because it includes Redis, worker, scheduler, and Postgres.
+
+## Collection Modes
+
+Single video:
+
+1. Open `/collect` or `/`.
+2. Paste a supported YouTube video URL.
+3. Fetch metadata.
+4. Save to database.
+
+Channel:
+
+1. Open `/collect` or `/channel`.
+2. Paste a channel URL.
+3. Set max videos, usually 50 to 200 for first-pass research.
+4. Queue the job.
+5. Watch status on `/channel` or `/operations`.
+
+Tracked channels:
+
+- Mark channels as tracked from channel detail/API workflows.
+- Scheduler queues tracked-channel collection using `TRACKED_CHANNEL_MAX_VIDEOS`.
+- Use `/operations` to inspect queue and worker state.
+
+Transcript collection:
+
+- `TRANSCRIPTS_ENABLED=false` by default because market mapping usually does not need transcripts.
+- Use `TRANSCRIPT_FETCH_MODE=manual` unless a specific workflow needs transcripts.
+
+## Labeling Workflow
+
+1. Collect enough videos for a niche sample.
+2. Open `/labeling?mode=unlabeled`.
+3. Label niche, format, faceless status, AI visibility, visual style, packaging pattern, title pattern, thumbnail pattern, topic type, production complexity, policy risk, and confidence.
+4. Use bulk labeling only for fields that are truly shared across selected videos.
+5. Recompute metrics on `/analysis` after enough labels and snapshots exist.
+
+Manual labels are intentionally human-reviewed. They should not be treated as automated ground truth.
+
+## Research Workflow
+
+The recommended loop is:
+
+1. Choose seed channels.
+2. Collect 50 to 200 recent long-form videos per channel.
+3. Label videos and channels.
+4. Recompute derived metrics.
+5. Inspect outliers and repeated topic/format patterns.
+6. Create content theses.
+7. Add evidence, monetization maps, and red-team reviews.
+8. Build packaging experiments.
+9. Use rights checks before production.
+10. Track owned-channel pilots at 24h, 7d, and 30d.
+11. Export datasets and cite limitations in findings.
+
+Detailed guide: `docs/research-workflow.md`.
+
+## Export Workflow
+
+Use `/exports` for:
+
+- full operational CSV
+- full operational XLSX
+- research ZIP
+- research JSONL
+- filtered research ZIP
+
+Research ZIP contains schema-aligned CSV files plus generated `data_dictionary.md`. See `docs/data-dictionary.md` for the stable export map.
+
+Null handling:
+
+- CSV exports serialize nulls as empty cells.
+- JSONL exports serialize values through the same export serializer and include a `dataset` field.
+- Datetimes are ISO formatted.
+
+## Operations
+
+Use `/operations` and `/healthz` to check:
+
+- database reachability
+- Redis reachability
+- queue depth
+- worker heartbeat count
+- recent collection runs
+- failed or partial runs
+
+Backup examples and troubleshooting live in `docs/operations.md`.
+
+## Quality Gate
+
+Before committing changes:
+
+```bash
+.venv/bin/black --check .
+.venv/bin/ruff check .
+.venv/bin/bandit -c bandit.yaml -r .
+.venv/bin/pytest tests/ -q
+DATABASE_URL=sqlite:////tmp/youtube_migration_smoke.db .venv/bin/flask --app app db upgrade
+docker compose config
+git diff --check
+```
+
+CI runs formatting, linting, Bandit, tests, and migration smoke checks on `main`, `master`, and `research-engine`.
+
+## Troubleshooting
+
+`YouTube API key is not configured`
+
+- Set `YOUTUBE_API_KEY` in `.env`.
+- Restart web and worker containers after changing `.env`.
+
+`Background queue is unavailable`
+
+```bash
+docker compose ps
+docker compose logs --tail=200 redis worker web
+```
+
+Usually Redis or the worker is down, or `REDIS_URL` differs between services.
+
+`Job not found`
+
+- Job metadata may have expired after `CHANNEL_JOB_RESULT_TTL_SECONDS`.
+- Confirm web and worker use the same Redis instance and queue name.
+
+No videos found for a channel:
+
+- Verify the channel URL resolves to a real channel.
+- Check YouTube API quota.
+- Try a canonical `/channel/UC...` URL.
+
+Slow exports:
+
+- Use filtered research exports where possible.
+- Keep the database on Postgres for larger datasets.
+- Avoid automatic large thumbnail downloads until storage policy is implemented.
+
+## Documentation Index
+
+Start here:
 
 - `docs/research-engine-prd.md`
+- `docs/research-workflow.md`
+- `docs/data-dictionary.md`
+- `docs/operations.md`
 - `docs/research-schema-map.md`
 - `docs/adr/`
 - `docs/phase-0-baseline.md`
@@ -40,194 +316,4 @@ The `research-engine` branch is evolving this tracker into a market-research and
 - `docs/phase-14-security-compliance.md`
 - `docs/phase-15-performance-scale.md`
 - `docs/phase-16-testing-strategy.md`
-
-## 1. Prerequisites
-
-- Docker + Docker Compose plugin (`docker compose`)
-- A YouTube Data API v3 key
-
-## 2. Configure environment
-
-Create `.env` from `.env.example`, then edit the values:
-
-```bash
-cp .env.example .env
-```
-
-```env
-YOUTUBE_API_KEY=your_real_youtube_api_key
-RQ_QUEUE_NAME=channel-scrape
-SECRET_KEY=change-this-in-real-environments
-CHANNEL_JOB_TIMEOUT_SECONDS=7200
-CHANNEL_JOB_RESULT_TTL_SECONDS=86400
-```
-
-Notes:
-
-- `YOUTUBE_API_KEY` is required.
-- In Compose, app + worker use `REDIS_URL=redis://redis:6379/0` internally.
-
-## 3. Production-like workflow (stable)
-
-Use `docker-compose.yml` only for production-like local runs (no source bind-mount, stable runtime behavior):
-
-```bash
-docker compose up -d --build
-```
-
-Open:
-
-- `http://localhost:5000` (Single Video page)
-- `http://localhost:5000/channel` (Channel Scraper page)
-- `http://localhost:5000/data` (Data Viewer page)
-
-Useful commands:
-
-```bash
-docker compose ps
-docker compose logs -f web worker redis
-docker compose down
-```
-
-## 4. Development workflow (fast iteration)
-
-Professionals split **dev workflow** from **prod workflow**.
-
-**How experts do it**
-1. Keep your current `docker-compose.yml` as production-like (stable, no live code mount).
-2. Add a `docker-compose.dev.yml` override for local development (bind-mount source code + debug reload).
-3. Build once, then iterate without rebuilding on every file change.
-4. Rebuild only when dependencies or Dockerfile change.
-5. Never use `down -v` unless you intentionally want to wipe state.
-
-**What this looks like in practice**
-
-`docker-compose.dev.yml`:
-```yaml
-services:
-  web:
-    volumes:
-      - ./:/app
-      - ./data:/app/data:Z
-    environment:
-      FLASK_DEBUG: "1"
-    command: flask --app app run --host=0.0.0.0 --port=5000 --debug
-
-  worker:
-    volumes:
-      - ./:/app
-      - ./data:/app/data:Z
-```
-
-Run dev:
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
-```
-
-Daily loop:
-
-- Edit code/templates/css/js: no rebuild needed (web auto-reloads).
-- If worker code changed:
-```bash
-docker compose restart worker
-```
-- If `requirements.txt` changed:
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build web worker
-```
-
-**Key rule**
-Use `down -v` only for deliberate full reset.
-For normal work, this is overkill and slows you down massively.
-
-## 5. Exact webapp usage
-
-### Single Video page (`/`)
-
-1. Paste a valid YouTube video URL:
-   - `https://www.youtube.com/watch?v=...`
-   - `https://youtu.be/...`
-   - `https://www.youtube.com/shorts/...`
-2. Click **Extract Data**.
-3. Review returned fields:
-   - video id, title, description, channel username
-   - views, likes, comments, posted date, length
-   - transcript (or fallback message if unavailable)
-4. Click **Save to Database** to persist/update the record.
-
-### Channel Scraper page (`/channel`)
-
-1. Enter a channel URL (supported examples):
-   - `https://www.youtube.com/@channelname`
-   - `https://www.youtube.com/channel/UC...`
-   - `https://www.youtube.com/c/channelname`
-   - `https://www.youtube.com/user/username`
-2. Set **Maximum Videos to Process** (`1` to `1000`).
-3. Submit to queue a background job.
-4. Watch live job status (polled every 2 seconds): queued/running/completed/failed.
-5. Progress panel shows total, inserted, failed, skipped, and current video id.
-
-### Data Viewer page (`/data`)
-
-- Shows totals for videos/channels/history.
-- Supports table tabs, pagination, sorting, manual refresh, and auto-refresh (5s).
-- Uses API endpoint: `/api/data?page=1&limit=25&sort_column=saved_at&sort_direction=desc`
-
-### Exports
-
-- CSV: `/export?format=csv`
-- Excel: `/export?format=xlsx`
-
-## 6. Operational behavior and persistence
-
-- SQLite file persists in `./data/videos.db` (mounted into `web` and `worker`).
-- Redis data persists in Docker volume `redis-data`.
-- Channel jobs run in `worker`; status is fetched from:
-  - `/status/<job_id>`
-  - `/api/channel-jobs/<job_id>`
-
-## 7. Rebuild vs restart rules
-
-- Restart only:
-  - app/worker Python code changes in dev mode (hot reload for `web`, manual restart for `worker`)
-- Rebuild required:
-  - `requirements.txt` changes
-  - `Dockerfile` changes
-  - base image or system package changes
-
-## 8. Troubleshooting
-
-### `Background queue is unavailable`
-
-Check:
-
-```bash
-docker compose ps
-docker compose logs --tail=200 worker redis
-```
-
-Usually caused by Redis/worker not running or wrong env values.
-
-### Channel job finds no videos
-
-- Verify `YOUTUBE_API_KEY` is valid and has quota.
-- Verify the channel URL resolves to a real channel.
-
-### `Job not found`
-
-- Job may have expired based on `CHANNEL_JOB_RESULT_TTL_SECONDS`.
-- Ensure `web` and `worker` are on the same Redis instance/queue.
-
-## 9. Optional local (non-Docker) run
-
-If needed:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-.venv/bin/pip install -r requirements.txt
-python worker.py
-python app.py
-```
-
-For this repository, Docker Compose is the recommended path.
+- `docs/phase-17-documentation.md`
