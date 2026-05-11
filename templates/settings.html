@@ -19,6 +19,7 @@
                 <tr><td class="px-5 py-3 font-medium">Redis URL</td><td class="px-5 py-3 font-mono text-xs">{{ settings.redis_url }}</td></tr>
                 <tr><td class="px-5 py-3 font-medium">Database URL</td><td class="px-5 py-3">{{ "configured" if settings.database_url_configured else "default SQLite" }}</td></tr>
                 <tr><td class="px-5 py-3 font-medium">RQ queue</td><td class="px-5 py-3 font-mono text-xs">{{ settings.rq_queue_name }}</td></tr>
+                <tr><td class="px-5 py-3 font-medium">Admin auth</td><td class="px-5 py-3">{{ "enabled" if settings.admin_auth_enabled else "disabled" }}</td></tr>
                 <tr><td class="px-5 py-3 font-medium">Google OAuth client</td><td class="px-5 py-3">{{ "configured" if settings.google_oauth_configured else "missing" }}</td></tr>
                 <tr><td class="px-5 py-3 font-medium">Owned analytics secret backend</td><td class="px-5 py-3 font-mono text-xs">{{ settings.owned_secret_backend }}</td></tr>
             </tbody>

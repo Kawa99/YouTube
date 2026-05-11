@@ -17,6 +17,7 @@ This directory describes the research-engine evolution of the YouTube tracker.
 - `phase-11-owned-analytics.md` documents owned-channel OAuth metadata, private Studio metrics, retention diagnostics, and 24h/7d/30d experiment checkpoints.
 - `phase-12-ui-ux-restructure.md` documents the task-oriented dashboard, collection, exports, settings, and navigation updates.
 - `phase-13-observability-operations.md` documents dependency health checks, operations visibility, and backup/restore commands.
+- `phase-14-security-compliance.md` documents optional admin auth, secrets rules, and compliance guardrails.
 - `research-engine-prd.md` defines the product requirements for market research and launch validation.
 - `research-schema-map.md` maps the research repository's markdown schemas to app entities and future tables.
 - `adr/` records architecture decisions that should guide implementation.

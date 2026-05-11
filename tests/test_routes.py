@@ -597,6 +597,43 @@ def test_research_operations_pages_render_task_navigation(client):
     assert health_payload["database"]["ok"] is True
 
 
+def test_optional_admin_auth_protects_private_pages(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///:memory:")
+    monkeypatch.setenv("ADMIN_PASSWORD", "correct-password")
+
+    app = create_app()
+    app.config["TESTING"] = True
+
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+        with app.test_client() as test_client:
+            protected_response = test_client.get("/dashboard")
+            assert protected_response.status_code == 302
+            assert "/login" in protected_response.headers["Location"]
+
+            health_response = test_client.get("/healthz")
+            assert health_response.status_code in {200, 503}
+
+            bad_login = test_client.post(
+                "/login",
+                data={"password": "wrong-password", "next": "/dashboard"},
+                follow_redirects=True,
+            )
+            assert bad_login.status_code == 200
+            assert "Invalid admin password." in bad_login.get_data(as_text=True)
+
+            good_login = test_client.post(
+                "/login",
+                data={"password": "correct-password", "next": "/dashboard"},
+                follow_redirects=True,
+            )
+            assert good_login.status_code == 200
+            assert "Research Operations" in good_login.get_data(as_text=True)
+        db.session.remove()
+        db.drop_all()
+
+
 def test_labeling_queue_displays_video_context(client):
     with client.application.app_context():
         channel = Channel(channel_username="@label_channel", subscribers=1500)

@@ -37,6 +37,7 @@ The `research-engine` branch is evolving this tracker into a market-research and
 - `docs/phase-11-owned-analytics.md`
 - `docs/phase-12-ui-ux-restructure.md`
 - `docs/phase-13-observability-operations.md`
+- `docs/phase-14-security-compliance.md`
 
 ## 1. Prerequisites
 

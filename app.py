@@ -8,6 +8,7 @@ from flask_socketio import SocketIO, join_room
 from sentry_sdk.integrations.flask import FlaskIntegration
 
 from models import db
+from security import register_security
 
 migrate = Migrate()
 socketio = None
@@ -61,6 +62,7 @@ def create_app():
     else:
         limiter = NoopLimiter()
 
+    register_security(app)
     from routes import register_routes
 
     register_routes(app, limiter)

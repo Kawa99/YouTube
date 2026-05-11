@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Login - YouTube Tracker{% endblock %}
+
+{% block content %}
+<section class="mx-auto max-w-md space-y-6">
+    <header>
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Private Access</p>
+        <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">Admin Login</h1>
+    </header>
+
+    <form method="post" action="{{ url_for('login') }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <input type="hidden" name="next" value="{{ next_url or url_for('dashboard') }}">
+        <label class="block">
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Password</span>
+            <input name="password" type="password" required autocomplete="current-password" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+        </label>
+        <div class="mt-4 flex justify-end">
+            <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Sign in</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

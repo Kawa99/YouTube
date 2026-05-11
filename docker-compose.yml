@@ -11,6 +11,8 @@ services:
       DATABASE_URL: postgresql://baroo:baroo_pass@db:5432/baroo_db
       RQ_QUEUE_NAME: ${RQ_QUEUE_NAME:-channel-scrape}
       SECRET_KEY: ${SECRET_KEY:-change-this-in-real-environments}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
       CHANNEL_JOB_TIMEOUT_SECONDS: ${CHANNEL_JOB_TIMEOUT_SECONDS:-7200}
       CHANNEL_JOB_RESULT_TTL_SECONDS: ${CHANNEL_JOB_RESULT_TTL_SECONDS:-86400}
@@ -47,6 +49,8 @@ services:
       DATABASE_URL: postgresql://baroo:baroo_pass@db:5432/baroo_db
       RQ_QUEUE_NAME: ${RQ_QUEUE_NAME:-channel-scrape}
       SECRET_KEY: ${SECRET_KEY:-change-this-in-real-environments}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
       CHANNEL_JOB_TIMEOUT_SECONDS: ${CHANNEL_JOB_TIMEOUT_SECONDS:-7200}
       CHANNEL_JOB_RESULT_TTL_SECONDS: ${CHANNEL_JOB_RESULT_TTL_SECONDS:-86400}
@@ -81,6 +85,8 @@ services:
       DATABASE_URL: postgresql://baroo:baroo_pass@db:5432/baroo_db
       RQ_QUEUE_NAME: ${RQ_QUEUE_NAME:-channel-scrape}
       SECRET_KEY: ${SECRET_KEY:-change-this-in-real-environments}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
       CHANNEL_JOB_TIMEOUT_SECONDS: ${CHANNEL_JOB_TIMEOUT_SECONDS:-7200}
       CHANNEL_JOB_RESULT_TTL_SECONDS: ${CHANNEL_JOB_RESULT_TTL_SECONDS:-86400}

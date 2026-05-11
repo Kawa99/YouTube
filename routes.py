@@ -168,6 +168,10 @@ def register_routes(app, limiter):
                 "redis_url": os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
                 "database_url_configured": bool(os.environ.get("DATABASE_URL")),
                 "rq_queue_name": os.environ.get("RQ_QUEUE_NAME", "channel-scrape"),
+                "admin_auth_enabled": bool(
+                    os.environ.get("ADMIN_PASSWORD")
+                    or os.environ.get("ADMIN_PASSWORD_HASH")
+                ),
                 "google_oauth_configured": bool(
                     os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
                     and os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
