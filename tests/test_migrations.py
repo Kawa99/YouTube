@@ -2,6 +2,33 @@ import os
 import subprocess
 import sys
 
+from sqlalchemy import create_engine, inspect
+
+EXPECTED_INDEXES = {
+    "channels": {"ix_channels_published_at"},
+    "videos": {"ix_videos_youtube_video_id", "ix_videos_published_at"},
+    "video_snapshots": {
+        "ix_video_snapshots_collection_run_id",
+        "ix_video_snapshots_snapshot_at",
+        "ix_video_snapshots_video_snapshot_at",
+    },
+    "channel_snapshots": {
+        "ix_channel_snapshots_collection_run_id",
+        "ix_channel_snapshots_snapshot_at",
+        "ix_channel_snapshots_channel_snapshot_at",
+    },
+    "video_labels": {
+        "ix_video_labels_niche",
+        "ix_video_labels_format",
+        "ix_video_labels_niche_format",
+    },
+    "video_derived_metrics": {
+        "ix_video_derived_metrics_snapshot_at",
+        "ix_video_derived_metrics_outlier_flag",
+        "ix_video_derived_metrics_outlier_relative",
+    },
+}
+
 
 def test_alembic_upgrade_reaches_head(tmp_path):
     db_path = tmp_path / "migration-smoke.db"
@@ -24,3 +51,14 @@ def test_alembic_upgrade_reaches_head(tmp_path):
 
     assert result.returncode == 0, result.stderr
     assert db_path.exists()
+
+    engine = create_engine(f"sqlite:///{db_path}")
+    inspector = inspect(engine)
+    try:
+        for table_name, expected_index_names in EXPECTED_INDEXES.items():
+            actual_index_names = {
+                index["name"] for index in inspector.get_indexes(table_name)
+            }
+            assert expected_index_names <= actual_index_names
+    finally:
+        engine.dispose()

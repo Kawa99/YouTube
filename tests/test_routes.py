@@ -196,6 +196,39 @@ def test_api_data_sorts_by_like_and_comment_rate(client):
     assert comment_rate_items[0]["comment_rate"] == 30.0
 
 
+def test_api_data_paginates_large_video_fixture(client):
+    with client.application.app_context():
+        channel = Channel(channel_username="@large_fixture_channel", subscribers=1000)
+        db.session.add(channel)
+        db.session.flush()
+        db.session.bulk_save_objects(
+            [
+                Video(
+                    youtube_video_id=f"large_fixture_{index}",
+                    title=f"Large fixture {index}",
+                    views=index,
+                    likes=index % 100,
+                    comments=index % 10,
+                    channel_id=channel.id,
+                )
+                for index in range(10_000)
+            ]
+        )
+        db.session.commit()
+
+    response = client.get(
+        "/api/data?page=2&limit=25&sort_column=views&sort_direction=desc"
+    )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["videos"]["pagination"]["total_items"] == 10_000
+    assert payload["videos"]["pagination"]["current_page"] == 2
+    assert len(payload["videos"]["items"]) == 25
+    assert payload["videos"]["items"][0]["views"] == 9974
+    assert payload["videos"]["items"][-1]["views"] == 9950
+
+
 def test_single_video_scraper_displays_engagement_rates(client, monkeypatch):
     monkeypatch.setattr(routes, "YOUTUBE_API_KEY", "test-api-key")
     monkeypatch.setattr(

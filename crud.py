@@ -78,7 +78,7 @@ def _collection_run_id(data):
     return _optional_int(data.get("collection_run_id"))
 
 
-def save_video(data):
+def save_video(data, commit=True):
     """Idempotently upsert video data and append snapshot history rows."""
     youtube_video_id = data.get("youtube_video_id")
     if not youtube_video_id:
@@ -324,7 +324,10 @@ def save_video(data):
             )
         )
 
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
         return {"video_id": video.id, "created": created}
     except Exception as e:
         db.session.rollback()

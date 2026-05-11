@@ -45,6 +45,9 @@ CHANNEL_JOB_RESULT_TTL = int(os.environ.get("CHANNEL_JOB_RESULT_TTL_SECONDS", "8
 TRACKED_CHANNEL_MAX_VIDEOS = int(os.environ.get("TRACKED_CHANNEL_MAX_VIDEOS", "50"))
 SOCKETIO_ASYNC_MODE = os.environ.get("SOCKETIO_ASYNC_MODE", "threading")
 YOUTUBE_DAILY_QUOTA_BUDGET = int(os.environ.get("YOUTUBE_DAILY_QUOTA_BUDGET", "10000"))
+VIDEO_SAVE_COMMIT_INTERVAL = max(
+    1, int(os.environ.get("VIDEO_SAVE_COMMIT_INTERVAL", "50"))
+)
 external_sio = SocketIO(
     message_queue=os.environ.get("REDIS_URL"),
     async_mode=SOCKETIO_ASYNC_MODE,
@@ -348,6 +351,50 @@ def _finish_collection_run(
     db.session.commit()
 
 
+def _save_result_counts(save_result):
+    if save_result.get("created"):
+        return 1, 0
+    return 0, 1
+
+
+def _commit_pending_video_saves(pending_saves):
+    if not pending_saves:
+        return 0, 0, 0
+
+    from models import db
+
+    try:
+        db.session.commit()
+        created = 0
+        updated_or_skipped = 0
+        for _, _, save_result in pending_saves:
+            result_created, result_updated = _save_result_counts(save_result)
+            created += result_created
+            updated_or_skipped += result_updated
+        return created, updated_or_skipped, 0
+    except Exception as exc:
+        logger.exception(
+            "Bulk video save commit failed for %s pending rows: %s",
+            len(pending_saves),
+            str(exc),
+        )
+        db.session.rollback()
+
+    created = 0
+    updated_or_skipped = 0
+    failed = 0
+    for video_id, payload, _ in pending_saves:
+        try:
+            retry_result = save_video(payload)
+            result_created, result_updated = _save_result_counts(retry_result)
+            created += result_created
+            updated_or_skipped += result_updated
+        except Exception as exc:
+            logger.exception("Retry save failed for video %s: %s", video_id, str(exc))
+            failed += 1
+    return created, updated_or_skipped, failed
+
+
 def _process_channel_background_impl(
     channel_id: str, max_videos: int
 ) -> Dict[str, int]:
@@ -428,22 +475,35 @@ def _process_channel_background_impl(
         failed_count = 0
         skipped_count = 0
         video_data_by_id = get_videos_data(video_ids)
+        pending_saves = []
 
         for index, video_id in enumerate(video_ids, start=1):
             try:
                 video_data = video_data_by_id.get(video_id)
                 if video_data:
-                    save_result = save_video(
-                        {**video_data, "collection_run_id": collection_run.id}
-                    )
-                    if save_result.get("created"):
-                        processed_count += 1
-                    else:
-                        skipped_count += 1
+                    payload = {**video_data, "collection_run_id": collection_run.id}
+                    save_result = save_video(payload, commit=False)
+                    pending_saves.append((video_id, payload, save_result))
+                    if len(pending_saves) >= VIDEO_SAVE_COMMIT_INTERVAL:
+                        created, updated_or_skipped, failed = (
+                            _commit_pending_video_saves(pending_saves)
+                        )
+                        processed_count += created
+                        skipped_count += updated_or_skipped
+                        failed_count += failed
+                        pending_saves = []
                 else:
                     failed_count += 1
             except Exception as e:
                 logger.exception("An error occurred: %s", str(e))
+                if pending_saves:
+                    created, updated_or_skipped, failed = _commit_pending_video_saves(
+                        pending_saves
+                    )
+                    processed_count += created
+                    skipped_count += updated_or_skipped
+                    failed_count += failed
+                    pending_saves = []
                 failed_count += 1
 
             _update_current_job_meta(
@@ -455,6 +515,14 @@ def _process_channel_background_impl(
                 progress_pct=int((index / total_videos) * 100),
                 message=f"Processing videos ({index}/{total_videos})",
             )
+
+        if pending_saves:
+            created, updated_or_skipped, failed = _commit_pending_video_saves(
+                pending_saves
+            )
+            processed_count += created
+            skipped_count += updated_or_skipped
+            failed_count += failed
 
         summary = {
             "inserted": processed_count,

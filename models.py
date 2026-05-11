@@ -21,7 +21,7 @@ class Channel(db.Model):
     custom_url = db.Column(db.String)
     canonical_url = db.Column(db.String)
     description = db.Column(db.Text)
-    published_at = db.Column(db.DateTime)
+    published_at = db.Column(db.DateTime, index=True)
     subscriber_count = db.Column(db.Integer)
     view_count = db.Column(db.Integer)
     video_count = db.Column(db.Integer)
@@ -65,7 +65,7 @@ class Video(db.Model):
     __tablename__ = "videos"
 
     id = db.Column(db.Integer, primary_key=True)
-    youtube_video_id = db.Column(db.String, unique=True)
+    youtube_video_id = db.Column(db.String, unique=True, index=True)
     youtube_channel_id = db.Column(
         db.String,
         db.ForeignKey("channels.youtube_channel_id"),
@@ -80,7 +80,7 @@ class Video(db.Model):
     likes = db.Column(db.Integer)
     comments = db.Column(db.Integer)
     posted = db.Column(db.String)
-    published_at = db.Column(db.DateTime)
+    published_at = db.Column(db.DateTime, index=True)
     video_length = db.Column(db.String)
     duration_seconds = db.Column(db.Integer)
     category_id = db.Column(db.String)
@@ -256,7 +256,9 @@ class ApiRawPayload(db.Model):
     endpoint = db.Column(db.String, nullable=False)
     external_id = db.Column(db.String, index=True)
     payload_json = db.Column(db.JSON, nullable=False, default=dict)
-    collection_run_id = db.Column(db.Integer, db.ForeignKey("collection_runs.id"))
+    collection_run_id = db.Column(
+        db.Integer, db.ForeignKey("collection_runs.id"), index=True
+    )
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     collection_run = db.relationship("CollectionRun", back_populates="raw_payloads")
@@ -264,15 +266,22 @@ class ApiRawPayload(db.Model):
 
 class VideoSnapshot(db.Model):
     __tablename__ = "video_snapshots"
+    __table_args__ = (
+        db.Index("ix_video_snapshots_video_snapshot_at", "video_id", "snapshot_at"),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
-    snapshot_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    video_id = db.Column(
+        db.Integer, db.ForeignKey("videos.id"), nullable=False, index=True
+    )
+    snapshot_at = db.Column(db.DateTime, nullable=False, default=utc_now, index=True)
     view_count = db.Column(db.Integer, nullable=False, default=0)
     like_count = db.Column(db.Integer, nullable=False, default=0)
     comment_count = db.Column(db.Integer, nullable=False, default=0)
     subscriber_count_at_snapshot = db.Column(db.Integer)
-    collection_run_id = db.Column(db.Integer, db.ForeignKey("collection_runs.id"))
+    collection_run_id = db.Column(
+        db.Integer, db.ForeignKey("collection_runs.id"), index=True
+    )
 
     video = db.relationship("Video", back_populates="snapshots")
     collection_run = db.relationship("CollectionRun", back_populates="video_snapshots")
@@ -280,14 +289,23 @@ class VideoSnapshot(db.Model):
 
 class ChannelSnapshot(db.Model):
     __tablename__ = "channel_snapshots"
+    __table_args__ = (
+        db.Index(
+            "ix_channel_snapshots_channel_snapshot_at", "channel_id", "snapshot_at"
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    channel_id = db.Column(db.Integer, db.ForeignKey("channels.id"), nullable=False)
-    snapshot_at = db.Column(db.DateTime, nullable=False, default=utc_now)
+    channel_id = db.Column(
+        db.Integer, db.ForeignKey("channels.id"), nullable=False, index=True
+    )
+    snapshot_at = db.Column(db.DateTime, nullable=False, default=utc_now, index=True)
     subscriber_count = db.Column(db.Integer, nullable=False, default=0)
     view_count = db.Column(db.Integer)
     video_count = db.Column(db.Integer)
-    collection_run_id = db.Column(db.Integer, db.ForeignKey("collection_runs.id"))
+    collection_run_id = db.Column(
+        db.Integer, db.ForeignKey("collection_runs.id"), index=True
+    )
 
     channel = db.relationship("Channel", back_populates="snapshots")
     collection_run = db.relationship(
@@ -304,7 +322,9 @@ class VideoMetadataChange(db.Model):
     old_value = db.Column(db.Text)
     new_value = db.Column(db.Text)
     changed_at = db.Column(db.DateTime, nullable=False, default=utc_now)
-    collection_run_id = db.Column(db.Integer, db.ForeignKey("collection_runs.id"))
+    collection_run_id = db.Column(
+        db.Integer, db.ForeignKey("collection_runs.id"), index=True
+    )
 
     video = db.relationship("Video", back_populates="metadata_changes")
     collection_run = db.relationship("CollectionRun", back_populates="metadata_changes")
@@ -312,11 +332,14 @@ class VideoMetadataChange(db.Model):
 
 class VideoLabel(db.Model):
     __tablename__ = "video_labels"
+    __table_args__ = (db.Index("ix_video_labels_niche_format", "niche", "format"),)
 
     id = db.Column(db.Integer, primary_key=True)
-    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
-    niche = db.Column(db.String)
-    format = db.Column(db.String)
+    video_id = db.Column(
+        db.Integer, db.ForeignKey("videos.id"), nullable=False, index=True
+    )
+    niche = db.Column(db.String, index=True)
+    format = db.Column(db.String, index=True)
     faceless_status = db.Column(db.String)
     ai_use_visible = db.Column(db.String)
     visual_style = db.Column(db.String)
@@ -368,11 +391,20 @@ class VideoLabelAudit(db.Model):
 
 class ChannelLabel(db.Model):
     __tablename__ = "channel_labels"
+    __table_args__ = (
+        db.Index(
+            "ix_channel_labels_primary_niche_format",
+            "primary_niche",
+            "primary_format",
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    channel_id = db.Column(db.Integer, db.ForeignKey("channels.id"), nullable=False)
-    primary_niche = db.Column(db.String)
-    primary_format = db.Column(db.String)
+    channel_id = db.Column(
+        db.Integer, db.ForeignKey("channels.id"), nullable=False, index=True
+    )
+    primary_niche = db.Column(db.String, index=True)
+    primary_format = db.Column(db.String, index=True)
     faceless_status = db.Column(db.String)
     sponsor_fit = db.Column(db.String)
     policy_risk = db.Column(db.String)
@@ -386,10 +418,19 @@ class ChannelLabel(db.Model):
 
 class VideoDerivedMetric(db.Model):
     __tablename__ = "video_derived_metrics"
+    __table_args__ = (
+        db.Index(
+            "ix_video_derived_metrics_outlier_relative",
+            "outlier_flag",
+            "relative_performance",
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
-    video_id = db.Column(db.Integer, db.ForeignKey("videos.id"), nullable=False)
-    snapshot_at = db.Column(db.DateTime, nullable=False)
+    video_id = db.Column(
+        db.Integer, db.ForeignKey("videos.id"), nullable=False, index=True
+    )
+    snapshot_at = db.Column(db.DateTime, nullable=False, index=True)
     age_days = db.Column(db.Float)
     views_per_day = db.Column(db.Float)
     views_per_subscriber = db.Column(db.Float)
@@ -397,7 +438,7 @@ class VideoDerivedMetric(db.Model):
     relative_performance = db.Column(db.Float)
     duration_bucket = db.Column(db.String)
     performance_tier = db.Column(db.String)
-    outlier_flag = db.Column(db.Boolean, nullable=False, default=False)
+    outlier_flag = db.Column(db.Boolean, nullable=False, default=False, index=True)
     like_rate = db.Column(db.Float)
     comment_rate = db.Column(db.Float)
     engagement_rate = db.Column(db.Float)
