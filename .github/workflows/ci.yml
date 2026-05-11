@@ -4,9 +4,9 @@ name: Continuous Integration
 # or when you open a Pull Request.
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "research-engine" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "research-engine" ]
 
 jobs:
   test:

@@ -19,6 +19,7 @@ This directory describes the research-engine evolution of the YouTube tracker.
 - `phase-13-observability-operations.md` documents dependency health checks, operations visibility, and backup/restore commands.
 - `phase-14-security-compliance.md` documents optional admin auth, secrets rules, and compliance guardrails.
 - `phase-15-performance-scale.md` documents scale indexes, chunked collection commits, pagination expectations, and thumbnail-cache policy.
+- `phase-16-testing-strategy.md` documents unit, integration, contract, migration, and UI test coverage.
 - `research-engine-prd.md` defines the product requirements for market research and launch validation.
 - `research-schema-map.md` maps the research repository's markdown schemas to app entities and future tables.
 - `adr/` records architecture decisions that should guide implementation.

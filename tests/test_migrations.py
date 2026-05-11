@@ -62,3 +62,46 @@ def test_alembic_upgrade_reaches_head(tmp_path):
             assert expected_index_names <= actual_index_names
     finally:
         engine.dispose()
+
+
+def test_alembic_can_downgrade_last_revision(tmp_path):
+    db_path = tmp_path / "migration-downgrade.db"
+    env = {
+        **os.environ,
+        "DATABASE_URL": f"sqlite:///{db_path}",
+        "FLASK_APP": "app.py",
+        "SOCKETIO_ASYNC_MODE": "threading",
+    }
+
+    upgrade = subprocess.run(  # nosec B603
+        [sys.executable, "-m", "flask", "db", "upgrade"],
+        cwd=os.getcwd(),
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert upgrade.returncode == 0, upgrade.stderr
+
+    downgrade = subprocess.run(  # nosec B603
+        [sys.executable, "-m", "flask", "db", "downgrade", "3d4e5f607182"],
+        cwd=os.getcwd(),
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert downgrade.returncode == 0, downgrade.stderr
+
+    engine = create_engine(f"sqlite:///{db_path}")
+    inspector = inspect(engine)
+    try:
+        video_index_names = {
+            index["name"] for index in inspector.get_indexes("video_derived_metrics")
+        }
+        assert "ix_video_derived_metrics_outlier_relative" not in video_index_names
+        assert inspector.has_table("owned_video_analytics")
+    finally:
+        engine.dispose()

@@ -39,6 +39,7 @@ The `research-engine` branch is evolving this tracker into a market-research and
 - `docs/phase-13-observability-operations.md`
 - `docs/phase-14-security-compliance.md`
 - `docs/phase-15-performance-scale.md`
+- `docs/phase-16-testing-strategy.md`
 
 ## 1. Prerequisites
 

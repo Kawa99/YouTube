@@ -1,0 +1,40 @@
+{
+  "kind": "youtube#videoListResponse",
+  "etag": "fixture-video-list",
+  "items": [
+    {
+      "kind": "youtube#video",
+      "etag": "fixture-video",
+      "id": "dQw4w9WgXcQ",
+      "snippet": {
+        "publishedAt": "2009-10-25T06:57:33Z",
+        "channelId": "UC38IQsAvIsxxjztdMZQtwHA",
+        "title": "Never Gonna Give You Up",
+        "description": "Official music video fixture.",
+        "thumbnails": {
+          "default": {
+            "url": "https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg"
+          },
+          "high": {
+            "url": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
+          }
+        },
+        "categoryId": "10",
+        "defaultLanguage": "en"
+      },
+      "contentDetails": {
+        "duration": "PT3M33S",
+        "caption": "true"
+      },
+      "statistics": {
+        "viewCount": "12345",
+        "likeCount": "678",
+        "commentCount": "90"
+      }
+    }
+  ],
+  "pageInfo": {
+    "totalResults": 1,
+    "resultsPerPage": 1
+  }
+}
