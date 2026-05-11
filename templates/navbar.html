@@ -73,6 +73,12 @@
             >
                 Settings
             </a>
+            <a
+                href="{{ url_for('operations_workspace') }}"
+                class="text-sm font-medium transition-colors {% if request.endpoint in ['operations_workspace', 'healthz'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+            >
+                Ops
+            </a>
         </nav>
 
         <div class="flex items-center gap-2 sm:gap-3">
@@ -192,6 +198,12 @@
             class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint == 'settings_workspace' %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
         >
             Settings
+        </a>
+        <a
+            href="{{ url_for('operations_workspace') }}"
+            class="whitespace-nowrap text-sm font-medium transition-colors {% if request.endpoint in ['operations_workspace', 'healthz'] %}text-rose-600 dark:text-rose-400{% else %}text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100{% endif %}"
+        >
+            Ops
         </a>
     </nav>
 </header>

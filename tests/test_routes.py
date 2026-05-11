@@ -581,12 +581,20 @@ def test_research_operations_pages_render_task_navigation(client):
         ("/collect", "Queue channel"),
         ("/exports", "Filtered Research ZIP"),
         ("/settings", "YouTube API key"),
+        ("/operations", "Recent Failures"),
         ("/data?view=channels", "Enterprise Data Viewer"),
         ("/data?view=videos", "Enterprise Data Viewer"),
     ):
         response = client.get(path)
         assert response.status_code == 200
         assert marker in response.get_data(as_text=True)
+
+    health_response = client.get("/healthz")
+    assert health_response.status_code in {200, 503}
+    health_payload = health_response.get_json()
+    assert "database" in health_payload
+    assert "redis" in health_payload
+    assert health_payload["database"]["ok"] is True
 
 
 def test_labeling_queue_displays_video_context(client):

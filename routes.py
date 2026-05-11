@@ -39,6 +39,7 @@ from owned_analytics import (
     save_owned_analytics,
     save_retention_diagnostic,
 )
+from operations import health_payload, operations_summary
 from packaging_lab import packaging_lab_summary, save_packaging_experiment
 from research_dashboard import research_dashboard_summary
 from rights import (
@@ -176,6 +177,15 @@ def register_routes(app, limiter):
                 ),
             },
         )
+
+    @app.route("/operations", methods=["GET"])
+    def operations_workspace():
+        return render_template("operations.html", operations=operations_summary())
+
+    @app.route("/healthz", methods=["GET"])
+    def healthz():
+        payload = health_payload()
+        return jsonify(payload), 200 if payload["ok"] else 503
 
     @app.route("/", methods=["GET", "POST"])
     @limiter.limit("60 per minute")
