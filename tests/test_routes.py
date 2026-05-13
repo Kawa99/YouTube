@@ -468,6 +468,7 @@ def test_research_zip_export_contains_schema_files_and_filters(client):
     assert response.mimetype == "application/zip"
     with zipfile.ZipFile(io.BytesIO(response.data)) as archive:
         assert set(archive.namelist()) == {
+            "manifest.json",
             "channels.csv",
             "videos.csv",
             "manual_labels.csv",
@@ -493,6 +494,55 @@ def test_research_zip_export_contains_schema_files_and_filters(client):
             "collection_runs.csv",
             "data_dictionary.md",
         }
+        manifest = json.loads(archive.read("manifest.json").decode())
+        assert manifest["schema_version"] == "1.0.0"
+        assert manifest["filters"]["niche"] == "finance"
+        assert {
+            "filename": "videos.csv",
+            "dataset": "videos",
+            "columns": [
+                "video_id",
+                "youtube_video_id",
+                "youtube_channel_id",
+                "channel_username",
+                "channel_name",
+                "title",
+                "description_excerpt",
+                "published_at",
+                "duration_seconds",
+                "category_id",
+                "default_language",
+                "caption_available",
+                "thumbnail_url",
+                "thumbnail_quality",
+                "thumbnail_cached_path",
+                "thumbnail_phash",
+                "transcript_status",
+                "views",
+                "likes",
+                "comments",
+                "last_collected_at",
+                "niche",
+                "format",
+                "faceless_status",
+                "visual_style",
+                "packaging_pattern",
+                "title_pattern",
+                "thumbnail_pattern",
+                "viewer_promise",
+                "curiosity_type",
+                "clarity_score",
+                "specificity_score",
+                "honesty_score",
+                "visual_readability_score",
+                "differentiation_score",
+                "topic_type",
+                "production_complexity",
+                "policy_risk",
+                "review_status",
+                "label_confidence",
+            ],
+        } in manifest["files"]
         videos_csv = archive.read("videos.csv").decode()
         assert "youtube_video_id" in videos_csv
         assert "finance_video" in videos_csv
@@ -558,8 +608,11 @@ def test_research_jsonl_export_filters_outliers(client):
         for line in response.get_data(as_text=True).splitlines()
         if line.strip()
     ]
+    manifest_rows = [row for row in rows if row["dataset"] == "manifest"]
+    assert manifest_rows[0]["schema_version"] == "1.0.0"
     derived_rows = [row for row in rows if row["dataset"] == "derived_metrics"]
     assert len(derived_rows) == 1
+    assert derived_rows[0]["schema_version"] == "1.0.0"
     assert derived_rows[0]["youtube_video_id"] == "jsonl_outlier"
 
 

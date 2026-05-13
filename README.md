@@ -222,6 +222,8 @@ Use `/exports` for:
 
 Research ZIP contains schema-aligned CSV files plus generated `data_dictionary.md`. See `docs/data-dictionary.md` for the stable export map.
 
+The research export contract is versioned. ZIP exports include `manifest.json`; JSONL rows include `schema_version`. See `docs/export-import-contract.md` before building import scripts or citing dataset snapshots in the research repo.
+
 Null handling:
 
 - CSV exports serialize nulls as empty cells.
@@ -297,6 +299,7 @@ Start here:
 - `docs/research-engine-prd.md`
 - `docs/research-workflow.md`
 - `docs/data-dictionary.md`
+- `docs/export-import-contract.md`
 - `docs/operations.md`
 - `docs/research-schema-map.md`
 - `docs/adr/`
@@ -317,3 +320,4 @@ Start here:
 - `docs/phase-15-performance-scale.md`
 - `docs/phase-16-testing-strategy.md`
 - `docs/phase-17-documentation.md`
+- `docs/phase-18-research-repo-integration.md`

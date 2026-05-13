@@ -3,7 +3,7 @@ import io
 import json
 import tempfile
 import zipfile
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from openpyxl import Workbook
 from sqlalchemy import text
@@ -83,7 +83,13 @@ TABLE_SELECT_QUERIES = {
     "video_metadata_history": "SELECT * FROM video_metadata_history",
 }
 DB_FETCH_CHUNK_SIZE = 1000
+RESEARCH_EXPORT_SCHEMA_VERSION = "1.0.0"
+RESEARCH_EXPORT_NULL_HANDLING = "CSV nulls are empty cells; JSONL nulls are JSON null."
+RESEARCH_EXPORT_DATE_FORMAT = (
+    "ISO 8601 strings; datetimes are serialized by Python isoformat()."
+)
 RESEARCH_ZIP_FILES = (
+    "manifest.json",
     "channels.csv",
     "videos.csv",
     "manual_labels.csv",
@@ -745,6 +751,12 @@ def build_research_zip_file(filters=None):
         temp_file_path, "w", compression=zipfile.ZIP_DEFLATED
     ) as archive:
         for filename in RESEARCH_ZIP_FILES:
+            if filename == "manifest.json":
+                archive.writestr(
+                    filename,
+                    json.dumps(_research_export_manifest(filters), indent=2) + "\n",
+                )
+                continue
             if filename == "data_dictionary.md":
                 archive.writestr(filename, generate_data_dictionary_markdown())
                 continue
@@ -758,34 +770,26 @@ def build_research_zip_file(filters=None):
 
 def stream_research_jsonl(filters=None):
     filters = filters or {}
-    for dataset in (
-        "channels",
-        "videos",
-        "manual_labels",
-        "snapshots",
-        "derived_metrics",
-        "content_theses",
-        "thesis_evidence",
-        "thesis_topics",
-        "thesis_scores",
-        "red_team_reviews",
-        "thesis_monetization_maps",
-        "sponsor_evidence",
-        "affiliate_product_evidence",
-        "assets",
-        "video_assets",
-        "video_rights_checklists",
-        "video_disclosures",
-        "owned_analytics_credentials",
-        "owned_video_analytics",
-        "retention_diagnostics",
-        "experiments",
-        "experiment_checkpoints",
-        "collection_runs",
-    ):
+    yield (
+        json.dumps(
+            {
+                "dataset": "manifest",
+                "schema_version": RESEARCH_EXPORT_SCHEMA_VERSION,
+                "manifest": _research_export_manifest(filters),
+            },
+            default=_serialize_value,
+        )
+        + "\n"
+    )
+    for dataset in RESEARCH_HEADERS:
         for row in iter_research_rows(dataset, filters):
             yield json.dumps(
-                {"dataset": dataset, **row}, default=_serialize_value
+                {
+                    "dataset": dataset,
+                    "schema_version": RESEARCH_EXPORT_SCHEMA_VERSION,
+                    **row,
+                },
+                default=_serialize_value,
             ) + "\n"
 
 
@@ -803,6 +807,7 @@ def iter_research_rows(dataset, filters=None):
 def generate_data_dictionary_markdown():
     buffer = io.StringIO()
     buffer.write("# Research Export Data Dictionary\n\n")
+    buffer.write(f"Schema version: `{RESEARCH_EXPORT_SCHEMA_VERSION}`\n\n")
     buffer.write(
         "| file | field | type | description | source table | layer | allowed labels |\n"
     )
@@ -810,6 +815,41 @@ def generate_data_dictionary_markdown():
     for row in _data_dictionary_rows():
         buffer.write("| " + " | ".join(_markdown_cell(value) for value in row) + " |\n")
     return buffer.getvalue()
+
+
+def _research_export_manifest(filters):
+    active_filters = {
+        key: _serialize_value(value)
+        for key, value in filters.items()
+        if value is not None and value != ""
+    }
+    return {
+        "schema_version": RESEARCH_EXPORT_SCHEMA_VERSION,
+        "generated_at": datetime.now(UTC).isoformat(),
+        "files": [
+            {
+                "filename": f"{dataset}.csv",
+                "dataset": dataset,
+                "columns": headers,
+            }
+            for dataset, headers in RESEARCH_HEADERS.items()
+        ],
+        "supporting_files": [
+            "manifest.json",
+            "data_dictionary.md",
+        ],
+        "filters": active_filters,
+        "null_handling": RESEARCH_EXPORT_NULL_HANDLING,
+        "date_format": RESEARCH_EXPORT_DATE_FORMAT,
+        "jsonl_contract": {
+            "one_object_per_line": True,
+            "metadata_row": "First row has dataset=manifest.",
+            "required_fields": [
+                "dataset",
+                "schema_version",
+            ],
+        },
+    }
 
 
 def _data_dictionary_rows():
