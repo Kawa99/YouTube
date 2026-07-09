@@ -31,8 +31,8 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./data:/app/data:Z
-      - ./migrations:/app/migrations:Z
+      - ./data:/app/data:z
+      - ./migrations:/app/migrations:z
     depends_on:
       - redis
       - db
@@ -71,8 +71,8 @@ services:
       - redis
       - db
     volumes:
-      - ./data:/app/data:Z
-      - ./migrations:/app/migrations:Z
+      - ./data:/app/data:z
+      - ./migrations:/app/migrations:z
     restart: unless-stopped
 
   scheduler:
@@ -109,8 +109,8 @@ services:
       - redis
       - db
     volumes:
-      - ./data:/app/data:Z
-      - ./migrations:/app/migrations:Z
+      - ./data:/app/data:z
+      - ./migrations:/app/migrations:z
     command: python scheduler.py
     restart: unless-stopped
 

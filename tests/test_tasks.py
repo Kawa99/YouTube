@@ -106,6 +106,12 @@ def test_process_channel_background_batches_and_records_collection_run(
             for video_id in video_ids
         },
     )
+    job_meta_updates = []
+    monkeypatch.setattr(
+        tasks,
+        "_update_current_job_meta",
+        lambda **updates: job_meta_updates.append(updates),
+    )
 
     with app.app_context():
         summary = tasks._process_channel_background_impl("UC123", 2)
@@ -127,3 +133,8 @@ def test_process_channel_background_batches_and_records_collection_run(
         assert {
             snapshot.collection_run_id for snapshot in VideoSnapshot.query.all()
         } == {collection_run.id}
+        final_update = job_meta_updates[-1]
+        assert final_update["processed"] == 2
+        assert final_update["skipped"] == 0
+        assert final_update["failed"] == 0
+        assert final_update["inserted"] == 2

@@ -530,6 +530,12 @@ def _process_channel_background_impl(
             "failed": failed_count,
             "total_videos": total_videos,
         }
+        final_job_meta = {
+            **summary,
+            "processed": processed_count,
+            "skipped": skipped_count,
+            "failed": failed_count,
+        }
         _finish_collection_run(
             collection_run.id,
             status="completed" if failed_count == 0 else "partial",
@@ -545,7 +551,7 @@ def _process_channel_background_impl(
                 "Channel processing complete. "
                 f"Inserted: {processed_count}, Updated/Skipped: {skipped_count}, Failed: {failed_count}."
             ),
-            **summary,
+            **final_job_meta,
         )
         return summary
     except Exception as e:

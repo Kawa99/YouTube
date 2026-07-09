@@ -2,7 +2,7 @@ services:
   web:
     volumes:
       - ./:/app
-      - ./data:/app/data:Z
+      - ./data:/app/data:z
     environment:
       FLASK_DEBUG: "1"
     command: flask --app app run --host=0.0.0.0 --port=5000 --debug
@@ -10,9 +10,9 @@ services:
   worker:
     volumes:
       - ./:/app
-      - ./data:/app/data:Z
+      - ./data:/app/data:z
 
   scheduler:
     volumes:
       - ./:/app
-      - ./data:/app/data:Z
+      - ./data:/app/data:z
