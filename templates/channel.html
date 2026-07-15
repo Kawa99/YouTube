@@ -60,9 +60,9 @@
             <article class="rounded-2xl border border-amber-200 border-l-4 border-l-amber-500 bg-amber-50/85 p-5 dark:border-amber-900/70 dark:border-l-amber-400 dark:bg-amber-950/25">
                 <h2 class="text-sm font-semibold text-amber-900 dark:text-amber-200">Operational Notes</h2>
                 <ul class="mt-3 space-y-1.5 text-sm text-amber-800 dark:text-amber-100/90">
-                    <li>Large batch sizes increase runtime because each video triggers multiple API requests.</li>
-                    <li>Some videos can fail due to privacy settings or unavailable transcripts.</li>
-                    <li>Progress updates are polled live while processing continues in the background worker.</li>
+                    <li>Video metadata is fetched in batches of up to 50 IDs per API call.</li>
+                    <li>Transcripts are skipped unless transcript collection is explicitly enabled.</li>
+                    <li>Progress, quota estimate, and collection-run ID are updated while the worker runs.</li>
                 </ul>
             </article>
         </aside>
@@ -76,6 +76,7 @@
         </div>
 
         <p id="job-message" class="mt-3 text-sm text-slate-600 dark:text-slate-300">Waiting for worker...</p>
+        <p id="job-quota-warning" class="mt-2 hidden text-sm font-medium text-amber-700 dark:text-amber-300"></p>
 
         <div class="mt-5">
             <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
@@ -110,6 +111,16 @@
             <span class="font-medium text-slate-700 dark:text-slate-200">Current video:</span>
             <code id="job-current" class="ml-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200">-</code>
         </p>
+        <div class="mt-3 flex flex-wrap gap-3 text-sm text-slate-600 dark:text-slate-300">
+            <span>
+                <span class="font-medium text-slate-700 dark:text-slate-200">Run:</span>
+                <code id="job-run-id" class="ml-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200">-</code>
+            </span>
+            <span>
+                <span class="font-medium text-slate-700 dark:text-slate-200">Quota estimate:</span>
+                <code id="job-quota" class="ml-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200">-</code>
+            </span>
+        </div>
     </section>
     {% endif %}
 </section>
@@ -133,6 +144,9 @@
         const failedEl = document.getElementById("job-failed");
         const skippedEl = document.getElementById("job-skipped");
         const currentEl = document.getElementById("job-current");
+        const runIdEl = document.getElementById("job-run-id");
+        const quotaEl = document.getElementById("job-quota");
+        const quotaWarningEl = document.getElementById("job-quota-warning");
         const terminalStatuses = new Set(["completed", "failed"]);
         const pollIntervalMs = 2000;
         const initialJob = {{ job|tojson }};
@@ -187,6 +201,16 @@
             }
             if (data.current_video_id !== undefined) {
                 currentEl.textContent = data.current_video_id || "-";
+            }
+            if (data.collection_run_id !== undefined) {
+                runIdEl.textContent = data.collection_run_id || "-";
+            }
+            if (data.quota_estimate !== undefined) {
+                quotaEl.textContent = data.quota_estimate || "-";
+            }
+            if (data.quota_warning) {
+                quotaWarningEl.textContent = data.quota_warning;
+                quotaWarningEl.classList.remove("hidden");
             }
 
             progressBarEl.style.width = `${progress}%`;

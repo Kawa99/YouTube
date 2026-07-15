@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import youtube_api
-from youtube_api import extract_video_id, get_video_data
+from youtube_api import extract_video_id, get_video_data, get_videos_data
 
 
 class FakeResponse:
@@ -51,8 +51,11 @@ def test_get_video_data_parses_expected_dictionary():
                     "description": "Test description",
                     "publishedAt": "2009-10-25T06:57:33Z",
                     "channelId": "UC38IQsAvIsxxjztdMZQtwHA",
+                    "categoryId": "10",
                     "thumbnails": {
-                        "high": {"url": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg"}
+                        "high": {
+                            "url": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg"
+                        }
                     },
                 },
                 "statistics": {
@@ -60,15 +63,26 @@ def test_get_video_data_parses_expected_dictionary():
                     "likeCount": "678",
                     "commentCount": "90",
                 },
-                "contentDetails": {"duration": "PT3M33S"},
+                "contentDetails": {"duration": "PT3M33S", "caption": "true"},
             }
         ]
     }
     fake_channel_payload = {
         "items": [
             {
-                "snippet": {"customUrl": "@RickAstleyYT"},
-                "statistics": {"subscriberCount": "1000000"},
+                "id": "UC38IQsAvIsxxjztdMZQtwHA",
+                "snippet": {
+                    "customUrl": "@RickAstleyYT",
+                    "title": "Rick Astley",
+                    "description": "Official channel",
+                    "publishedAt": "2009-01-01T00:00:00Z",
+                    "country": "GB",
+                },
+                "statistics": {
+                    "subscriberCount": "1000000",
+                    "viewCount": "500000000",
+                    "videoCount": "200",
+                },
             }
         ]
     }
@@ -89,17 +103,37 @@ def test_get_video_data_parses_expected_dictionary():
     assert mocked_get.call_count == 2
     assert result == {
         "youtube_video_id": "dQw4w9WgXcQ",
+        "youtube_channel_id": "UC38IQsAvIsxxjztdMZQtwHA",
         "title": "Never Gonna Give You Up",
         "description": "Test description",
+        "description_full": "Test description",
         "thumbnail_url": "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+        "thumbnail_quality": "high",
         "views": "12345",
         "likes": "678",
         "comments": "90",
         "posted": "2009-10-25",
+        "published_at": "2009-10-25T06:57:33Z",
         "channel_username": "@RickAstleyYT",
         "subscribers": "1000000",
         "video_length": "0:03:33",
+        "duration_seconds": 213,
+        "category_id": "10",
+        "default_language": "",
+        "caption_available": True,
         "transcript": "Mock transcript",
+        "transcript_text": "Mock transcript",
+        "transcript_status": "available",
+        "channel_name": "Rick Astley",
+        "handle": "@RickAstleyYT",
+        "custom_url": "@RickAstleyYT",
+        "canonical_url": "https://www.youtube.com/channel/UC38IQsAvIsxxjztdMZQtwHA",
+        "channel_description": "Official channel",
+        "channel_published_at": "2009-01-01T00:00:00Z",
+        "channel_view_count": "500000000",
+        "channel_video_count": "200",
+        "country": "GB",
+        "channel_default_language": "",
     }
 
 
@@ -156,7 +190,9 @@ def test_get_video_data_success(mock_youtube_api_get, mock_get_transcript):
     assert result["channel_username"] == "@TestChannel"
     assert result["subscribers"] == "5000"
     assert result["video_length"] == "1:02:10"
+    assert result["duration_seconds"] == 3730
     assert result["transcript"] == "Mocked transcript text"
+    assert result["transcript_status"] == "available"
 
 
 @patch("youtube_api.get_transcript")
@@ -196,8 +232,9 @@ def test_get_video_data_missing_fields(mock_youtube_api_get, mock_get_transcript
     assert result["comments"] in (0, "0")
     assert result["posted"] == ""
     assert result["channel_username"] == "@UC123"
-    assert result["subscribers"] == "0"
+    assert result["subscribers"] in (0, "0")
     assert result["transcript"] == "Transcript unavailable or disabled by the uploader."
+    assert result["transcript_status"] == "unavailable"
 
 
 @patch("youtube_api.get_transcript")
@@ -209,3 +246,63 @@ def test_get_video_data_invalid_id(mock_youtube_api_get, mock_get_transcript):
     result = get_video_data("invalid_id")
 
     assert result is None
+
+
+@patch("youtube_api.get_transcript")
+@patch("youtube_api.youtube_api_get")
+def test_get_videos_data_batches_video_and_channel_requests(
+    mock_youtube_api_get, mock_get_transcript
+):
+    video_ids = [f"video_{index}" for index in range(55)]
+
+    def mock_api_side_effect(endpoint, params):
+        if endpoint == "videos":
+            ids = params["id"].split(",")
+            return {
+                "items": [
+                    {
+                        "id": video_id,
+                        "snippet": {
+                            "title": f"Video {video_id}",
+                            "description": "",
+                            "channelId": f"UC_{int(index / 10)}",
+                            "publishedAt": "2026-01-01T00:00:00Z",
+                        },
+                        "statistics": {"viewCount": "100"},
+                        "contentDetails": {"duration": "PT1M"},
+                    }
+                    for index, video_id in enumerate(ids)
+                ]
+            }
+        if endpoint == "channels":
+            ids = params["id"].split(",")
+            return {
+                "items": [
+                    {
+                        "id": channel_id,
+                        "snippet": {"customUrl": f"@{channel_id}"},
+                        "statistics": {"subscriberCount": "1000"},
+                    }
+                    for channel_id in ids
+                ]
+            }
+        return {}
+
+    mock_youtube_api_get.side_effect = mock_api_side_effect
+    mock_get_transcript.return_value = "unused"
+
+    results = get_videos_data(video_ids, include_transcripts=False)
+
+    video_calls = [
+        call for call in mock_youtube_api_get.call_args_list if call.args[0] == "videos"
+    ]
+    channel_calls = [
+        call
+        for call in mock_youtube_api_get.call_args_list
+        if call.args[0] == "channels"
+    ]
+    assert len(video_calls) == 2
+    assert len(channel_calls) == 1
+    assert len(results) == 55
+    assert results["video_54"]["channel_username"].startswith("@UC_")
+    mock_get_transcript.assert_not_called()

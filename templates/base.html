@@ -72,9 +72,18 @@
                         <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Simple analytics for videos, channels, and history snapshots.</p>
                     </div>
                     <nav class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm" aria-label="Footer navigation">
-                        <a href="{{ url_for('index') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Single Video</a>
-                        <a href="{{ url_for('channel_scraper') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Channel Scraper</a>
-                        <a href="{{ url_for('data_viewer') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Data Viewer</a>
+                        <a href="{{ url_for('dashboard') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Dashboard</a>
+                        <a href="{{ url_for('collect_workspace') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Collect</a>
+                        <a href="{{ url_for('data_viewer', view='channels') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Channels</a>
+                        <a href="{{ url_for('data_viewer', view='videos') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Videos</a>
+                        <a href="{{ url_for('market_analysis') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Analysis</a>
+                        <a href="{{ url_for('packaging_lab') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Packaging</a>
+                        <a href="{{ url_for('theses_workspace') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Theses</a>
+                        <a href="{{ url_for('rights_workspace') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Rights</a>
+                        <a href="{{ url_for('owned_analytics_workspace') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Experiments</a>
+                        <a href="{{ url_for('exports_workspace') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Exports</a>
+                        <a href="{{ url_for('settings_workspace') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Settings</a>
+                        <a href="{{ url_for('operations_workspace') }}" class="text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100">Ops</a>
                     </nav>
                 </div>
                 <div class="mt-4 flex items-center justify-between border-t border-slate-200/80 pt-4 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">

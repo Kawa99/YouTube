@@ -2,7 +2,7 @@ from flask import Flask
 import pytest
 
 import tasks
-from models import Channel, db
+from models import ApiRawPayload, Channel, CollectionRun, Video, VideoSnapshot, db
 
 
 @pytest.fixture
@@ -70,3 +70,71 @@ def test_scrape_tracked_channels_enqueues_only_tracked_channels(
     assert summary["enqueued_jobs"] == 3
     assert summary["failed"] == 0
     assert len(enqueued) == 3
+
+
+def test_process_channel_background_batches_and_records_collection_run(
+    app_and_db, monkeypatch
+):
+    app, _ = app_and_db
+
+    monkeypatch.setattr(
+        tasks,
+        "get_channel_videos_with_metadata",
+        lambda channel_id, max_videos: {
+            "video_ids": ["video_1", "video_2"],
+            "mode": "uploads_playlist",
+            "quota_estimate": 3,
+            "sampling_metadata": {
+                "channelId": channel_id,
+                "playlistId": "UU123",
+                "maxResults": max_videos,
+            },
+        },
+    )
+    monkeypatch.setattr(
+        tasks,
+        "get_videos_data",
+        lambda video_ids: {
+            video_id: {
+                "youtube_video_id": video_id,
+                "youtube_channel_id": "UC123",
+                "channel_username": "@test_channel",
+                "subscribers": 100,
+                "title": f"Title {video_id}",
+                "views": 1000,
+            }
+            for video_id in video_ids
+        },
+    )
+    job_meta_updates = []
+    monkeypatch.setattr(
+        tasks,
+        "_update_current_job_meta",
+        lambda **updates: job_meta_updates.append(updates),
+    )
+
+    with app.app_context():
+        summary = tasks._process_channel_background_impl("UC123", 2)
+
+        assert summary == {
+            "inserted": 2,
+            "updated_or_skipped": 0,
+            "failed": 0,
+            "total_videos": 2,
+        }
+        collection_run = CollectionRun.query.one()
+        assert collection_run.run_type == "channel_uploads"
+        assert collection_run.status == "completed"
+        assert collection_run.items_found == 2
+        assert collection_run.items_saved == 2
+        assert collection_run.quota_estimate == 3
+        assert ApiRawPayload.query.one().endpoint == "sampling_metadata"
+        assert Video.query.count() == 2
+        assert {
+            snapshot.collection_run_id for snapshot in VideoSnapshot.query.all()
+        } == {collection_run.id}
+        final_update = job_meta_updates[-1]
+        assert final_update["processed"] == 2
+        assert final_update["skipped"] == 0
+        assert final_update["failed"] == 0
+        assert final_update["inserted"] == 2

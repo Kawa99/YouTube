@@ -26,8 +26,10 @@ def upgrade():
             server_default=sa.text("false"),
         ),
     )
-    op.alter_column("channels", "is_tracked", server_default=None)
+    with op.batch_alter_table("channels") as batch_op:
+        batch_op.alter_column("is_tracked", server_default=None)
 
 
 def downgrade():
-    op.drop_column("channels", "is_tracked")
+    with op.batch_alter_table("channels") as batch_op:
+        batch_op.drop_column("is_tracked")

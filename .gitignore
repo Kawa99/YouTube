@@ -24,4 +24,6 @@ Thumbs.db  # Windows
 
 # Ignore secrets and runtime data
 .env
+backups/
 data/
+logs/

@@ -12,6 +12,9 @@ class VideoCreateSchema(BaseModel):
     title: str = ""
     description: str = ""
     thumbnail_url: str = ""
+    thumbnail_quality: str = ""
+    thumbnail_cached_path: str = ""
+    thumbnail_phash: str = ""
     views: int = 0
     likes: int = 0
     comments: int = 0

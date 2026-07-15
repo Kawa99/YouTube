@@ -1,0 +1,33 @@
+{
+  "kind": "youtube#channelListResponse",
+  "etag": "fixture-channel-list",
+  "items": [
+    {
+      "kind": "youtube#channel",
+      "etag": "fixture-channel",
+      "id": "UC38IQsAvIsxxjztdMZQtwHA",
+      "snippet": {
+        "title": "Rick Astley",
+        "description": "Official channel fixture.",
+        "customUrl": "@RickAstleyYT",
+        "publishedAt": "2009-01-01T00:00:00Z",
+        "country": "GB",
+        "defaultLanguage": "en"
+      },
+      "contentDetails": {
+        "relatedPlaylists": {
+          "uploads": "UU38IQsAvIsxxjztdMZQtwHA"
+        }
+      },
+      "statistics": {
+        "viewCount": "500000000",
+        "subscriberCount": "1000000",
+        "videoCount": "200"
+      }
+    }
+  ],
+  "pageInfo": {
+    "totalResults": 1,
+    "resultsPerPage": 1
+  }
+}

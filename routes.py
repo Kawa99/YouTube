@@ -2,7 +2,13 @@ import os
 import logging
 
 from crud import save_video
-from export import build_xlsx_export_file, stream_all_tables_csv
+from export import (
+    build_research_zip_file,
+    build_xlsx_export_file,
+    normalize_export_filters,
+    stream_all_tables_csv,
+    stream_research_jsonl,
+)
 from flask import (
     Response,
     after_this_request,
@@ -15,11 +21,53 @@ from flask import (
     stream_with_context,
     url_for,
 )
-from models import Channel, ChannelHistory, Video, VideoHistory, db
+from label_vocabularies import LABEL_VOCABULARIES
+from labeling import (
+    LabelValidationError,
+    bulk_apply_video_label,
+    next_unlabeled_video_id,
+    save_video_label,
+)
+from metrics import compute_derived_metrics, market_analysis_summary
+from owned_analytics import (
+    OwnedAnalyticsValidationError,
+    create_experiment,
+    owned_dashboard,
+    revoke_credential,
+    save_credential,
+    save_experiment_checkpoint,
+    save_owned_analytics,
+    save_retention_diagnostic,
+)
+from operations import health_payload, operations_summary
+from packaging_lab import packaging_lab_summary, save_packaging_experiment
+from research_dashboard import research_dashboard_summary
+from rights import (
+    RightsValidationError,
+    create_asset,
+    link_asset_to_video,
+    rights_dashboard,
+    save_rights_checklist,
+    save_video_disclosure,
+)
+from models import Channel, ChannelHistory, Video, VideoHistory, VideoLabel, db
 from pydantic import ValidationError
 from schemas import VideoCreateSchema
 from sqlalchemy import case, func
 from tasks import RedisError, enqueue_channel_job, get_channel_job
+from theses import (
+    ThesisValidationError,
+    add_affiliate_product_evidence,
+    add_monetization_map,
+    add_red_team_review,
+    add_sponsor_evidence,
+    add_thesis_evidence,
+    add_thesis_score,
+    add_thesis_topic,
+    create_content_thesis,
+    thesis_dashboard,
+    update_thesis_status,
+)
 from youtube_api import (
     YOUTUBE_API_KEY,
     extract_video_id,
@@ -98,6 +146,53 @@ def _safe_percentage_rate(numerator, denominator):
 
 def register_routes(app, limiter):
     """Register application routes."""
+
+    @app.route("/dashboard", methods=["GET"])
+    def dashboard():
+        return render_template("dashboard.html", dashboard=research_dashboard_summary())
+
+    @app.route("/collect", methods=["GET"])
+    def collect_workspace():
+        return render_template("collect.html")
+
+    @app.route("/exports", methods=["GET"])
+    def exports_workspace():
+        return render_template("exports.html")
+
+    @app.route("/settings", methods=["GET"])
+    def settings_workspace():
+        return render_template(
+            "settings.html",
+            settings={
+                "youtube_api_key_configured": bool(YOUTUBE_API_KEY),
+                "redis_url": os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
+                "database_url_configured": bool(os.environ.get("DATABASE_URL")),
+                "rq_queue_name": os.environ.get("RQ_QUEUE_NAME", "channel-scrape"),
+                "video_save_commit_interval": os.environ.get(
+                    "VIDEO_SAVE_COMMIT_INTERVAL", "50"
+                ),
+                "admin_auth_enabled": bool(
+                    os.environ.get("ADMIN_PASSWORD")
+                    or os.environ.get("ADMIN_PASSWORD_HASH")
+                ),
+                "google_oauth_configured": bool(
+                    os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+                    and os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+                ),
+                "owned_secret_backend": os.environ.get(
+                    "OWNED_ANALYTICS_TOKEN_SECRET_BACKEND", "external"
+                ),
+            },
+        )
+
+    @app.route("/operations", methods=["GET"])
+    def operations_workspace():
+        return render_template("operations.html", operations=operations_summary())
+
+    @app.route("/healthz", methods=["GET"])
+    def healthz():
+        payload = health_payload()
+        return jsonify(payload), 200 if payload["ok"] else 503
 
     @app.route("/", methods=["GET", "POST"])
     @limiter.limit("60 per minute")
@@ -257,6 +352,354 @@ def register_routes(app, limiter):
     @app.route("/data")
     def data_viewer():
         return render_template("data_viewer.html")
+
+    @app.route("/analysis", methods=["GET"])
+    def market_analysis():
+        return render_template(
+            "market_analysis.html", analysis=market_analysis_summary()
+        )
+
+    @app.route("/analysis/compute", methods=["POST"])
+    def compute_derived_metrics_route():
+        summary = compute_derived_metrics()
+        flash(
+            "Derived metrics computed for "
+            f"{summary['videos_computed']} videos and "
+            f"{summary['channels_computed']} channels.",
+            "success",
+        )
+        return redirect(url_for("market_analysis"))
+
+    @app.route("/packaging", methods=["GET"])
+    def packaging_lab():
+        niche = request.args.get("niche", "").strip() or None
+        return render_template(
+            "packaging_lab.html",
+            lab=packaging_lab_summary(niche=niche),
+            vocabularies=LABEL_VOCABULARIES,
+        )
+
+    @app.route("/packaging/experiments", methods=["POST"])
+    def create_packaging_experiment_route():
+        try:
+            experiment = save_packaging_experiment(request.form)
+        except ValueError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("packaging_lab"))
+
+        flash(f"Packaging experiment #{experiment.id} saved.", "success")
+        return redirect(url_for("packaging_lab"))
+
+    @app.route("/theses", methods=["GET"])
+    def theses_workspace():
+        selected_id = request.args.get("thesis_id", type=int)
+        return render_template("theses.html", workspace=thesis_dashboard(selected_id))
+
+    @app.route("/theses", methods=["POST"])
+    def create_thesis_route():
+        try:
+            thesis = create_content_thesis(request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("theses_workspace"))
+
+        flash(f"Thesis {thesis.thesis_id} created.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis.id))
+
+    @app.route("/theses/<int:thesis_id>/status", methods=["POST"])
+    def update_thesis_status_route(thesis_id):
+        try:
+            thesis = update_thesis_status(thesis_id, request.form.get("status"))
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+        flash(f"Thesis {thesis.thesis_id} moved to {thesis.status}.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis.id))
+
+    @app.route("/theses/<int:thesis_id>/evidence", methods=["POST"])
+    def add_thesis_evidence_route(thesis_id):
+        try:
+            add_thesis_evidence(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Thesis evidence saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/topics", methods=["POST"])
+    def add_thesis_topic_route(thesis_id):
+        try:
+            add_thesis_topic(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Thesis topic saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/scores", methods=["POST"])
+    def add_thesis_score_route(thesis_id):
+        try:
+            add_thesis_score(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Thesis score saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/monetization", methods=["POST"])
+    def add_monetization_map_route(thesis_id):
+        try:
+            add_monetization_map(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Monetization map saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/sponsor-evidence", methods=["POST"])
+    def add_sponsor_evidence_route(thesis_id):
+        try:
+            add_sponsor_evidence(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Sponsor evidence saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/affiliate-evidence", methods=["POST"])
+    def add_affiliate_product_evidence_route(thesis_id):
+        try:
+            add_affiliate_product_evidence(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Affiliate/product evidence saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/theses/<int:thesis_id>/red-team", methods=["POST"])
+    def add_red_team_review_route(thesis_id):
+        try:
+            add_red_team_review(thesis_id, request.form)
+        except ThesisValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Red-team review saved.", "success")
+        return redirect(url_for("theses_workspace", thesis_id=thesis_id))
+
+    @app.route("/rights", methods=["GET"])
+    def rights_workspace():
+        selected_video_id = request.args.get("video_id", type=int)
+        return render_template(
+            "rights.html", workspace=rights_dashboard(selected_video_id)
+        )
+
+    @app.route("/rights/assets", methods=["POST"])
+    def create_asset_route():
+        try:
+            create_asset(request.form)
+        except RightsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Asset saved.", "success")
+        return redirect(
+            url_for("rights_workspace", video_id=request.form.get("video_id"))
+        )
+
+    @app.route("/rights/video-assets", methods=["POST"])
+    def link_asset_to_video_route():
+        video_id = request.form.get("video_id")
+        try:
+            link_asset_to_video(request.form)
+        except RightsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Asset linked to video.", "success")
+        return redirect(url_for("rights_workspace", video_id=video_id))
+
+    @app.route("/rights/<int:video_id>/checklists", methods=["POST"])
+    def save_rights_checklist_route(video_id):
+        try:
+            save_rights_checklist(video_id, request.form)
+        except RightsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Rights checklist saved.", "success")
+        return redirect(url_for("rights_workspace", video_id=video_id))
+
+    @app.route("/rights/<int:video_id>/disclosures", methods=["POST"])
+    def save_video_disclosure_route(video_id):
+        try:
+            save_video_disclosure(video_id, request.form)
+        except RightsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Disclosure record saved.", "success")
+        return redirect(url_for("rights_workspace", video_id=video_id))
+
+    @app.route("/owned", methods=["GET"])
+    def owned_analytics_workspace():
+        selected_video_id = request.args.get("video_id", type=int)
+        return render_template(
+            "owned_analytics.html", workspace=owned_dashboard(selected_video_id)
+        )
+
+    @app.route("/owned/credentials", methods=["POST"])
+    def save_owned_credential_route():
+        try:
+            save_credential(request.form)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Owned analytics credential reference saved.", "success")
+        return redirect(url_for("owned_analytics_workspace"))
+
+    @app.route("/owned/credentials/<int:credential_id>/revoke", methods=["POST"])
+    def revoke_owned_credential_route(credential_id):
+        try:
+            revoke_credential(credential_id)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Owned analytics credential revoked.", "success")
+        return redirect(url_for("owned_analytics_workspace"))
+
+    @app.route("/owned/analytics", methods=["POST"])
+    def save_owned_analytics_route():
+        video_id = request.form.get("video_id")
+        try:
+            save_owned_analytics(request.form)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Owned analytics row saved.", "success")
+        return redirect(url_for("owned_analytics_workspace", video_id=video_id))
+
+    @app.route("/owned/retention", methods=["POST"])
+    def save_retention_diagnostic_route():
+        video_id = request.form.get("video_id")
+        try:
+            save_retention_diagnostic(request.form)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+        else:
+            flash("Retention diagnostic saved.", "success")
+        return redirect(url_for("owned_analytics_workspace", video_id=video_id))
+
+    @app.route("/owned/experiments", methods=["POST"])
+    def create_experiment_route():
+        try:
+            experiment = create_experiment(request.form)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("owned_analytics_workspace"))
+
+        flash("Experiment saved.", "success")
+        return redirect(
+            url_for("owned_analytics_workspace", video_id=experiment.video_id)
+        )
+
+    @app.route("/owned/experiments/<int:experiment_id>/checkpoints", methods=["POST"])
+    def save_experiment_checkpoint_route(experiment_id):
+        try:
+            checkpoint = save_experiment_checkpoint(experiment_id, request.form)
+        except OwnedAnalyticsValidationError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("owned_analytics_workspace"))
+
+        video_id = checkpoint.experiment.video_id
+        flash("Experiment checkpoint saved.", "success")
+        return redirect(url_for("owned_analytics_workspace", video_id=video_id))
+
+    @app.route("/labeling", methods=["GET"])
+    def labeling_queue():
+        selected_video_id = request.args.get("video_id", type=int)
+        if selected_video_id is None and request.args.get("mode") == "unlabeled":
+            selected_video_id = next_unlabeled_video_id()
+
+        video = None
+        if selected_video_id is not None:
+            video = Video.query.get_or_404(selected_video_id)
+        else:
+            video = (
+                Video.query.outerjoin(VideoLabel, VideoLabel.video_id == Video.id)
+                .order_by(
+                    (VideoLabel.review_status == "reviewed").asc(),
+                    Video.id.asc(),
+                )
+                .first()
+            )
+
+        queue = (
+            db.session.query(Video, VideoLabel)
+            .outerjoin(VideoLabel, VideoLabel.video_id == Video.id)
+            .order_by(Video.id.asc())
+            .limit(100)
+            .all()
+        )
+        counts = {
+            "total": Video.query.count(),
+            "reviewed": VideoLabel.query.filter_by(review_status="reviewed").count(),
+            "pending": (
+                Video.query.outerjoin(VideoLabel, VideoLabel.video_id == Video.id)
+                .filter(
+                    (VideoLabel.id.is_(None)) | (VideoLabel.review_status == "pending")
+                )
+                .count()
+            ),
+            "needs_second_review": VideoLabel.query.filter_by(
+                review_status="needs_second_review"
+            ).count(),
+            "skipped": VideoLabel.query.filter_by(review_status="skipped").count(),
+        }
+
+        return render_template(
+            "labeling.html",
+            video=video,
+            label=video.labels[0] if video and video.labels else None,
+            queue=queue,
+            counts=counts,
+            vocabularies=LABEL_VOCABULARIES,
+            next_unlabeled_id=next_unlabeled_video_id(video.id if video else None),
+        )
+
+    @app.route("/labeling/<int:video_id>", methods=["POST"])
+    def save_video_label_route(video_id):
+        action = request.form.get("action", "reviewed")
+        reviewer = request.form.get("reviewer", "").strip()
+
+        try:
+            save_video_label(video_id, request.form, reviewer=reviewer, action=action)
+            flash("Video label saved.", "success")
+        except LabelValidationError as error:
+            flash(str(error), "warning")
+            return redirect(url_for("labeling_queue", video_id=video_id))
+
+        if request.form.get("continue_next") == "1":
+            next_video_id = next_unlabeled_video_id(video_id)
+            if next_video_id:
+                return redirect(url_for("labeling_queue", video_id=next_video_id))
+
+        return redirect(url_for("labeling_queue", video_id=video_id))
+
+    @app.route("/labeling/bulk", methods=["POST"])
+    def bulk_label_route():
+        video_ids = request.form.getlist("video_ids")
+        field = request.form.get("field", "")
+        value = request.form.get("value", "")
+        reviewer = request.form.get("reviewer", "").strip()
+
+        try:
+            parsed_video_ids = [int(video_id) for video_id in video_ids]
+            updated = bulk_apply_video_label(
+                parsed_video_ids, field, value, reviewer=reviewer
+            )
+        except (TypeError, ValueError, LabelValidationError) as error:
+            flash(str(error), "warning")
+            return redirect(url_for("labeling_queue"))
+
+        flash(f"Bulk label applied to {updated} videos.", "success")
+        return redirect(url_for("labeling_queue"))
 
     @app.route("/api/video/<int:video_id>/history")
     def video_history_api(video_id):
@@ -552,3 +995,34 @@ def register_routes(app, limiter):
             )
 
         return "Invalid format! Please choose 'csv' or 'xlsx'.", 400
+
+    @app.route("/export/research.zip", methods=["GET"])
+    def research_zip_export_route():
+        file_path = build_research_zip_file(normalize_export_filters(request.args))
+
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
+            return response
+
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name="youtube-research-export.zip",
+            mimetype="application/zip",
+        )
+
+    @app.route("/export/research.jsonl", methods=["GET"])
+    def research_jsonl_export_route():
+        return Response(
+            stream_with_context(
+                stream_research_jsonl(normalize_export_filters(request.args))
+            ),
+            mimetype="application/x-ndjson",
+            headers={
+                "Content-Disposition": "attachment; filename=youtube-research-export.jsonl"
+            },
+        )

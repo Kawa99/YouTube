@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Owned Analytics{% endblock %}
+
+{% block content %}
+{% set selected = workspace.selected_video %}
+<div class="space-y-8">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.18em] text-rose-600 dark:text-rose-400">Owned channel only</p>
+            <h1 class="mt-2 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">Owned Analytics</h1>
+            <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">CTR, AVD, APV, revenue, traffic-source, and retention fields are reserved for channels you own or are authorized to access. Competitor rows stay limited to public YouTube data.</p>
+        </div>
+        <form method="get" action="{{ url_for('owned_analytics_workspace') }}" class="w-full max-w-md">
+            <label for="video_id" class="text-sm font-medium text-slate-700 dark:text-slate-200">Active video</label>
+            <div class="mt-2 flex gap-2">
+                <select id="video_id" name="video_id" class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+                    {% for video in workspace.videos %}
+                        <option value="{{ video.id }}" {% if selected and video.id == selected.id %}selected{% endif %}>{{ video.title or video.youtube_video_id or ("Video #" ~ video.id) }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">Open</button>
+            </div>
+        </form>
+    </div>
+
+    <section class="grid gap-4 lg:grid-cols-3">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <h2 class="text-base font-semibold text-slate-950 dark:text-white">OAuth Metadata</h2>
+            <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">Config: <span class="font-semibold {% if workspace.oauth_configured %}text-emerald-600 dark:text-emerald-400{% else %}text-amber-600 dark:text-amber-400{% endif %}">{{ "configured" if workspace.oauth_configured else "missing client env" }}</span></p>
+            <div class="mt-4 space-y-2">
+                {% for scope in workspace.scopes %}
+                    <code class="block rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-700 dark:bg-slate-900 dark:text-slate-300">{{ scope }}</code>
+                {% endfor %}
+            </div>
+        </div>
+
+        <form method="post" action="{{ url_for('save_owned_credential_route') }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950 lg:col-span-2">
+            <h2 class="text-base font-semibold text-slate-950 dark:text-white">Credential Reference</h2>
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Channel</span>
+                    <select name="channel_id" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <option value="">Unlinked</option>
+                        {% for channel in workspace.channels %}
+                            <option value="{{ channel.id }}">{{ channel.channel_username or channel.channel_name or channel.youtube_channel_id }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="block">
+                    <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Google account email</span>
+                    <input name="google_account_email" type="email" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                </label>
+                <label class="block md:col-span-2">
+                    <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Token secret reference</span>
+                    <input name="token_secret_ref" required placeholder="secret-manager://youtube/owned-channel" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                </label>
+                <label class="block md:col-span-2">
+                    <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Notes</span>
+                    <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                </label>
+            </div>
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Save reference</button>
+            </div>
+        </form>
+    </section>
+
+    {% if workspace.credentials %}
+        <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                <h2 class="text-base font-semibold text-slate-950 dark:text-white">Credential Audit</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
+                    <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                        <tr>
+                            <th class="px-5 py-3">Channel</th>
+                            <th class="px-5 py-3">Account</th>
+                            <th class="px-5 py-3">Secret ref</th>
+                            <th class="px-5 py-3">Status</th>
+                            <th class="px-5 py-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        {% for credential in workspace.credentials %}
+                            <tr>
+                                <td class="px-5 py-3">{{ credential.channel.channel_username if credential.channel else "Unlinked" }}</td>
+                                <td class="px-5 py-3">{{ credential.google_account_email or "" }}</td>
+                                <td class="px-5 py-3 font-mono text-xs">{{ credential.token_secret_ref }}</td>
+                                <td class="px-5 py-3">{{ credential.status }}</td>
+                                <td class="px-5 py-3">
+                                    {% if credential.status != "revoked" %}
+                                        <form method="post" action="{{ url_for('revoke_owned_credential_route', credential_id=credential.id) }}">
+                                            <button type="submit" class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">Revoke</button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+
+    {% if selected %}
+        <section class="grid gap-4 xl:grid-cols-2">
+            <form method="post" action="{{ url_for('save_owned_analytics_route') }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <input type="hidden" name="video_id" value="{{ selected.id }}">
+                <h2 class="text-base font-semibold text-slate-950 dark:text-white">Daily Owned Metrics</h2>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <input name="date" type="date" required class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="traffic_source_type" placeholder="Traffic source" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="views" type="number" min="0" placeholder="Views" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="impressions" type="number" min="0" placeholder="Impressions" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="impression_ctr" type="number" step="0.01" placeholder="CTR %" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="average_view_duration_seconds" type="number" step="0.01" placeholder="AVD seconds" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="average_view_percentage" type="number" step="0.01" placeholder="APV %" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="watch_time_minutes" type="number" step="0.01" placeholder="Watch time minutes" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="subscribers_gained" type="number" placeholder="Subscribers gained" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="estimated_revenue" type="number" step="0.01" placeholder="Estimated revenue" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="source" value="manual" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 sm:col-span-2">
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Save metrics</button>
+                </div>
+            </form>
+
+            <form method="post" action="{{ url_for('save_retention_diagnostic_route') }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <input type="hidden" name="video_id" value="{{ selected.id }}">
+                <h2 class="text-base font-semibold text-slate-950 dark:text-white">Retention Diagnostic</h2>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <input name="report_date" type="date" required class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <select name="retention_pattern" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        {% for pattern in workspace.retention_patterns %}
+                            <option value="{{ pattern }}">{{ pattern }}</option>
+                        {% endfor %}
+                    </select>
+                    <input name="ctr" type="number" step="0.01" placeholder="CTR %" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="impressions" type="number" min="0" placeholder="Impressions" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="average_view_duration_seconds" type="number" step="0.01" placeholder="AVD seconds" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="average_view_percentage" type="number" step="0.01" placeholder="APV %" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="dominant_traffic_source" placeholder="Dominant traffic source" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 sm:col-span-2">
+                    <textarea name="likely_cause" rows="2" placeholder="Likely cause" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 sm:col-span-2"></textarea>
+                    <textarea name="evidence" rows="2" placeholder="Evidence" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 sm:col-span-2"></textarea>
+                    <textarea name="next_change" rows="2" placeholder="Next change" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 sm:col-span-2"></textarea>
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Save diagnostic</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="grid gap-4 xl:grid-cols-2">
+            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800"><h2 class="text-base font-semibold">Recent Owned Metrics</h2></div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
+                        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                            <tr><th class="px-5 py-3">Date</th><th class="px-5 py-3">Views</th><th class="px-5 py-3">CTR</th><th class="px-5 py-3">APV</th><th class="px-5 py-3">Revenue</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            {% for row in workspace.analytics_rows %}
+                                <tr><td class="px-5 py-3">{{ row.date }}</td><td class="px-5 py-3">{{ row.views or "" }}</td><td class="px-5 py-3">{{ row.impression_ctr or "" }}</td><td class="px-5 py-3">{{ row.average_view_percentage or "" }}</td><td class="px-5 py-3">{{ row.estimated_revenue or "" }}</td></tr>
+                            {% else %}
+                                <tr><td colspan="5" class="px-5 py-6 text-sm text-slate-500">No owned metric rows yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <div class="border-b border-slate-200 px-5 py-4 dark:border-slate-800"><h2 class="text-base font-semibold">Retention Diagnostics</h2></div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
+                        <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                            <tr><th class="px-5 py-3">Date</th><th class="px-5 py-3">Pattern</th><th class="px-5 py-3">Cause</th><th class="px-5 py-3">Next</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            {% for row in workspace.retention_rows %}
+                                <tr><td class="px-5 py-3">{{ row.report_date }}</td><td class="px-5 py-3">{{ row.retention_pattern }}</td><td class="px-5 py-3">{{ row.likely_cause or "" }}</td><td class="px-5 py-3">{{ row.next_change or "" }}</td></tr>
+                            {% else %}
+                                <tr><td colspan="4" class="px-5 py-6 text-sm text-slate-500">No diagnostics yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    {% endif %}
+
+    <section class="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <form method="post" action="{{ url_for('create_experiment_route') }}" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <h2 class="text-base font-semibold text-slate-950 dark:text-white">Experiment</h2>
+            <div class="mt-4 grid gap-4">
+                <select name="video_id" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <option value="">No video attached</option>
+                    {% for video in workspace.videos %}
+                        <option value="{{ video.id }}" {% if selected and video.id == selected.id %}selected{% endif %}>{{ video.title or video.youtube_video_id or ("Video #" ~ video.id) }}</option>
+                    {% endfor %}
+                </select>
+                <textarea name="hypothesis" required rows="3" placeholder="Hypothesis" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+                <input name="variable_tested" required placeholder="Variable tested" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <input name="title" placeholder="Title variant" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <input name="thumbnail_variant" placeholder="Thumbnail variant" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <input name="publish_date" type="date" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <input name="success_metric" placeholder="Success metric" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <input name="production_hours" type="number" step="0.1" placeholder="Production hours" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    <input name="production_cost" type="number" step="0.01" placeholder="Production cost" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                </div>
+                <select name="decision" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                    {% for decision in workspace.experiment_decisions %}
+                        <option value="{{ decision }}">{{ decision }}</option>
+                    {% endfor %}
+                </select>
+                <textarea name="notes" rows="2" placeholder="Notes" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></textarea>
+            </div>
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-rose-700">Save experiment</button>
+            </div>
+        </form>
+
+        <div class="space-y-4">
+            {% for experiment in workspace.experiments %}
+                <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h3 class="font-semibold text-slate-950 dark:text-white">{{ experiment.variable_tested }}</h3>
+                            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">{{ experiment.hypothesis }}</p>
+                        </div>
+                        <span class="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:text-slate-200">{{ experiment.decision }}</span>
+                    </div>
+                    <form method="post" action="{{ url_for('save_experiment_checkpoint_route', experiment_id=experiment.id) }}" class="mt-4 grid gap-3 lg:grid-cols-4">
+                        <select name="checkpoint" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                            {% for checkpoint in workspace.checkpoints %}
+                                <option value="{{ checkpoint }}">{{ checkpoint }}</option>
+                            {% endfor %}
+                        </select>
+                        <input name="views" type="number" min="0" placeholder="Views" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="impressions" type="number" min="0" placeholder="Impressions" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="impression_ctr" type="number" step="0.01" placeholder="CTR %" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="average_view_duration_seconds" type="number" step="0.01" placeholder="AVD seconds" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="average_view_percentage" type="number" step="0.01" placeholder="APV %" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="watch_time_minutes" type="number" step="0.01" placeholder="Watch minutes" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="subscribers_gained" type="number" placeholder="Subs gained" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <input name="main_traffic_source" placeholder="Main source" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 lg:col-span-2">
+                        <input name="notes" placeholder="Notes" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
+                        <button type="submit" class="rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200">Add checkpoint</button>
+                    </form>
+                    {% if experiment.checkpoints %}
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            {% for checkpoint in experiment.checkpoints %}
+                                <span class="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">{{ checkpoint.checkpoint }}: {{ checkpoint.views or 0 }} views</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </article>
+            {% else %}
+                <div class="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-950">No experiments yet.</div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}
