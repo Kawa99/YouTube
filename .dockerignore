@@ -12,3 +12,5 @@ instance/
 # tests/
 .env
 data/
+backups/
+logs/

@@ -94,10 +94,18 @@ Raw OAuth tokens must live in an external secret backend; this app stores only `
 
 ## Run With Docker Compose
 
-Start the full stack:
+Start the contained stack (web, worker, Redis, and PostgreSQL):
 
 ```bash
 docker compose up -d --build
+```
+
+The web app is published only on `127.0.0.1:5000`. Unattended scheduled
+collection is paused by default while the critical collection-correctness
+remediation tasks remain open. Start it only after an authorized review:
+
+```bash
+docker compose --profile scheduled-collection up -d scheduler
 ```
 
 Apply migrations if needed:
@@ -116,7 +124,7 @@ Watch services:
 
 ```bash
 docker compose ps
-docker compose logs -f web worker scheduler redis db
+docker compose logs -f web worker redis db
 ```
 
 Stop without deleting data:
@@ -152,7 +160,9 @@ source .venv/bin/activate
 .venv/bin/python app.py
 ```
 
-Docker Compose is the preferred path because it includes Redis, worker, scheduler, and Postgres.
+Docker Compose is the preferred path because it includes Redis, worker, and
+Postgres. The scheduler is available through the explicit
+`scheduled-collection` profile.
 
 ## Collection Modes
 
@@ -174,7 +184,8 @@ Channel:
 Tracked channels:
 
 - Mark channels as tracked from channel detail/API workflows.
-- Scheduler queues tracked-channel collection using `TRACKED_CHANNEL_MAX_VIDEOS`.
+- The opt-in scheduler queues tracked-channel collection using `TRACKED_CHANNEL_MAX_VIDEOS`.
+- Keep the scheduler stopped until the Phase 1 collection-integrity blockers are complete or an authorized operator accepts the documented risk.
 - Use `/operations` to inspect queue and worker state.
 
 Transcript collection:

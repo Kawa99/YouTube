@@ -4,6 +4,8 @@ This directory describes the research-engine evolution of the YouTube tracker.
 
 ## Current documents
 
+- `production-readiness-remediation-execution-checklist-2026-07-15.md` is the authoritative remediation status ledger and acceptance checklist.
+- `remediation/phase-0-containment-recovery-evidence-2026-07-15.md` records the current containment, backup, restore, environment, and regression evidence for the remediation Phase 0 gate.
 - `phase-0-baseline.md` records the verified baseline before research-engine feature work.
 - `phase-2-research-schema.md` documents the normalized schema and compatibility path.
 - `phase-3-collection-engine.md` documents batched collection, quota visibility, and collection-run behavior.

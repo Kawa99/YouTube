@@ -29,7 +29,9 @@ services:
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       OWNED_ANALYTICS_TOKEN_SECRET_BACKEND: ${OWNED_ANALYTICS_TOKEN_SECRET_BACKEND:-external}
     ports:
-      - "5000:5000"
+      # Phase 0 containment: expose the web app only on this machine until the
+      # authenticated production ingress and network perimeter are complete.
+      - "127.0.0.1:5000:5000"
     volumes:
       - ./data:/app/data:z
       - ./migrations:/app/migrations:z
@@ -112,6 +114,11 @@ services:
       - ./data:/app/data:z
       - ./migrations:/app/migrations:z
     command: python scheduler.py
+    # Scheduled collection is intentionally opt-in while critical collection
+    # correctness findings remain open. Start it only with the documented
+    # scheduled-collection profile after an authorized review.
+    profiles:
+      - scheduled-collection
     restart: unless-stopped
 
   redis:

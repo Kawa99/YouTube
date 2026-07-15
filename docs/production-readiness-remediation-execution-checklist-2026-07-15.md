@@ -96,16 +96,16 @@ Unless a task specifies something stricter, acceptance is measured against:
 
 Complete this gate before normal remediation. These actions do not close audit findings by themselves.
 
-- [ ] Restrict the current web listener to the trusted local/private environment until Phase 1 and Phase 2 are complete.
-- [ ] Pause unattended/scheduled collection if it can trigger the confirmed overflow or false-success paths.
-- [ ] Create verified backups of PostgreSQL, supported SQLite data, configuration metadata, and required Redis state without copying secrets into the repository.
-- [ ] Perform a test restore to disposable storage and record row counts, schema version, checksums, duration, and result.
-- [ ] Capture clean git status and create a dedicated remediation branch or worktree.
-- [ ] Record the current application version/commit, Alembic head, dependency inventory, container image identifiers, test results, and known warnings.
-- [ ] Create or update repository-level AGENTS.md with canonical setup, test, migration, security, and completion commands.
-- [ ] Confirm production/customer traffic is not being modified during destructive or migration rehearsals.
-- [ ] Record who can authorize secret rotation, credential revocation, firewall changes, data repair, and production deployment.
-- [ ] **PHASE 0 GATE COMPLETE** — all containment and recovery prerequisites above have evidence.
+- [x] Restrict the current web listener to the trusted local/private environment until Phase 1 and Phase 2 are complete.
+- [x] Pause unattended/scheduled collection if it can trigger the confirmed overflow or false-success paths.
+- [x] Create verified backups of PostgreSQL, supported SQLite data, configuration metadata, and required Redis state without copying secrets into the repository.
+- [x] Perform a test restore to disposable storage and record row counts, schema version, checksums, duration, and result.
+- [x] Capture clean git status and create a dedicated remediation branch or worktree.
+- [x] Record the current application version/commit, Alembic head, dependency inventory, container image identifiers, test results, and known warnings.
+- [x] Create or update repository-level AGENTS.md with canonical setup, test, migration, security, and completion commands.
+- [x] Confirm production/customer traffic is not being modified during destructive or migration rehearsals. The sole owner confirmed on 2026-07-15 that the project is local-only, unpublished, and has no production/customer traffic.
+- [x] Record who can authorize secret rotation, credential revocation, firewall changes, data repair, and production deployment. The sole project owner is the authorized approver for each action.
+- [x] **PHASE 0 GATE COMPLETE** — all containment and recovery prerequisites above have evidence in `docs/remediation/phase-0-containment-recovery-evidence-2026-07-15.md`.
 
 ## 3. Phase 1 — Critical trust and data-integrity blockers
 

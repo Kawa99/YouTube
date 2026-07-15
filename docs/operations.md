@@ -4,13 +4,17 @@ This guide covers running, monitoring, backing up, and troubleshooting Baroo.
 
 ## Runtime Architecture
 
-Docker Compose starts:
+The default Docker Compose profile starts:
 
 - `web`: Flask/Gunicorn app.
 - `worker`: RQ worker for background collection jobs.
-- `scheduler`: recurring tracked-channel scheduler.
 - `redis`: queue and job-status store.
 - `db`: Postgres database.
+
+The `scheduler` service is available only through the explicit
+`scheduled-collection` profile while the critical collection-correctness
+remediation tasks remain open. The web service is published only on
+`127.0.0.1:5000` during this containment period.
 
 Local non-Docker mode uses SQLite by default when `DATABASE_URL` is unset, but Docker Compose is the recommended operating mode.
 
@@ -77,7 +81,21 @@ Check common signals:
 
 ## Scheduler
 
-The scheduler registers a daily tracked-channel scrape job:
+The scheduler is intentionally stopped by default. An authorized operator may
+start it after reviewing the current data-integrity, duplicate-job, quota, and
+false-success risks:
+
+```bash
+docker compose --profile scheduled-collection up -d scheduler
+```
+
+Pause it with:
+
+```bash
+docker compose --profile scheduled-collection stop scheduler
+```
+
+When enabled, it registers a daily tracked-channel scrape job:
 
 - cron: `0 0 * * *`
 - job ID: `daily-tracked-channels-scrape`
@@ -93,7 +111,7 @@ If scheduler behavior looks wrong:
 
 ```bash
 docker compose logs --tail=200 scheduler
-docker compose restart scheduler
+docker compose --profile scheduled-collection restart scheduler
 ```
 
 ## Worker Troubleshooting
@@ -149,23 +167,35 @@ Create backup directory:
 mkdir -p backups
 ```
 
-Postgres backup:
+Postgres custom-format backup:
 
 ```bash
-docker compose exec -T db pg_dump -U baroo -d baroo_db > "backups/baroo_db_$(date +%Y%m%d_%H%M%S).sql"
+docker compose exec -T db pg_dump -U baroo -d baroo_db \
+  --format=custom --no-owner --no-privileges \
+  --file=/tmp/baroo_db.dump
+docker cp youtube-db:/tmp/baroo_db.dump backups/baroo_db.dump
+chmod 600 backups/baroo_db.dump
 ```
 
-Postgres restore:
+Verify the archive catalog before restoring it to a disposable database and
+comparing the Alembic revision and per-table row counts:
 
 ```bash
-docker compose exec -T db psql -U baroo -d baroo_db < backups/baroo_db.sql
+docker compose exec -T db pg_restore --list /tmp/baroo_db.dump
 ```
 
 SQLite backup:
 
 ```bash
-cp data/videos.db "backups/videos_$(date +%Y%m%d_%H%M%S).db"
+sqlite3 data/videos.db ".backup 'backups/videos.db'"
+chmod 600 backups/videos.db
+sqlite3 backups/videos.db "PRAGMA quick_check;"
 ```
+
+If Redis job state is required for recovery, force an RDB snapshot, copy it to
+an access-restricted ignored backup directory, validate it with
+`redis-check-rdb`, and restore it into an isolated portless Redis container
+before declaring it recoverable. Do not print key names or values in evidence.
 
 Research export backup:
 
@@ -221,11 +251,13 @@ PY
 
 ### `YouTube API key is not configured`
 
-Set `YOUTUBE_API_KEY` in `.env`, then restart:
+Set `YOUTUBE_API_KEY` in `.env`, then restart the default services:
 
 ```bash
-docker compose restart web worker scheduler
+docker compose restart web worker
 ```
+
+Restart the scheduler separately only when scheduled collection is authorized.
 
 ### `Background queue is unavailable`
 
